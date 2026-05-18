@@ -362,7 +362,7 @@ defmodule Phoenix.LiveView.Async do
 
   defp handle_kind(socket, _maybe_component, :assign, keys, result) do
     case result do
-      {:ok, {:ok, assigns}} when is_map(assigns) or is_list(assigns) ->
+      {:ok, {:ok, assigns}} when is_map(assigns) ->
         new_assigns =
           for {key, val} <- assigns do
             {key, AsyncResult.ok(get_current_async!(socket, key), val)}

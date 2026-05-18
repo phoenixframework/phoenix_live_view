@@ -2232,8 +2232,8 @@ defmodule Phoenix.LiveView do
   an `Phoenix.LiveView.AsyncResult` struct holding the status of the operation
   and the result when the function completes.
 
-  The function must return either a map or a keyword list with the assigns
-  to merge into the socket.
+  The function must return either `{:ok, assigns}` or `{:error, reason}`,
+  where `assigns` is a map with the keys passed to `assign_async/3`.
 
   The task is only started when the socket is connected.
 
