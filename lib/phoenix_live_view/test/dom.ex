@@ -287,7 +287,7 @@ defmodule Phoenix.LiveViewTest.DOM do
 
         # All inputs including buttons
         # Remove the named inputs first to remove any possible
-        # duplicates if the child inputs also had a form attribite.
+        # duplicates if the child inputs also had a form attribute.
         (form_inputs -- named_inputs) ++ named_inputs
 
       _ ->

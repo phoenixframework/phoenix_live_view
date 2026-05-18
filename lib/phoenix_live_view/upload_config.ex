@@ -180,7 +180,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           raise ArgumentError, """
           invalid :external value provided to allow_upload.
 
-          Only an anymous function receiving the socket as an argument is supported. Got:
+          Only an anonymous function receiving the socket as an argument is supported. Got:
 
           #{inspect(other)}
           """

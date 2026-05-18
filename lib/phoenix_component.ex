@@ -702,7 +702,7 @@ defmodule Phoenix.Component do
 
   * `false` or `nil` - if a value is `false` or `nil`, the attribute is omitted.
     Note the `class` and `style` attributes will be rendered as empty strings,
-    instead of ommitted, which has the same effect as not rendering them, but
+    instead of omitted, which has the same effect as not rendering them, but
     allows for rendering optimizations.
 
   * `list` (only for the `class` attribute) - each element of the list is processed

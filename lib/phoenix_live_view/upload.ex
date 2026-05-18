@@ -116,7 +116,7 @@ defmodule Phoenix.LiveView.Upload do
   @doc """
   Updates the entry progress.
 
-  Progress is either an integer percently between 0 and 100, or a map
+  Progress is either an integer percentage between 0 and 100, or a map
   with an `"error"` key containing the information for a failed upload
   while in progress on the client.
   """
