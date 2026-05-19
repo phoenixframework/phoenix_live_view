@@ -131,7 +131,7 @@ defmodule Phoenix.LiveView.Rendered do
     end
 
     defp recur_iodata(%Phoenix.LiveView.Rendered{static: static, dynamic: dynamic}) do
-      recur_iodata(static, dynamic.(false), [])
+      recur_iodata(static, dynamic.(false))
     end
 
     defp recur_iodata(%_{} = struct) do
@@ -142,12 +142,12 @@ defmodule Phoenix.LiveView.Rendered do
       other
     end
 
-    defp recur_iodata([static_head | static_tail], [dynamic_head | dynamic_tail], acc) do
-      recur_iodata(static_tail, dynamic_tail, [recur_iodata(dynamic_head), static_head | acc])
+    defp recur_iodata([static_head | static_tail], [dynamic_head | dynamic_tail]) do
+      [static_head, recur_iodata(dynamic_head) | recur_iodata(static_tail, dynamic_tail)]
     end
 
-    defp recur_iodata([static_head], [], acc) do
-      Enum.reverse([static_head | acc])
+    defp recur_iodata([static_head], []) do
+      [static_head]
     end
   end
 end
