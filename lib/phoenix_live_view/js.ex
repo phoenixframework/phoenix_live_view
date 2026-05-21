@@ -1247,7 +1247,7 @@ defmodule Phoenix.LiveView.JS do
   ## Examples
 
   ```heex
-  <div id="modal" phx-remove={JS.hide("#modal")}>...</div>
+  <div id="modal" phx-remove={JS.hide()}>...</div>
   <button phx-click={JS.exec("phx-remove", to: "#modal")}>close</button>
   ```
   """

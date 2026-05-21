@@ -129,7 +129,7 @@ For example, imagine that you want to immediately remove an element from the pag
 If the element you want to delete is not the clicked button, but its parent (or other element), you can pass a selector to hide:
 
 ```heex
-<button phx-click={JS.push("delete") |> JS.hide("#post-row-13")}>Delete</button>
+<button phx-click={JS.push("delete") |> JS.hide(to: "#post-row-13")}>Delete</button>
 ```
 
 Or if you'd rather add a class instead:
