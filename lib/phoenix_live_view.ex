@@ -464,7 +464,7 @@ defmodule Phoenix.LiveView do
     * `:log` - configures the log level for the LiveView, either `false`
       or a log level
 
-    * `:on_mount` - a list of tuples with module names and argument to be invoked
+    * `:on_mount` - a list of tuples with module names and arguments to be invoked
       as `on_mount` hooks
 
   """

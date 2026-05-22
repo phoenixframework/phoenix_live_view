@@ -986,7 +986,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
-    test "multiple slot entries randered by a single rende_slot/2 call" do
+    test "multiple slot entries rendered by a single render_slot/2 call" do
       assigns = %{}
 
       expected = """

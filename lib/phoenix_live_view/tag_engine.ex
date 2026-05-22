@@ -160,7 +160,7 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   @doc """
-  Define a inner block, generally used by slots.
+  Define an inner block, generally used by slots.
 
   This macro is mostly used by custom HTML engines that provide
   a `slot` implementation and rarely called directly. The

@@ -814,7 +814,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
   #
   # _ -> ast
   #
-  # If a component is defined as as <.my_component :let={%{foo: foo, bar: bar}}, we get:
+  # If a component is defined as <.my_component :let={%{foo: foo, bar: bar}}, we get:
   #
   # %{foo: foo, bar: bar} -> ast
   # other -> Phoenix.LiveView.TagEngine.__unmatched_let__!("%{foo: foo, bar: bar}", other)

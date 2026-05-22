@@ -12,7 +12,7 @@ defmodule Phoenix.LiveView.Route do
             uri: nil
 
   @doc """
-  Computes the container from the route options and falls backs to use options.
+  Computes the container from the route options and falls back to view options.
   """
   def container(%Route{} = route) do
     route.opts[:container] || route.view.__live__()[:container]

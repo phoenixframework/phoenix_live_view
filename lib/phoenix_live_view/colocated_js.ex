@@ -36,7 +36,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
   > #### A note on dependencies and umbrella projects {: .info}
   >
   > For each application that uses colocated JavaScript, a separate directory is created
-  > inside the `phoenix-colocated` folder. This allows to have clear separation between
+  > inside the `phoenix-colocated` folder. This allows for clear separation between
   > hooks and code of dependencies, but also applications inside umbrella projects.
   >
   > While dependencies would typically still bundle their own hooks and colocated JavaScript

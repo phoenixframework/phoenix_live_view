@@ -128,8 +128,8 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
             #     <div label="application programming interface">API</div>
             #   ).
             #
-            # Therefore, this check if the previous or next token is not a text
-            # and, if it is a text, check if that contains whitespace.
+            # Therefore, this checks whether the previous or next token is not text
+            # and, if it is text, whether it contains whitespace.
             cond do
               text_ends_with_space?(prev_node) or text_starts_with_space?(next_node) ->
                 concat([prev_doc, break(""), next_doc])
