@@ -18,7 +18,7 @@ defmodule Phoenix.LiveView.StreamAsyncTest do
       {:ok, lv, _html} = live(conn, "/stream_async?test=bad_return")
 
       assert render_async(lv) =~
-               "expected stream_async to return {:ok, Enumerable.t()} or {:error, reason}, got: 123"
+               "expected stream_async to return {:ok, Enumerable.t()}, {:ok, Enumerable.t(), opts} or {:error, reason}, got: 123"
     end
 
     test "not enumerable", %{conn: conn} do
@@ -188,7 +188,7 @@ defmodule Phoenix.LiveView.StreamAsyncTest do
       {:ok, lv, _html} = live(conn, "/stream_async?test=lc_bad_return")
 
       assert render_async(lv) =~
-               "expected stream_async to return {:ok, Enumerable.t()} or {:error, reason}, got: 123"
+               "expected stream_async to return {:ok, Enumerable.t()}, {:ok, Enumerable.t(), opts} or {:error, reason}, got: 123"
     end
 
     test "not enumerable", %{conn: conn} do
