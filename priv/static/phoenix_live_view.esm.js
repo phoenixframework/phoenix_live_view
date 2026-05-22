@@ -5631,12 +5631,10 @@ var View = class _View {
     };
     const filterButton = (el) => el.tagName == "BUTTON";
     const filterInput = (el) => ["INPUT", "TEXTAREA"].includes(el.tagName);
-    const filterSelects = (el) => el.tagName === "SELECT";
     const formElements = Array.from(formEl.elements);
     const disables = formElements.filter(filterDisables);
     const buttons = formElements.filter(filterButton).filter(filterIgnored);
     const inputs = formElements.filter(filterInput).filter(filterIgnored);
-    const selects = formElements.filter(filterSelects).filter(filterIgnored);
     buttons.forEach((button) => {
       button.setAttribute(PHX_DISABLED, button.disabled.toString());
       button.disabled = true;
@@ -5649,11 +5647,7 @@ var View = class _View {
         input.disabled = true;
       }
     });
-    selects.forEach((select) => {
-      select.setAttribute(PHX_DISABLED, select.disabled.toString());
-      select.disabled = true;
-    });
-    const formEls = disables.concat(buttons).concat(inputs).concat(selects).map((el) => {
+    const formEls = disables.concat(buttons).concat(inputs).map((el) => {
       return { el, loading: true, lock: true };
     });
     const els = [
