@@ -207,8 +207,8 @@ defmodule Phoenix.LiveView.Async do
         :ok
       else
         raise ArgumentError, """
-        expected stream_async to return {:ok, Enumerable.t()}, {:ok, Enumerable.t(), options} or {:error, reason} but the result
-        is does not implement the Enumerable protocol
+        expected stream_async to return {:ok, Enumerable.t()}, {:ok, Enumerable.t(), opts} or {:error, reason} but the result
+        does not implement the Enumerable protocol
         """
       end
     end
@@ -229,7 +229,7 @@ defmodule Phoenix.LiveView.Async do
 
         other ->
           raise ArgumentError, """
-          expected stream_async to return {:ok, Enumerable.t()} or {:error, reason}, got: #{inspect(other)}
+          expected stream_async to return {:ok, Enumerable.t()}, {:ok, Enumerable.t(), opts} or {:error, reason}, got: #{inspect(other)}
           """
       end
     end
