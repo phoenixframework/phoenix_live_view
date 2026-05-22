@@ -1895,70 +1895,76 @@ defmodule Phoenix.LiveViewTest do
     end)
   end
 
-  @doc false
-  def __start_assert_will_receive__(%View{pid: pid}) do
-    if not (Code.ensure_loaded?(:trace) and function_exported?(:trace, :session_create, 3)) do
+  if Code.ensure_loaded?(:trace) and function_exported?(:trace, :session_create, 3) do
+    @doc false
+    def __start_assert_will_receive__(%View{pid: pid}) do
+      ref = make_ref()
+      parent = self()
+      tracer = spawn(fn -> assert_will_receive_loop(parent, ref) end)
+      session = :trace.session_create(:phoenix_live_view_test, tracer, [])
+
+      try do
+        :trace.process(session, pid, true, [:receive])
+        {ref, {tracer, session}}
+      rescue
+        exception ->
+          __stop_assert_will_receive__(ref, {tracer, session})
+          reraise exception, __STACKTRACE__
+      catch
+        kind, reason ->
+          __stop_assert_will_receive__(ref, {tracer, session})
+          :erlang.raise(kind, reason, __STACKTRACE__)
+      end
+    end
+
+    @doc false
+    def __stop_assert_will_receive__(ref, {tracer, session}) do
+      :trace.session_destroy(session)
+
+      monitor_ref = Process.monitor(tracer)
+      send(tracer, {ref, :stop})
+
+      receive do
+        {:DOWN, ^monitor_ref, :process, ^tracer, _reason} ->
+          :ok
+      after
+        5_000 ->
+          Process.exit(tracer, :kill)
+
+          receive do
+            {:DOWN, ^monitor_ref, :process, ^tracer, _reason} -> :ok
+          end
+      end
+
+      flush_assert_will_receive(ref)
+    end
+
+    defp assert_will_receive_loop(parent, ref) do
+      receive do
+        {:trace, _pid, :receive, message} ->
+          send(parent, {ref, message})
+          assert_will_receive_loop(parent, ref)
+
+        {^ref, :stop} ->
+          :ok
+      end
+    end
+
+    defp flush_assert_will_receive(ref) do
+      receive do
+        {^ref, _message} -> flush_assert_will_receive(ref)
+      after
+        0 -> :ok
+      end
+    end
+  else
+    @doc false
+    def __start_assert_will_receive__(%View{}) do
       raise "assert_will_receive requires Erlang/OTP 27 or later"
     end
 
-    ref = make_ref()
-    parent = self()
-    tracer = spawn(fn -> assert_will_receive_loop(parent, ref) end)
-    session = :trace.session_create(:phoenix_live_view_test, tracer, [])
-
-    try do
-      :trace.process(session, pid, true, [:receive])
-      {ref, {tracer, session}}
-    rescue
-      exception ->
-        __stop_assert_will_receive__(ref, {tracer, session})
-        reraise exception, __STACKTRACE__
-    catch
-      kind, reason ->
-        __stop_assert_will_receive__(ref, {tracer, session})
-        :erlang.raise(kind, reason, __STACKTRACE__)
-    end
-  end
-
-  @doc false
-  def __stop_assert_will_receive__(ref, {tracer, session}) do
-    :trace.session_destroy(session)
-
-    monitor_ref = Process.monitor(tracer)
-    send(tracer, {ref, :stop})
-
-    receive do
-      {:DOWN, ^monitor_ref, :process, ^tracer, _reason} ->
-        :ok
-    after
-      5_000 ->
-        Process.exit(tracer, :kill)
-
-        receive do
-          {:DOWN, ^monitor_ref, :process, ^tracer, _reason} -> :ok
-        end
-    end
-
-    flush_assert_will_receive(ref)
-  end
-
-  defp assert_will_receive_loop(parent, ref) do
-    receive do
-      {:trace, _pid, :receive, message} ->
-        send(parent, {ref, message})
-        assert_will_receive_loop(parent, ref)
-
-      {^ref, :stop} ->
-        :ok
-    end
-  end
-
-  defp flush_assert_will_receive(ref) do
-    receive do
-      {^ref, _message} -> flush_assert_will_receive(ref)
-    after
-      0 -> :ok
-    end
+    @doc false
+    def __stop_assert_will_receive__(_ref, _tracer), do: :ok
   end
 
   @doc """
