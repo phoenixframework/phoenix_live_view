@@ -826,9 +826,9 @@ defmodule Phoenix.LiveView.Channel do
   defp maybe_merge_meta(value, _raw_payload), do: value
 
   defp gather_keys(%{} = map, acc) do
-    case Enum.at(map, 0) do
-      {key, val} -> gather_keys(val, [key | acc])
-      nil -> acc
+    case :maps.next(:maps.iterator(map)) do
+      {key, val, _iterator} -> gather_keys(val, [key | acc])
+      :none -> acc
     end
   end
 
