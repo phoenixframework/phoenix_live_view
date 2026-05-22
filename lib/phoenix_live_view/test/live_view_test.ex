@@ -1818,6 +1818,150 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Asserts the LiveView process will receive a message within `timeout`.
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
+
+  This requires Erlang/OTP 27 or later.
+
+  A zero-arity setup function may be passed as the third argument. It is
+  invoked after tracing is enabled and before waiting for the message. To
+  customize the timeout, pass it as the fourth argument.
+
+  ## Examples
+
+      assert_will_receive view, {:test_message, num}
+      assert num == 1
+
+      assert_will_receive view, {:test_message, num}, fn ->
+        send(view.pid, {:test_message, 1})
+      end
+
+      assert_will_receive view, {:test_message, num}, fn ->
+        send(view.pid, {:test_message, 1})
+      end, 1000
+  """
+  defmacro assert_will_receive(
+             view,
+             pattern,
+             fun \\ quote(do: fn -> nil end),
+             timeout \\ Application.fetch_env!(:ex_unit, :assert_receive_timeout)
+           ) do
+    {pattern, guard} = extract_guard(pattern)
+    ref = Macro.unique_var(:ref, __MODULE__)
+    tracer = Macro.unique_var(:tracer, __MODULE__)
+    received = Macro.unique_var(:received, __MODULE__)
+    message = Macro.unique_var(:message, __MODULE__)
+    generated_pattern = mark_vars_as_generated(pattern)
+    generated_guard = guard && mark_vars_as_generated(guard)
+
+    trace_pattern =
+      quote do
+        {^unquote(ref), unquote(generated_pattern)}
+      end
+      |> apply_guard(generated_guard)
+
+    quote do
+      {unquote(ref), unquote(tracer)} =
+        Phoenix.LiveViewTest.__start_assert_will_receive__(unquote(view))
+
+      unquote(received) =
+        try do
+          unquote(fun).()
+          assert_receive unquote(trace_pattern), unquote(timeout)
+        after
+          Phoenix.LiveViewTest.__stop_assert_will_receive__(unquote(ref), unquote(tracer))
+        end
+
+      {^unquote(ref), unquote(message)} = unquote(received)
+      unquote(pattern) = unquote(message)
+      unquote(message)
+    end
+  end
+
+  defp extract_guard({:when, _, [pattern, guard]}), do: {pattern, guard}
+  defp extract_guard(pattern), do: {pattern, nil}
+
+  defp apply_guard(pattern, nil), do: pattern
+  defp apply_guard(pattern, guard), do: {:when, [], [pattern, guard]}
+
+  defp mark_vars_as_generated(pattern) do
+    Macro.prewalk(pattern, fn
+      {name, meta, context} when is_atom(name) and is_atom(context) ->
+        {name, [generated: true] ++ meta, context}
+
+      other ->
+        other
+    end)
+  end
+
+  @doc false
+  def __start_assert_will_receive__(%View{pid: pid}) do
+    if not (Code.ensure_loaded?(:trace) and function_exported?(:trace, :session_create, 3)) do
+      raise "assert_will_receive requires Erlang/OTP 27 or later"
+    end
+
+    ref = make_ref()
+    parent = self()
+    tracer = spawn(fn -> assert_will_receive_loop(parent, ref) end)
+    session = :trace.session_create(:phoenix_live_view_test, tracer, [])
+
+    try do
+      :trace.process(session, pid, true, [:receive])
+      {ref, {tracer, session}}
+    rescue
+      exception ->
+        __stop_assert_will_receive__(ref, {tracer, session})
+        reraise exception, __STACKTRACE__
+    catch
+      kind, reason ->
+        __stop_assert_will_receive__(ref, {tracer, session})
+        :erlang.raise(kind, reason, __STACKTRACE__)
+    end
+  end
+
+  @doc false
+  def __stop_assert_will_receive__(ref, {tracer, session}) do
+    :trace.session_destroy(session)
+
+    monitor_ref = Process.monitor(tracer)
+    send(tracer, {ref, :stop})
+
+    receive do
+      {:DOWN, ^monitor_ref, :process, ^tracer, _reason} ->
+        :ok
+    after
+      5_000 ->
+        Process.exit(tracer, :kill)
+
+        receive do
+          {:DOWN, ^monitor_ref, :process, ^tracer, _reason} -> :ok
+        end
+    end
+
+    flush_assert_will_receive(ref)
+  end
+
+  defp assert_will_receive_loop(parent, ref) do
+    receive do
+      {:trace, _pid, :receive, message} ->
+        send(parent, {ref, message})
+        assert_will_receive_loop(parent, ref)
+
+      {^ref, :stop} ->
+        :ok
+    end
+  end
+
+  defp flush_assert_will_receive(ref) do
+    receive do
+      {^ref, _message} -> flush_assert_will_receive(ref)
+    after
+      0 -> :ok
+    end
+  end
+
+  @doc """
   Follows the redirect from a `render_*` action or an `{:error, redirect}`
   tuple.
 
