@@ -82,8 +82,8 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp to_iodata_parts(parts, static, components, template, mapper) do
-    static = template_static(static, template)
-    one_to_iodata(static, parts, 0, [], components, template, mapper)
+    [head | tail] = template_static(static, template)
+    one_to_iodata(tail, parts, 0, [head], components, template, mapper)
   end
 
   defp keyed_to_iodata(index, keyed, static, components, template, mapper, acc)
@@ -97,13 +97,18 @@ defmodule Phoenix.LiveView.Diff do
     {acc, components}
   end
 
-  defp one_to_iodata([last], _parts, _counter, acc, components, _template, _mapper) do
-    {Enum.reverse([last | acc]), components}
+  defp one_to_iodata([], _parts, _counter, acc, components, _template, _mapper) do
+    {acc, components}
   end
 
   defp one_to_iodata([head | tail], parts, counter, acc, components, template, mapper) do
-    {iodata, components} = to_iodata(Map.fetch!(parts, counter), components, template, mapper)
-    one_to_iodata(tail, parts, counter + 1, [iodata, head | acc], components, template, mapper)
+    {iodata, components} =
+      case Map.fetch!(parts, counter) do
+        binary when is_binary(binary) -> {binary, components}
+        other -> to_iodata(other, components, template, mapper)
+      end
+
+    one_to_iodata(tail, parts, counter + 1, [acc, iodata | head], components, template, mapper)
   end
 
   defp template_static(static, template) when is_integer(static), do: Map.fetch!(template, static)
