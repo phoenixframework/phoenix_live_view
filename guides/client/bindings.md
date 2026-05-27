@@ -351,6 +351,7 @@ If `phx-mounted` is used on the initial page render, it will run at the earliest
 opportunity. For elements outside of a LiveView, this is as soon as `liveSocket.connect()`
 is executed. For elements inside of a LiveView, this is only after the initial socket
 connection is established and the LiveView is mounted.
+See [Hooks and JS commands outside of a LiveView](js-interop.md#hooks-and-js-commands-outside-of-a-liveview).
 
 To react to elements being removed from the DOM, the `phx-remove` binding
 may be specified, which can contain a `Phoenix.LiveView.JS` command to execute.
@@ -376,6 +377,7 @@ recovers:
 
 `phx-connected` and `phx-disconnected` are only executed when operating
 inside a LiveView container. For static templates, they will have no effect.
+See [Hooks and JS commands outside of a LiveView](js-interop.md#hooks-and-js-commands-outside-of-a-liveview).
 
 ## LiveView events prefix
 
