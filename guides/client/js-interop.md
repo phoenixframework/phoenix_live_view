@@ -503,13 +503,14 @@ If the server has already assigned an ID to an element, you cannot replace it wi
 ## Hooks and JS commands outside of a LiveView
 
 Hooks (`phx-hook`) and `Phoenix.LiveView.JS` commands are not exclusive to LiveViews.
-They also work on regular pages rendered by a normal Phoenix controller — pages with no
-live connection, commonly called **dead views** (also referred to as *dead renders*,
+They also work on regular pages [rendered by a normal Phoenix
+controller](https://hexdocs.pm/phoenix/controllers.html#rendering) — pages with no
+live connection (sometimes referred to as **dead views**, *dead renders*,
 *static pages*, or simply markup *outside of a LiveView*).
 
 This includes markup that lives *outside* the live container on a page that does have a
-LiveView, such as your root layout — those elements belong to a body-level dead view, not
-to the LiveView.
+LiveView, such as your root layout — those elements belong to a body-level regular view,
+not to the LiveView.
 
 To enable it, the page must load and connect `LiveSocket`, exactly as a LiveView page does:
 
@@ -520,13 +521,13 @@ const liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks})
 liveSocket.connect()
 ```
 
-### What works in a dead view
+### What works in a regular view
 
   * **`phx-hook`** — the `mounted` callback runs, and only for elements present at DOM
     ready. The other callbacks (`updated`, `beforeUpdate`, `destroyed`, `disconnected`,
-    `reconnected`) are never invoked, because a dead view receives no updates from a server.
-  * **`phx-mounted`** — runs as soon as `liveSocket.connect()` is executed
-    (see [Bindings](bindings.md#dom-patching)).
+    `reconnected`) are never invoked, because a regular view receives no updates from a server.
+  * **`phx-mounted`** — runs once the document is ready (`DOMContentLoaded`) and
+    `liveSocket.connect()` has been called (see [Bindings](bindings.md#dom-patching)).
   * **`phx-click`** and other event bindings that trigger **purely client-side `JS`
     commands** — for example `JS.toggle/1`, `JS.show/1`, `JS.hide/1`, `JS.add_class/1`,
     `JS.dispatch/1`, and `JS.transition/1`. These execute entirely in the browser, so they
@@ -536,10 +537,10 @@ liveSocket.connect()
     normal live navigation against it. On a fully static page with no LiveView, they
     gracefully fall back to a full-page browser navigation to the target URL.
 
-### What does not work in a dead view
+### What does not work in a regular view
 
   * Anything that needs a connected LiveView: `JS.push/1`, form bindings (`phx-change`,
     `phx-submit`), and other event bindings that push to the server have no LiveView
     process to reach, so they have no effect.
   * The `phx-connected` and `phx-disconnected` bindings — they only take effect inside a
-    LiveView container and have no effect on a dead view.
+    LiveView container and have no effect on a regular view.
