@@ -267,6 +267,17 @@ When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginn
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
 
+## v1.1.31 (2026-05-29)
+
+### Enhancements
+
+* Validate URL scheme in `push_patch` / `push_navigate`, `JS.patch` / `JS.navigate`, and clientside `js().patch` / `js().navigate` ([#4250](https://github.com/phoenixframework/phoenix_live_view/pull/4250))
+
+### Bug fixes
+
+* Fix nested assign change tracking ([#4225](https://github.com/phoenixframework/phoenix_live_view/pull/4225))
+* Ensure `Phoenix.LiveViewTest.live_redirect/2` properly passes the URI as a string in `handle_params` ([#4247](https://github.com/phoenixframework/phoenix_live_view/pull/4247))
+
 ## v1.1.30 (2026-05-05)
 
 ### Bug fixes

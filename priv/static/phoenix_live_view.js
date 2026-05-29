@@ -232,6 +232,21 @@ var LiveView = (() => {
 
   // js/phoenix_live_view/utils.js
   var logError = (msg, obj) => console.error && console.error(msg, obj);
+  var ensureSameOrigin = (href, kind) => {
+    let url;
+    try {
+      url = new URL(href, window.location.href);
+    } catch (e) {
+      throw new Error(
+        `expected ${kind} destination to be a valid URL, got: ${href}`
+      );
+    }
+    if (url.origin !== window.location.origin) {
+      throw new Error(
+        `cannot ${kind} to "${href}" because its origin does not match the current origin "${window.location.origin}". Use window.location directly for cross-origin navigation.`
+      );
+    }
+  };
   var isCid = (cid) => {
     const type = typeof cid;
     return type === "number" || type === "string" && /^(0|[1-9]\d*)$/.test(cid);
@@ -3901,6 +3916,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         });
       },
       navigate(href, opts = {}) {
+        ensureSameOrigin(href, "navigate");
         const customEvent = new CustomEvent("phx:exec");
         liveSocket.historyRedirect(
           customEvent,
@@ -3911,6 +3927,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         );
       },
       patch(href, opts = {}) {
+        ensureSameOrigin(href, "patch");
         const customEvent = new CustomEvent("phx:exec");
         liveSocket.pushHistoryPatch(
           customEvent,
@@ -5992,7 +6009,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     // public
     version() {
-      return "1.1.30";
+      return "1.1.31";
     }
     isProfileEnabled() {
       return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
