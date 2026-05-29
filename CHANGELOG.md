@@ -114,6 +114,18 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.0-rc.3 (2026-05-29)
+
+### Enhancements
+
+* Add [official documentation for the JavaScript client](https://hexdocs.pm/phoenix_live_view/1.2.0-rc.3/js/)
+* Validate URL scheme in `push_patch` / `push_navigate`, `JS.patch` / `JS.navigate`, and clientside `js().patch` / `js().navigate` ([#4250](https://github.com/phoenixframework/phoenix_live_view/pull/4250))
+
+### Bug fixes
+
+* Fix nested assign change tracking ([#4225](https://github.com/phoenixframework/phoenix_live_view/pull/4225))
+* Ensure `Phoenix.LiveViewTest.live_redirect/2` properly passes the URI as a string in `handle_params` ([#4247](https://github.com/phoenixframework/phoenix_live_view/pull/4247))
+
 ## v1.2.0-rc.2 (2026-05-05)
 
 ### Bug fixes

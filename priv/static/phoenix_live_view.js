@@ -6109,7 +6109,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
      * Returns the version of the LiveView client.
      */
     version() {
-      return "1.2.0-rc.2";
+      return "1.2.0-rc.3";
     }
     /**
      * Returns true if profiling is enabled. See {@link enableProfiling} and {@link disableProfiling}.
