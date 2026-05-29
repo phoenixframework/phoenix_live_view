@@ -4,6 +4,30 @@ import EntryUploader from "./entry_uploader";
 
 export const logError = (msg, obj?) => console.error && console.error(msg, obj);
 
+// Live navigation can only stay within the current origin, as it joins the
+// target over the existing socket. A full URL to a different origin (or a
+// non-http(s) scheme, which resolves to an opaque "null" origin) is a
+// programming error, so we fail loudly instead of attempting a broken join.
+export const ensureSameOrigin = (
+  href: string,
+  kind: "patch" | "navigate",
+): void => {
+  let url: URL;
+  try {
+    url = new URL(href, window.location.href);
+  } catch {
+    throw new Error(
+      `expected ${kind} destination to be a valid URL, got: ${href}`,
+    );
+  }
+  if (url.origin !== window.location.origin) {
+    throw new Error(
+      `cannot ${kind} to "${href}" because its origin does not match the ` +
+        `current origin "${window.location.origin}". Use window.location directly for cross-origin navigation.`,
+    );
+  }
+};
+
 export const isCid = (cid): cid is number | string => {
   const type = typeof cid;
   return type === "number" || (type === "string" && /^(0|[1-9]\d*)$/.test(cid));

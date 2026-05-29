@@ -213,6 +213,34 @@ describe("JS", () => {
       view.liveSocket.pushHistoryPatch = originalPushHistoryPatch;
       done();
     });
+
+    test("navigate and patch throw for a different origin", () => {
+      const originalHistoryRedirect = view.liveSocket.historyRedirect;
+      const originalPushHistoryPatch = view.liveSocket.pushHistoryPatch;
+      view.liveSocket.historyRedirect = jest.fn();
+      view.liveSocket.pushHistoryPatch = jest.fn();
+
+      expect(() => js.navigate("https://other.example.com/foo")).toThrow(
+        /origin does not match/,
+      );
+      expect(() => js.patch("https://other.example.com/foo")).toThrow(
+        /origin does not match/,
+      );
+      expect(() => js.navigate("mailto:foo@example.com")).toThrow(
+        /origin does not match/,
+      );
+      expect(view.liveSocket.historyRedirect).not.toHaveBeenCalled();
+      expect(view.liveSocket.pushHistoryPatch).not.toHaveBeenCalled();
+
+      // relative and same-origin destinations are allowed
+      js.navigate("/same-origin");
+      js.patch(`${window.location.origin}/same-origin`);
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledTimes(1);
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledTimes(1);
+
+      view.liveSocket.historyRedirect = originalHistoryRedirect;
+      view.liveSocket.pushHistoryPatch = originalPushHistoryPatch;
+    });
   });
 
   describe("exec_toggle", () => {

@@ -1,5 +1,6 @@
 import JS from "./js";
 import LiveSocket from "./live_socket";
+import { ensureSameOrigin } from "./utils";
 
 /**
  * An encoded JS command. Use functions in the `Phoenix.LiveView.JS` module on
@@ -355,6 +356,7 @@ export default (
       });
     },
     navigate(href, opts = {}) {
+      ensureSameOrigin(href, "navigate");
       const customEvent = new CustomEvent("phx:exec");
       liveSocket.historyRedirect(
         customEvent,
@@ -365,6 +367,7 @@ export default (
       );
     },
     patch(href, opts = {}) {
+      ensureSameOrigin(href, "patch");
       const customEvent = new CustomEvent("phx:exec");
       liveSocket.pushHistoryPatch(
         customEvent,

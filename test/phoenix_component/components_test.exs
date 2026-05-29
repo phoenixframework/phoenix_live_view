@@ -21,6 +21,18 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assert t2h(~H|<.link patch="/" class="btn btn-large" data={[page_number: 2]}>next</.link>|) ==
                ~X[<a class="btn btn-large" data-page-number="2" data-phx-link="patch" data-phx-link-state="push" href="/">next</a>]
     end
+
+    test "raises for unsupported schemes" do
+      assigns = %{}
+
+      assert_raise ArgumentError, ~r/unsupported scheme "mailto" given to <.link patch>/, fn ->
+        t2h(~H|<.link patch="mailto:foo@example.com">bad</.link>|)
+      end
+
+      assert_raise ArgumentError, ~r/unsupported scheme "foo" given to <.link patch>/, fn ->
+        t2h(~H|<.link patch="foo:8080">bad</.link>|)
+      end
+    end
   end
 
   describe "link navigate" do
@@ -38,6 +50,23 @@ defmodule Phoenix.LiveView.ComponentsTest do
                ~H|<.link navigate="/" class="btn btn-large" data={[page_number: 2]}>text</.link>|
              ) ==
                ~X[<a class="btn btn-large" data-page-number="2" data-phx-link="redirect" data-phx-link-state="push" href="/">text</a>]
+    end
+
+    test "allows full http(s) URLs" do
+      assigns = %{}
+
+      assert t2h(~H|<.link navigate="https://example.com/other">text</.link>|) ==
+               ~X[<a data-phx-link="redirect" data-phx-link-state="push" href="https://example.com/other">text</a>]
+    end
+
+    test "raises for unsupported schemes" do
+      assigns = %{}
+
+      assert_raise ArgumentError,
+                   ~r/unsupported scheme "mailto" given to <.link navigate>/,
+                   fn ->
+                     t2h(~H|<.link navigate="mailto:foo@example.com">bad</.link>|)
+                   end
     end
   end
 
@@ -128,6 +157,15 @@ defmodule Phoenix.LiveView.ComponentsTest do
         t2h(~H|<.link href="javascript:alert('bad')">bad</.link>|) ==
           ~X|<a href="/users" data-method="post" data-csrf="123">delete</a>|
       end
+    end
+
+    test "allows a colon outside of the scheme" do
+      assigns = %{}
+
+      assert t2h(~H|<.link href="?ret=https://example.com">text</.link>|) ==
+               ~X|<a href="?ret=https://example.com">text</a>|
+
+      assert t2h(~H|<.link href="#a:b">text</.link>|) == ~X|<a href="#a:b">text</a>|
     end
   end
 
