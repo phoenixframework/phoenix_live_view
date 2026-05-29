@@ -481,7 +481,7 @@ defmodule Phoenix.LiveView.UploadConfig do
     new_entries =
       Enum.map(conf.entries, fn
         %UploadEntry{ref: ^entry_ref} = entry -> func.(entry)
-        %UploadEntry{ref: _ef} = entry -> entry
+        %UploadEntry{ref: _ref} = entry -> entry
       end)
 
     recalculate_computed_fields(%{conf | entries: new_entries})

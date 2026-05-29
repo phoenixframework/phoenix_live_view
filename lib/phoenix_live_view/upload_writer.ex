@@ -1,16 +1,16 @@
 defmodule Phoenix.LiveView.UploadWriter do
   @moduledoc ~S"""
-  Provide a behavior for writing uploaded chunks to a final destination.
+  Provides a behavior for writing uploaded chunks to a final destination.
 
   By default, uploads are written to a temporary file on the server and
   consumed by the LiveView by reading the temporary file or copying it to
-  durable location. Some usecases require custom handling of the uploaded
+  a durable location. Some use cases require custom handling of the uploaded
   chunks, such as streaming a user's upload to another server. In these cases,
   we don't want the chunks to be written to disk since we only need to forward
   them on.
 
   **Note**: Upload writers run inside the channel uploader process, so
-  any blocking work will block the channel  errors will crash the channel process.
+  any blocking work will block the channel, and errors will crash the channel process.
 
   Custom implementations of `Phoenix.LiveView.UploadWriter` can be passed to
   `allow_upload/3`. To initialize the writer with options, define a 3-arity function

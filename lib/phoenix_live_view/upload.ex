@@ -154,7 +154,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  Unregisters a completed entry from an `Phoenix.LiveView.UploadChannel` process.
+  Unregisters a completed entry from a `Phoenix.LiveView.UploadChannel` process.
   """
   def unregister_completed_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, entry_ref) do
     conf
@@ -163,7 +163,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  Registers a new entry upload for an `Phoenix.LiveView.UploadChannel` process.
+  Registers a new entry upload for a `Phoenix.LiveView.UploadChannel` process.
   """
   def register_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, pid, entry_ref)
       when is_pid(pid) do

@@ -859,7 +859,7 @@ export default class LiveSocket {
       }
       this.execJS(el, el.getAttribute(removeAttr), "remove");
     });
-    // remove the silenced listeners when transitions are done incase the element is re-used
+    // remove the silenced listeners when transitions are done in case the element is re-used
     // and call caller's callback as soon as we are done with transitions
     this.requestDOMUpdate(() => {
       elements.forEach((el) => {

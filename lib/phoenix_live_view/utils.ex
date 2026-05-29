@@ -196,7 +196,7 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
-  Validate and normalizes the layout.
+  Validates and normalizes the layout.
   """
   def normalize_layout(false), do: false
 
@@ -428,7 +428,7 @@ defmodule Phoenix.LiveView.Utils do
 
   defp handle_mount_option(%Socket{} = socket, :temporary_assigns, temp_assigns) do
     if not Keyword.keyword?(temp_assigns) do
-      raise "the :temporary_assigns mount option must be keyword list"
+      raise "the :temporary_assigns mount option must be a keyword list"
     end
 
     temp_assigns = Map.new(temp_assigns)
@@ -482,7 +482,7 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
-  Calls the optional `update/2` or `update_many/1` callback, otherwise update the socket(s) directly.
+  Calls the optional `update/2` or `update_many/1` callback, otherwise updates the socket(s) directly.
   """
   def maybe_call_update!(socket, component, assigns) do
     cond do

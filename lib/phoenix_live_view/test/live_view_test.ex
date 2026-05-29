@@ -139,7 +139,7 @@ defmodule Phoenix.LiveViewTest do
       assert render_click(view, :inc, %{}) =~ "The temperature is: 31℉"
 
   The `element` style is preferred as much as possible, as it helps LiveView
-  perform validations and ensure the events in the HTML actually matches the
+  perform validations and ensure the events in the HTML actually match the
   event names on the server.
 
   ### Testing regular messages
@@ -2011,7 +2011,7 @@ defmodule Phoenix.LiveViewTest do
   a controller via the normal form `action` attribute. This is especially useful
   in scenarios where the result of a form submit needs to write to the plug session.
 
-  You can follow submit the form with the `%Plug.Conn{}`, like this:
+  You can submit the form with the `%Plug.Conn{}`, like this:
 
       form = form(live_view, selector, %{"form" => "data"})
 
@@ -2105,7 +2105,7 @@ defmodule Phoenix.LiveViewTest do
       assert render_upload(avatar, "myfile.jpeg", 49) =~ "49%"
       assert render_upload(avatar, "myfile.jpeg", 51) =~ "100%"
 
-  Before making assertions about the how the upload is consumed server-side,
+  Before making assertions about how the upload is consumed server-side,
   you will need to call `render_submit/1`.
 
   In the case where an upload progress callback issues a navigate, patch, or

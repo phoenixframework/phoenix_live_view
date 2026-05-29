@@ -223,7 +223,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
   #   end
   #   ```
   #
-  # Then, we start to populate the buffer again until a `{:close, :tag, ...} arrives:
+  # Then, we start to populate the buffer again until a `{:close, :tag, ...}` arrives:
   #
   #   ```
   #   defp to_tree([{:close, type, name, close_meta} | tokens], buffer, [{type, name, attrs, open_meta, upper_buffer} | stack], state) do
@@ -236,7 +236,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
   #
   # We apply the same logic for `eex` expressions but, instead of `tag_open` and
   # `tag_close`, eex expressions use `start_expr`, `middle_expr` and `end_expr`.
-  # The only real difference is that also need to handle `middle_buffer`.
+  # The only real difference is that we also need to handle `middle_buffer`.
   #
   # So given this eex input:
   #

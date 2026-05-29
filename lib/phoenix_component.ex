@@ -2009,7 +2009,7 @@ defmodule Phoenix.Component do
   end
 
   @doc ~S'''
-  Declares attributes for a HEEx function components.
+  Declares attributes for a HEEx function component.
 
   ## Arguments
 
