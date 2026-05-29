@@ -620,7 +620,9 @@ defmodule Phoenix.LiveView.Utils do
   defp uri_scheme(to) do
     case :binary.match(to, [":", "/", "?", "#"]) do
       {pos, 1} ->
-        if binary_part(to, pos, 1) == ":", do: String.downcase(binary_part(to, 0, pos)), else: nil
+        if binary_part(to, pos, 1) == ":",
+          do: String.downcase(binary_part(to, 0, pos), :ascii),
+          else: nil
 
       :nomatch ->
         nil
