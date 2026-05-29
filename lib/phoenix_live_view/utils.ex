@@ -580,13 +580,50 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   def valid_string_destination!(to, context) do
-    if not match?("/" <> _, to) and String.contains?(to, ":") do
-      raise ArgumentError, """
-      unsupported scheme given to #{context}. In case you want to link to an
-      unknown or unsafe scheme, such as javascript, use a tuple: {:javascript, rest}
-      """
-    else
-      to
+    case uri_scheme(to) do
+      nil ->
+        to
+
+      _scheme ->
+        raise ArgumentError, """
+        unsupported scheme given to #{context}. In case you want to link to an
+        unknown or unsafe scheme, such as javascript, use a tuple: {:javascript, rest}
+        """
+    end
+  end
+
+  # Unlike `valid_destination!/2`, which is used for plain links, live
+  # navigation can only target the current application, so only paths and
+  # `http` / `https` URLs are allowed. Any other scheme (`mailto`, `tel`, custom
+  # app schemes, ...) raises and points the user to the `href` attribute.
+  def valid_live_navigation_destination!(to, context) when is_binary(to) do
+    case uri_scheme(to) do
+      scheme when scheme in [nil, "http", "https"] ->
+        to
+
+      scheme ->
+        raise ArgumentError, """
+        unsupported scheme #{inspect(scheme)} given to #{context}.
+
+        patch and navigate destinations must be a path or a full http(s) URL to a \
+        LiveView in your application. To link to a different scheme, such as \
+        #{inspect(to)}, use the href attribute instead, for example:
+
+            <.link href={#{inspect(to)}}>...</.link>
+        """
+    end
+  end
+
+  # Returns the lowercased URI scheme of `to` if it begins with one, that is, a
+  # ":" appears before any "/", "?" or "#"; otherwise returns nil. This avoids
+  # treating a colon in a path segment, query, or fragment as a scheme.
+  defp uri_scheme(to) do
+    case :binary.match(to, [":", "/", "?", "#"]) do
+      {pos, 1} ->
+        if binary_part(to, pos, 1) == ":", do: String.downcase(binary_part(to, 0, pos)), else: nil
+
+      :nomatch ->
+        nil
     end
   end
 end
