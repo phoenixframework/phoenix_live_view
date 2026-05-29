@@ -70,6 +70,94 @@ defmodule Phoenix.LiveView.JSTest do
     end
   end
 
+  describe "navigate" do
+    test "with defaults" do
+      assert JS.navigate("/home") == %JS{
+               ops: [["navigate", %{href: "/home", replace: false}]]
+             }
+    end
+
+    test "replace" do
+      assert JS.navigate("/home", replace: true) == %JS{
+               ops: [["navigate", %{href: "/home", replace: true}]]
+             }
+    end
+
+    test "allows full http(s) URLs" do
+      assert JS.navigate("https://example.com/home") == %JS{
+               ops: [["navigate", %{href: "https://example.com/home", replace: false}]]
+             }
+    end
+
+    test "allows a colon outside of the scheme" do
+      assert JS.navigate("/search?q=a:b") == %JS{
+               ops: [["navigate", %{href: "/search?q=a:b", replace: false}]]
+             }
+    end
+
+    test "raises for unsupported schemes" do
+      assert_raise ArgumentError, ~r/unsupported scheme "mailto" given to JS.navigate/, fn ->
+        JS.navigate("mailto:foo@example.com")
+      end
+
+      assert_raise ArgumentError, ~r/unsupported scheme "foo" given to JS.navigate/, fn ->
+        JS.navigate("foo:8080")
+      end
+    end
+
+    test "raises with unknown options" do
+      assert_raise ArgumentError, ~r/invalid option for navigate/, fn ->
+        JS.navigate("/home", bad: :opt)
+      end
+    end
+
+    test "encoding" do
+      assert js_to_string(JS.navigate("/home")) ==
+               ~S<[["navigate",{"href":"/home","replace":false}]]>
+    end
+  end
+
+  describe "patch" do
+    test "with defaults" do
+      assert JS.patch("/home") == %JS{
+               ops: [["patch", %{href: "/home", replace: false}]]
+             }
+    end
+
+    test "replace" do
+      assert JS.patch("/home", replace: true) == %JS{
+               ops: [["patch", %{href: "/home", replace: true}]]
+             }
+    end
+
+    test "allows full http(s) URLs" do
+      assert JS.patch("https://example.com/home") == %JS{
+               ops: [["patch", %{href: "https://example.com/home", replace: false}]]
+             }
+    end
+
+    test "raises for unsupported schemes" do
+      assert_raise ArgumentError, ~r/unsupported scheme "mailto" given to JS.patch/, fn ->
+        JS.patch("mailto:foo@example.com")
+      end
+
+      assert_raise ArgumentError, ~r/unsupported scheme "foo" given to JS.patch/, fn ->
+        JS.patch("foo:8080")
+      end
+    end
+
+    test "raises with unknown options" do
+      assert_raise ArgumentError, ~r/invalid option for patch/, fn ->
+        JS.patch("/home", bad: :opt)
+      end
+    end
+
+    test "encoding" do
+      assert js_to_string(JS.patch("/home")) ==
+               ~S<[["patch",{"href":"/home","replace":false}]]>
+    end
+  end
+
   describe "add_class" do
     test "with defaults" do
       assert JS.add_class("show") == %JS{

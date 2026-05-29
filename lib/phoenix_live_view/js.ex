@@ -1089,6 +1089,7 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `navigate/1`."
   def navigate(%JS{} = js, href, opts) when is_binary(href) and is_list(opts) do
+    Phoenix.LiveView.Utils.valid_live_navigation_destination!(href, "JS.navigate")
     opts = validate_keys(opts, :navigate, [:replace])
     put_op(js, "navigate", href: href, replace: !!opts[:replace])
   end
@@ -1119,6 +1120,7 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `patch/1`."
   def patch(%JS{} = js, href, opts) when is_binary(href) and is_list(opts) do
+    Phoenix.LiveView.Utils.valid_live_navigation_destination!(href, "JS.patch")
     opts = validate_keys(opts, :patch, [:replace])
     put_op(js, "patch", href: href, replace: !!opts[:replace])
   end
