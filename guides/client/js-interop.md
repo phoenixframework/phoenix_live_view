@@ -505,7 +505,7 @@ If the server has already assigned an ID to an element, you cannot replace it wi
 Hooks (`phx-hook`) and `Phoenix.LiveView.JS` commands are not exclusive to LiveViews.
 They also work on regular pages [rendered by a normal Phoenix
 controller](https://hexdocs.pm/phoenix/controllers.html#rendering) — pages with no
-live connection (sometimes referred to as **dead views**, *dead renders*,
+live connection (sometimes referred to as *dead views*, *dead renders*,
 *static pages*, or simply markup *outside of a LiveView*).
 
 This includes markup that lives *outside* the live container on a page that does have a
