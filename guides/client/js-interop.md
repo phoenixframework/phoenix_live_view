@@ -159,10 +159,11 @@ or removed by the server, a hook object may be provided via `phx-hook`.
   * `disconnected` - the element's parent LiveView has disconnected from the server
   * `reconnected` - the element's parent LiveView has reconnected to the server
 
-*Note:* When using hooks outside the context of a LiveView, `mounted` is the only
-callback invoked, and only those elements on the page at DOM ready will be tracked.
-For dynamic tracking of the DOM as elements are added, removed, and updated, a LiveView
-should be used.
+*Note:* hooks also run on regular pages that are *not* LiveViews — see
+[Hooks and JS commands outside of a LiveView](#hooks-and-js-commands-outside-of-a-liveview).
+In that case, `mounted` is the only callback invoked, and only those elements on the page
+at DOM ready will be tracked. For dynamic tracking of the DOM as elements are added,
+removed, and updated, a LiveView should be used.
 
 The above life-cycle callbacks have in-scope access to the following attributes:
 
@@ -498,3 +499,48 @@ Hooks.MyHook = {
 Setting IDs directly via `node.id = "..."` or other direct DOM manipulation methods will cause DOM patching issues. Always use `js().setAttribute()` instead.
 
 If the server has already assigned an ID to an element, you cannot replace it with a different ID from the client side. Client-side IDs should only be set on elements that have no server-assigned ID.
+
+## Hooks and JS commands outside of a LiveView
+
+Hooks (`phx-hook`) and `Phoenix.LiveView.JS` commands are not exclusive to LiveViews.
+They also work on regular pages [rendered by a normal Phoenix
+controller](https://hexdocs.pm/phoenix/controllers.html#rendering) — pages with no
+live connection (sometimes referred to as *dead views*, *dead renders*,
+*static pages*, or simply markup *outside of a LiveView*).
+
+This includes markup that lives *outside* the live container on a page that does have a
+LiveView, such as your root layout — those elements belong to a body-level regular view,
+not to the LiveView.
+
+To enable it, the page must load and connect `LiveSocket`, exactly as a LiveView page does:
+
+```javascript
+import {LiveSocket} from "phoenix_live_view"
+
+const liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks})
+liveSocket.connect()
+```
+
+### What works in a regular view
+
+  * **`phx-hook`** — the `mounted` callback runs, and only for elements present at DOM
+    ready. The other callbacks (`updated`, `beforeUpdate`, `destroyed`, `disconnected`,
+    `reconnected`) are never invoked, because a regular view receives no updates from a server.
+  * **`phx-mounted`** — runs once the document is ready (`DOMContentLoaded`) and
+    `liveSocket.connect()` has been called (see [Bindings](bindings.md#dom-patching)).
+  * **`phx-click`** and other event bindings that trigger **purely client-side `JS`
+    commands** — for example `JS.toggle/1`, `JS.show/1`, `JS.hide/1`, `JS.add_class/1`,
+    `JS.dispatch/1`, and `JS.transition/1`. These execute entirely in the browser, so they
+    work with no server round-trip.
+  * **`JS.navigate/1`** and **`JS.patch/1`** — if the page has a connected LiveView (for
+    example a link in the root layout that sits outside the live container), they perform
+    normal live navigation against it. On a fully static page with no LiveView, they
+    gracefully fall back to a full-page browser navigation to the target URL.
+
+### What does not work in a regular view
+
+  * Anything that needs a connected LiveView: `JS.push/1`, form bindings (`phx-change`,
+    `phx-submit`), and other event bindings that push to the server have no LiveView
+    process to reach, so they have no effect.
+  * The `phx-connected` and `phx-disconnected` bindings — they only take effect inside a
+    LiveView container and have no effect on a regular view.
