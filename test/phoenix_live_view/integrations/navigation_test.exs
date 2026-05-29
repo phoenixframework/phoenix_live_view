@@ -3,6 +3,7 @@ defmodule Phoenix.LiveView.NavigationTest do
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
+  import Phoenix.LiveView.TelemetryTestHelpers
 
   alias Phoenix.LiveViewTest.TreeDOM
   alias Phoenix.LiveViewTest.Support.Endpoint
@@ -222,6 +223,17 @@ defmodule Phoenix.LiveView.NavigationTest do
       assert {:ok, _classlist_live, html} = live_redirect(thermo_live, to: "/classlist")
 
       assert html =~ ~s|class="foo bar"|
+    end
+
+    # https://github.com/phoenixframework/phoenix_live_view/pull/4247
+    test "passes a string uri to handle_params on the redirected-to view", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_view, :handle_params])
+
+      assert {:ok, thermo_live, _html} = live(conn, "/thermo")
+      assert {:ok, _thermo_live, _html} = live_redirect(thermo_live, to: "/thermo/123")
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_params, :start], _,
+                      %{uri: "http://www.example.com/thermo/123"}}
     end
   end
 
