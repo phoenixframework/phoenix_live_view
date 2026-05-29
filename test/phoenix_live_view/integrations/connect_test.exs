@@ -14,6 +14,22 @@ defmodule Phoenix.LiveView.ConnectTest do
 
       assert render(live) =~ rendered_to_string(~s|params: %{"_mounts" => 0, "connect1" => "1"}|)
     end
+
+    test "are kept when following a redirect from a push_navigate" do
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> put_connect_params(%{"connect1" => "1"})
+        |> get("/flash-root")
+
+      {:ok, live, _html} = live(conn)
+
+      assert {:ok, live, _html} =
+               live
+               |> render_click("push_navigate", %{"to" => "/connect", "info" => "ok!"})
+               |> follow_redirect(conn, "/connect")
+
+      assert render(live) =~ rendered_to_string(~s|params: %{"_mounts" => 0, "connect1" => "1"}|)
+    end
   end
 
   describe "connect_info" do
