@@ -19,7 +19,7 @@ defmodule Phoenix.LiveView.Upload do
         raise ArgumentError, """
         cannot allow_upload on an existing upload with active entries.
 
-        Use cancel_upload and/or consume_upload to handle the active entries before allowing a new upload.
+        Use cancel_upload and/or consume_uploaded_entries to handle the active entries before allowing a new upload.
         """
     end
 
