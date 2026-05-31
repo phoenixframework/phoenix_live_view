@@ -349,4 +349,41 @@ defmodule Phoenix.LiveView.RouterTest do
                )
     end
   end
+
+  describe "live option validation" do
+    test "raises ArgumentError when metadata is not a map" do
+      assert_raise ArgumentError, ~r/expected live :metadata to be a map, got: :invalid/, fn ->
+        defmodule InvalidMetadataRouter do
+          import Phoenix.LiveViewTest, only: []
+          use Phoenix.Router
+          import Phoenix.LiveView.Router
+          live("/foo", FooLive, metadata: :invalid)
+        end
+      end
+    end
+
+    test "raises ArgumentError when private is not a map" do
+      assert_raise ArgumentError, ~r/expected live :private to be a map, got: :invalid/, fn ->
+        defmodule InvalidPrivateRouter do
+          import Phoenix.LiveViewTest, only: []
+          use Phoenix.Router
+          import Phoenix.LiveView.Router
+          live("/foo", FooLive, private: :invalid)
+        end
+      end
+    end
+
+    test "raises ArgumentError when warn_on_verify is not a boolean" do
+      assert_raise ArgumentError,
+                   ~r/expected live :warn_on_verify to be a boolean, got: :invalid/,
+                   fn ->
+                     defmodule InvalidWarnOnVerifyRouter do
+                       import Phoenix.LiveViewTest, only: []
+                       use Phoenix.Router
+                       import Phoenix.LiveView.Router
+                       live("/foo", FooLive, warn_on_verify: :invalid)
+                     end
+                   end
+    end
+  end
 end
