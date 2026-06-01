@@ -1,6 +1,6 @@
 # Telemetry
 
-LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/telemetry) events:
+LiveView currently exposes the following [`telemetry`](https://telemetry.hexdocs.pm) events:
 
   * `[:phoenix, :live_view, :mount, :start]` - Dispatched by a `Phoenix.LiveView`
     immediately before [`mount/3`](`c:Phoenix.LiveView.mount/3`) is invoked.

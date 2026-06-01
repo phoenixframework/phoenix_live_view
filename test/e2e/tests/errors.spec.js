@@ -2,7 +2,7 @@ import { test, expect } from "../test-fixtures";
 import { syncLV } from "../utils";
 
 /**
- * https://hexdocs.pm/phoenix_live_view/error-handling.html
+ * https://phoenix-live-view.hexdocs.pm/error-handling.html
  */
 test.describe("exception handling", () => {
   let webSocketEvents = [];

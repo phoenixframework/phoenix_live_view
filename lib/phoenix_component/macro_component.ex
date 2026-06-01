@@ -119,7 +119,7 @@ defmodule Phoenix.Component.MacroComponent do
   #   Another example for a macro component that transforms its content is available in
   #   LiveView's end to end tests: a macro component that performs
   #   [syntax highlighting at compile time](https://github.com/phoenixframework/phoenix_live_view/blob/38851d943f3280c5982d75679291dccb8c442534/test/e2e/support/colocated_live.ex#L4-L35)
-  #   using the [Makeup](https://hexdocs.pm/makeup/Makeup.html) library.
+  #   using the [Makeup](https://makeup.hexdocs.pm/Makeup.html) library.
   #
   #   ## Directives
   #

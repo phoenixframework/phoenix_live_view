@@ -2281,7 +2281,7 @@ defmodule Phoenix.Component do
 
   Inside LiveViews, this function component is typically called with
   as `for={@form}`, where `@form` is the result of the `to_form/1` function.
-  `to_form/1` expects either a map or an [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html)
+  `to_form/1` expects either a map or an [`Ecto.Changeset`](https://ecto.hexdocs.pm/Ecto.Changeset.html)
   as the source of data and normalizes it into `Phoenix.HTML.Form` structure.
 
   For example, you may use the parameters received in a
@@ -2359,7 +2359,7 @@ defmodule Phoenix.Component do
 
   Even if `changeset.errors` is non-empty, errors will not be displayed in a
   form if [the changeset
-  `:action`](https://hexdocs.pm/ecto/Ecto.Changeset.html#module-changeset-actions)
+  `:action`](https://ecto.hexdocs.pm/Ecto.Changeset.html#module-changeset-actions)
   is `nil` or `:ignore`.
 
   This is useful for things like validation hints on form fields, e.g. an empty

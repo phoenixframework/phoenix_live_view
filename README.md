@@ -1,6 +1,6 @@
 # Phoenix LiveView
 
-[![Actions Status](https://github.com/phoenixframework/phoenix_live_view/workflows/CI/badge.svg)](https://github.com/phoenixframework/phoenix_live_view/actions?query=workflow%3ACI) [![Hex.pm](https://img.shields.io/hexpm/v/phoenix_live_view.svg)](https://hex.pm/packages/phoenix_live_view) [![Documentation](https://img.shields.io/badge/documentation-gray)](https://hexdocs.pm/phoenix_live_view)
+[![Actions Status](https://github.com/phoenixframework/phoenix_live_view/workflows/CI/badge.svg)](https://github.com/phoenixframework/phoenix_live_view/actions?query=workflow%3ACI) [![Hex.pm](https://img.shields.io/hexpm/v/phoenix_live_view.svg)](https://hex.pm/packages/phoenix_live_view) [![Documentation](https://img.shields.io/badge/documentation-gray)](https://phoenix-live-view.hexdocs.pm)
 
 Phoenix LiveView enables rich, real-time user experiences with server-rendered HTML.
 
@@ -34,7 +34,7 @@ model while keeping your code closer to your data (and ultimately your source of
 
   * **Diffs over the wire:** Instead of sending "HTML over the wire", LiveView knows exactly which parts of your templates change, sending minimal diffs over the wire after the initial render, reducing latency and bandwidth usage. The client leverages this information and optimizes the browser with 5-10x faster updates, compared to solutions that replace whole HTML fragments.
 
-  * **Live form validation:** LiveView supports real-time form validation out of the box. Create rich user interfaces with features like uploads, nested inputs, and [specialized recovery](https://hexdocs.pm/phoenix_live_view/form-bindings.html#recovery-following-crashes-or-disconnects).
+  * **Live form validation:** LiveView supports real-time form validation out of the box. Create rich user interfaces with features like uploads, nested inputs, and [specialized recovery](https://phoenix-live-view.hexdocs.pm/form-bindings.html#recovery-following-crashes-or-disconnects).
 
   * **File uploads:** Real-time file uploads with progress indicators and image previews. Process your uploads on the fly or submit them to your desired cloud service.
 
@@ -52,9 +52,9 @@ model while keeping your code closer to your data (and ultimately your source of
 
 ## Learning
 
-Check our [comprehensive docs](https://hexdocs.pm/phoenix_live_view) to get started.
+Check our [comprehensive docs](https://phoenix-live-view.hexdocs.pm) to get started.
 
-The Phoenix framework documentation also keeps a list of [community resources](https://hexdocs.pm/phoenix/community.html), including books, videos, and other materials, and some include LiveView too.
+The Phoenix framework documentation also keeps a list of [community resources](https://phoenix.hexdocs.pm/community.html), including books, videos, and other materials, and some include LiveView too.
 
 Also follow these announcements from the Phoenix team on LiveView for more examples and rationale:
 

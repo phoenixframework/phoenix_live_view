@@ -99,7 +99,7 @@ The comments can be disabled with `debug_heex_annotations` and the `data-phx-loc
 
 LiveView includes some built in checks that run on the DOM when testing. For example,
 tests will raise an exception if a duplicate ID is detected. We added a new check for forms
-with `phx-change` but missing `id` attribute, because without an `id` [form recovery](https://hexdocs.pm/phoenix_live_view/form-bindings.html#recovery-following-crashes-or-disconnects)
+with `phx-change` but missing `id` attribute, because without an `id` [form recovery](https://phoenix-live-view.hexdocs.pm/form-bindings.html#recovery-following-crashes-or-disconnects)
 does not work. Since the severity of that check is different compared to a duplicate ID,
 LiveView now allows you to configure what should happen for each check:
 
@@ -118,7 +118,7 @@ See the module documentation or `Phoenix.LiveViewTest` for more information.
 
 ### Enhancements
 
-* Add [official documentation for the JavaScript client](https://hexdocs.pm/phoenix_live_view/1.2.0-rc.3/js/)
+* Add [official documentation for the JavaScript client](https://phoenix-live-view.hexdocs.pm/1.2.0-rc.3/js/)
 * Validate URL scheme in `push_patch` / `push_navigate`, `JS.patch` / `JS.navigate`, and clientside `js().patch` / `js().navigate` ([#4250](https://github.com/phoenixframework/phoenix_live_view/pull/4250))
 
 ### Bug fixes

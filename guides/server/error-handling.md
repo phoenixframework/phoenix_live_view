@@ -71,7 +71,7 @@ user. If there is no such `org_id` or if the user has no access to it,
 
 During a regular controller request, this exception will be converted to a
 404 exception and rendered as a custom error page, as
-[detailed here](https://hexdocs.pm/phoenix/custom_error_pages.html).
+[detailed here](https://phoenix.hexdocs.pm/custom_error_pages.html).
 LiveView will react to exceptions in three different ways, depending on
 where it is in its life-cycle.
 

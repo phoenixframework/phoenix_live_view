@@ -1,5 +1,5 @@
 # This is a configuration file for igniter.
-# For option documentation, see https://hexdocs.pm/igniter/Igniter.Project.IgniterConfig.html
+# For option documentation, see https://igniter.hexdocs.pm/Igniter.Project.IgniterConfig.html
 # To keep it up to date, use `mix igniter.setup`
 [
   module_location: :outside_matching_folder,

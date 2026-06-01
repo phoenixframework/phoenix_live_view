@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   @moduledoc """
   Format HEEx templates from `.heex` files or `~H` sigils.
 
-  This is a `mix format` [plugin](https://hexdocs.pm/mix/main/Mix.Tasks.Format.html#module-plugins).
+  This is a `mix format` [plugin](https://mix.hexdocs.pm/main/Mix.Tasks.Format.html#module-plugins).
 
   ## Setup
 
