@@ -6133,7 +6133,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
      * Enables debugging.
      *
      * When debugging is enabled, the LiveView client will log debug information to the console.
-     * See [Debugging client events](https://hexdocs.pm/phoenix_live_view/js-interop.html#debugging-client-events) for more information.
+     * See [Debugging client events](https://phoenix-live-view.hexdocs.pm/js-interop.html#debugging-client-events) for more information.
      */
     enableDebug() {
       this.sessionStorage.setItem(PHX_LV_DEBUG, "true");
@@ -6162,7 +6162,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
      * Enables latency simulation.
      *
      * When latency simulation is enabled, the LiveView client will add a delay to requests and responses from the server.
-     * See [Simulating Latency](https://hexdocs.pm/phoenix_live_view/js-interop.html#simulating-latency) for more information.
+     * See [Simulating Latency](https://phoenix-live-view.hexdocs.pm/js-interop.html#simulating-latency) for more information.
      */
     enableLatencySim(upperBoundMs) {
       this.enableDebug();
@@ -6237,7 +6237,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     /**
      * Executes an encoded JS command, targeting the given element.
      *
-     * See [`Phoenix.LiveView.JS`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.JS.html) for more information.
+     * See [`Phoenix.LiveView.JS`](https://phoenix-live-view.hexdocs.pm/Phoenix.LiveView.JS.html) for more information.
      */
     execJS(el, encodedJS, eventType = null) {
       const e = new CustomEvent("phx:exec", { detail: { sourceElement: el } });
@@ -6247,7 +6247,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
      * Returns an object with methods to manipulate the DOM and execute JavaScript.
      * The applied changes integrate with server DOM patching.
      *
-     * See [JavaScript interoperability](https://hexdocs.pm/phoenix_live_view/js-interop.html) for more information.
+     * See [JavaScript interoperability](https://phoenix-live-view.hexdocs.pm/js-interop.html) for more information.
      */
     js() {
       return js_commands_default(this, "js");
