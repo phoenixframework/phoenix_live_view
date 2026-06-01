@@ -322,7 +322,7 @@ defmodule Phoenix.LiveView.Router do
   end
 
   @doc """
-  Fetches the LiveView and merges with the controller flash.
+  Fetches the LiveView flash and merges with the controller flash.
 
   Replaces the default `:fetch_flash` plug used by `Phoenix.Router`.
 
