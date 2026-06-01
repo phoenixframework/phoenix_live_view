@@ -189,7 +189,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp class_attribute_list([h | t], []) when is_binary(h), do: class_attribute_list(t, h)
   defp class_attribute_list([h | t], []), do: class_attribute_list(t, to_string(h))
 
-  defp class_attribute_list([h | t], acc) when is_binary(h), do: class_attribute_list(t, [acc, ?\s, h])
+  defp class_attribute_list([h | t], acc) when is_binary(h),
+    do: class_attribute_list(t, [acc, ?\s, h])
+
   defp class_attribute_list([h | t], acc), do: class_attribute_list(t, [acc, ?\s, to_string(h)])
 
   @doc false
