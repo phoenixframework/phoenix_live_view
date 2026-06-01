@@ -79,9 +79,9 @@ defmodule Phoenix.LiveView.Router do
       inside `conn.private` in plug functions.
 
     * `:warn_on_verify` - the boolean for whether matches to this route trigger
-      an unmatched route warning for `Phoenix.VerifiedRoutes`. It is useful to
+      an unmatched route warning for `Phoenix.VerifiedRoutes`. It can be useful to
       ignore an otherwise catch-all route definition from being matched when
-      verifying routes. Defaults `false`.
+      verifying routes. Defaults to `false`.
 
   ## Examples
 
