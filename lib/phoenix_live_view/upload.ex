@@ -86,7 +86,7 @@ defmodule Phoenix.LiveView.Upload do
   @doc """
   Cancels all uploads that exist.
 
-  Returns the new socket with the cancelled upload configs.
+  Returns a tuple containing the new socket and a list of the cancelled upload configs.
   """
   def maybe_cancel_uploads(socket) do
     uploads = socket.assigns[:uploads] || %{}
