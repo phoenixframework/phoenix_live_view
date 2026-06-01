@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.HTMLFormatter.TagFormatter do
   Callback invoked to format each tag.
 
   The callback receives a tuple of `{tag_name, attrs, content}`
-  and the Mix [formatter options](https://hexdocs.pm/mix/Mix.Tasks.Format.html#module-formatting-options).
+  and the Mix [formatter options](https://mix.hexdocs.pm/Mix.Tasks.Format.html#module-formatting-options).
 
   Note: since the formatter does not compile code, the `:type` attribute of a
   macro component is given as a string as in the template.
@@ -31,7 +31,7 @@ defmodule Phoenix.LiveView.HTMLFormatter.TagFormatter do
       attrs as `%{"manifest" => "foo.ts", ":type" => "ColocatedHook"}`
       and `content` being the string content inside the `<script>` tag
     * opts: `[file: "/path/to/template.html.heex", line: ...]`
-      the Mix [formatter options](https://hexdocs.pm/mix/Mix.Tasks.Format.html#module-formatting-options)
+      the Mix [formatter options](https://mix.hexdocs.pm/Mix.Tasks.Format.html#module-formatting-options)
 
   ### Example for formatting with [`prettier`](https://prettier.io/)
 

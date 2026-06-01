@@ -179,7 +179,7 @@ defmodule Phoenix.LiveView.MixProject do
       maintainers: ["Chris McCord", "José Valim", "Gary Rennie", "Alex Garibay", "Scott Newcomer"],
       licenses: ["MIT"],
       links: %{
-        Changelog: "https://hexdocs.pm/phoenix_live_view/changelog.html",
+        Changelog: "https://phoenix-live-view.hexdocs.pm/changelog.html",
         GitHub: "https://github.com/phoenixframework/phoenix_live_view"
       },
       files:

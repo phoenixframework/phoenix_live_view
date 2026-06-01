@@ -119,7 +119,7 @@ defmodule Phoenix.LiveView do
   > assign_async(:org, fn -> {:ok, %{org: fetch_org(slug)}} end)
   > ```
   >
-  > See: https://hexdocs.pm/elixir/process-anti-patterns.html#sending-unnecessary-data
+  > See: https://elixir.hexdocs.pm/process-anti-patterns.html#sending-unnecessary-data
 
   The state of the async operation is stored as a `Phoenix.LiveView.AsyncResult`
   in the socket assigns. It carries the loading and failed states, as
@@ -1379,7 +1379,7 @@ defmodule Phoenix.LiveView do
   </div>
   ```
 
-  For larger projects, you can extract this into [a hook](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#on_mount/1):
+  For larger projects, you can extract this into [a hook](https://phoenix-live-view.hexdocs.pm/Phoenix.LiveView.html#on_mount/1):
 
       # MyAppWeb.CheckStaticChanged
       def on_mount(:default, _params, _session, socket) do

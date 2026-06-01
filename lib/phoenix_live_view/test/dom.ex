@@ -81,7 +81,7 @@ defmodule Phoenix.LiveViewTest.DOM do
       Without an id, LiveView will not be able to perform form recovery,
       for more information see:
 
-      https://hexdocs.pm/phoenix_live_view/form-bindings.html#recovery-following-crashes-or-disconnects
+      https://phoenix-live-view.hexdocs.pm/form-bindings.html#recovery-following-crashes-or-disconnects
       """)
     end)
   end

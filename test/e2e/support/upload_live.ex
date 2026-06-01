@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveViewTest.E2E.UploadLive do
   use Phoenix.LiveView
 
-  # for end-to-end testing https://hexdocs.pm/phoenix_live_view/uploads.html
+  # for end-to-end testing https://phoenix-live-view.hexdocs.pm/uploads.html
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do

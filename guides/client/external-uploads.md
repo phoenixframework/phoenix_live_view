@@ -248,8 +248,8 @@ browser and look at the console or networks tab to view the error logs.
 
 ### Direct to S3-Compatible
 
-> This section assumes that you installed and configured [ExAws](https://hexdocs.pm/ex_aws/readme.html)
-> and [ExAws.S3](https://hexdocs.pm/ex_aws_s3/ExAws.S3.html) correctly in your project and can execute
+> This section assumes that you installed and configured [ExAws](https://ex-aws.hexdocs.pm/readme.html)
+> and [ExAws.S3](https://ex-aws-s3.hexdocs.pm/ExAws.S3.html) correctly in your project and can execute
 > the examples in the page without errors.
 
 Most S3 compatible platforms like Cloudflare R2 don't support `POST` when

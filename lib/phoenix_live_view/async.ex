@@ -23,7 +23,7 @@ defmodule Phoenix.LiveView.Async do
           do_something(my_assign)
         end)
 
-    For more information, see https://hexdocs.pm/elixir/1.16.1/process-anti-patterns.html#sending-unnecessary-data.
+    For more information, see https://elixir.hexdocs.pm/1.16.1/process-anti-patterns.html#sending-unnecessary-data.
     """)
   end
 
@@ -49,7 +49,7 @@ defmodule Phoenix.LiveView.Async do
           do_something(my_assign)
         end)
 
-    For more information, see https://hexdocs.pm/elixir/1.16.1/process-anti-patterns.html#sending-unnecessary-data.
+    For more information, see https://elixir.hexdocs.pm/1.16.1/process-anti-patterns.html#sending-unnecessary-data.
     """)
   end
 
