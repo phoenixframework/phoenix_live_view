@@ -275,7 +275,7 @@ defmodule Phoenix.LiveView.Diff do
   @doc """
   Sends an update to a component.
 
-  Like `write_component/5`, it will store the result under the `cid`
+  Like `write_component/4`, it will store the result under the `cid`
   key in the `component_diffs` map.
 
   If the component exists, a `{diff, new_components}` tuple
