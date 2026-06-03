@@ -3054,7 +3054,7 @@ defmodule Phoenix.Component do
     default: false,
     doc: """
     When using `:patch` or `:navigate`,
-    should the browser's history be replaced with `pushState`?
+    should the browser's history be replaced with `replaceState`?
     """
   )
 
