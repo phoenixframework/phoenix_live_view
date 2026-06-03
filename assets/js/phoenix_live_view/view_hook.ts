@@ -89,7 +89,7 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
    * Defaults to an empty object.
    * @param onReply - A callback to handle the server's reply.
    */
-  pushEvent(event: string, payload: Object, onReply: OnReply): void;
+  pushEvent(event: string, payload: unknown, onReply: OnReply): void;
   /**
    * Pushes an event to the server and returns a Promise that resolves with the server's reply.
    *
@@ -102,7 +102,7 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
    * Defaults to an empty object.
    * @returns A promise that fulfills or rejects with the server's reply.
    */
-  pushEvent(event: string, payload?: Object): Promise<any>;
+  pushEvent(event: string, payload?: unknown): Promise<any>;
 
   /**
    * Pushes a targeted event to the server and invokes a callback with the server's reply.
@@ -127,7 +127,7 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
   pushEventTo(
     selectorOrTarget: PhxTarget,
     event: string,
-    payload: Object,
+    payload: unknown,
     onReply: OnReply,
   ): void;
   /**
@@ -156,7 +156,7 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
   pushEventTo(
     selectorOrTarget: PhxTarget,
     event: string,
-    payload?: Object,
+    payload?: unknown,
   ): Promise<PromiseSettledResult<{ reply: any; ref: number }>[]>;
 
   /**
