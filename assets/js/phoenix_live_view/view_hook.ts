@@ -84,10 +84,12 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
    * Use the {@link pushEvent | promise-returning version} to handle errors.
    *
    * @param event - The event name.
-   * @param payload - The payload to send to the server. Defaults to an empty object.
+   * @param payload - The payload to send to the server. Must be a serializable
+   * value (typically JSON-serializable, depends on the Socket configuration).
+   * Defaults to an empty object.
    * @param onReply - A callback to handle the server's reply.
    */
-  pushEvent(event: string, payload: any, onReply: OnReply): void;
+  pushEvent(event: string, payload: Object, onReply: OnReply): void;
   /**
    * Pushes an event to the server and returns a Promise that resolves with the server's reply.
    *
@@ -95,10 +97,12 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
    * such as a disconnected state, timeout, or the server rejecting the event.
    *
    * @param event - The event name.
-   * @param [payload] - The payload to send to the server. Defaults to an empty object.
+   * @param [payload] - The payload to send to the server. Must be a serializable
+   * value (typically JSON-serializable, depends on the Socket configuration).
+   * Defaults to an empty object.
    * @returns A promise that fulfills or rejects with the server's reply.
    */
-  pushEvent(event: string, payload?: any): Promise<any>;
+  pushEvent(event: string, payload?: Object): Promise<any>;
 
   /**
    * Pushes a targeted event to the server and invokes a callback with the server's reply.
@@ -115,13 +119,15 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
    *
    * @param selectorOrTarget - The selector, element, or CID to target.
    * @param event - The event name.
-   * @param payload - The payload to send to the server. Defaults to an empty object.
+   * @param payload - The payload to send to the server. Must be a serializable
+   * value (typically JSON-serializable, depends on the Socket configuration).
+   * Defaults to an empty object.
    * @param onReply - A callback to handle the server's reply.
    */
   pushEventTo(
     selectorOrTarget: PhxTarget,
     event: string,
-    payload: object,
+    payload: Object,
     onReply: OnReply,
   ): void;
   /**
@@ -142,13 +148,15 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
    *
    * @param selectorOrTarget - The selector, element, or CID to target.
    * @param event - The event name.
-   * @param [payload] - The payload to send to the server. Defaults to an empty object.
+   * @param [payload] - The payload to send to the server. Must be a serializable
+   * value (typically JSON-serializable, depends on the Socket configuration).
+   * Defaults to an empty object.
    * @returns A promise that resolves when the event has been handled by all targets.
    */
   pushEventTo(
     selectorOrTarget: PhxTarget,
     event: string,
-    payload?: object,
+    payload?: Object,
   ): Promise<PromiseSettledResult<{ reply: any; ref: number }>[]>;
 
   /**
@@ -445,11 +453,11 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
     };
   }
 
-  pushEvent(event: string, payload: any, onReply: OnReply): void;
-  pushEvent(event: string, payload?: any): Promise<any>;
+  pushEvent(event: string, payload: unknown, onReply: OnReply): void;
+  pushEvent(event: string, payload?: unknown): Promise<any>;
   pushEvent(
     event: string,
-    payload?: any,
+    payload?: unknown,
     onReply?: OnReply,
   ): Promise<any> | void {
     const promise = this.__view().pushHookEvent(
@@ -471,18 +479,18 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
   pushEventTo(
     selectorOrTarget: PhxTarget,
     event: string,
-    payload: object,
+    payload: unknown,
     onReply: OnReply,
   ): void;
   pushEventTo(
     selectorOrTarget: PhxTarget,
     event: string,
-    payload?: object,
+    payload?: unknown,
   ): Promise<PromiseSettledResult<{ reply: any; ref: number }>[]>;
   pushEventTo(
     selectorOrTarget: PhxTarget,
     event: string,
-    payload?: object,
+    payload?: unknown,
     onReply?: OnReply,
   ): Promise<PromiseSettledResult<{ reply: any; ref: number }>[]> | void {
     if (onReply === undefined) {
