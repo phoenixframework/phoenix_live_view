@@ -111,6 +111,7 @@ const InfiniteScroll: Hook = {
       if (this.pending == this.page() && 80 > 90) {
         this.pending = this.page() + 1;
         this.pushEvent("load-more", {});
+        this.pushEvent("load-more-number", 10);
       }
     });
   },
