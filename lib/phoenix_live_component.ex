@@ -47,8 +47,8 @@ defmodule Phoenix.LiveComponent do
 
   LiveComponents have a similar life-cycle to LiveViews:
 
-  * LiveViews: `mount/3` -> `handle_params/3` -> `render/1` 
-  * LiveComponents: `mount/1` -> `update/2` -> `render/1` 
+  * LiveViews: `mount/3` -> `handle_params/3` -> `render/1`
+  * LiveComponents: `mount/1` -> `update/2` -> `render/1`
 
   Similarly, both may define a `handle_event/3` callback for
   client events and use `handle_async/3` to deal with async
@@ -610,7 +610,7 @@ defmodule Phoenix.LiveComponent do
 
   @callback handle_event(
               event :: binary,
-              unsigned_params :: Phoenix.LiveView.unsigned_params(),
+              unsigned_params :: term(),
               socket :: Socket.t()
             ) ::
               {:noreply, Socket.t()} | {:reply, map, Socket.t()}

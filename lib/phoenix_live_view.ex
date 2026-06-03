@@ -228,7 +228,7 @@ defmodule Phoenix.LiveView do
 
   alias Phoenix.LiveView.{Socket, LiveStream, Async}
 
-  @type unsigned_params :: term()
+  @type unsigned_params :: map
 
   @doc """
   The LiveView entry-point.
@@ -321,7 +321,7 @@ defmodule Phoenix.LiveView do
   `{:reply, map(), socket}`, where the given `map()` is encoded
   and sent as a reply to the client.
   """
-  @callback handle_event(event :: binary, unsigned_params(), socket :: Socket.t()) ::
+  @callback handle_event(event :: binary, term(), socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, map, Socket.t()}
 
   @doc """
