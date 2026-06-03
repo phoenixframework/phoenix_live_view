@@ -2044,6 +2044,35 @@ defmodule Phoenix.LiveView.DiffTest do
       assert fourth_render == %{0 => %{k: %{0 => 1, 1 => %{0 => "1", 1 => "Third"}, :kc => 2}}}
     end
 
+    test "moved keyed entries with changes include previous index and child diff" do
+      items = [
+        %{id: 1, name: "First"},
+        %{id: 2, name: "Second"}
+      ]
+
+      assigns = %{socket: %Socket{}, items: items, count: 0, __changed__: %{}}
+      {_full_render, fingerprints, components} = render(keyed_comprehension_with_pattern(assigns))
+
+      assigns =
+        Phoenix.Component.assign(assigns, :items, [
+          %{id: 2, name: "Second updated"},
+          %{id: 1, name: "First"}
+        ])
+
+      {diff, _fingerprints, _components} =
+        render(keyed_comprehension_with_pattern(assigns), fingerprints, components)
+
+      assert diff == %{
+               0 => %{
+                 k: %{
+                   0 => [1, %{1 => "Second updated"}],
+                   1 => 0,
+                   :kc => 2
+                 }
+               }
+             }
+    end
+
     test "change tracking when no key is given" do
       items = [
         %{id: 1, name: "First"},
