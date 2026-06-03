@@ -313,15 +313,14 @@ defmodule Phoenix.LiveView do
   @doc """
   Invoked to handle events sent by the client.
 
-  It receives the `event` name, the event payload as a map,
-  and the socket.
+  It receives the `event` name, the event payload, and the socket.
 
   It must return `{:noreply, socket}`, where `:noreply` means
   no additional information is sent to the client, or
   `{:reply, map(), socket}`, where the given `map()` is encoded
   and sent as a reply to the client.
   """
-  @callback handle_event(event :: binary, term(), socket :: Socket.t()) ::
+  @callback handle_event(event :: binary, payload :: term(), socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, map, Socket.t()}
 
   @doc """
