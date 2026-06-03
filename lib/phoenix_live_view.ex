@@ -1774,7 +1774,7 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
-      def handle_event(_, socket) do
+      def handle_event(_, _, socket) do
         {:noreply, detach_hook(socket, :hook_that_was_attached, :handle_event)}
       end
   """
