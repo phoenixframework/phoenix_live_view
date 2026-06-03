@@ -750,11 +750,18 @@ defmodule Phoenix.LiveView.Diff do
       Map.fetch!(previous_prints, key)
 
     vars_changed =
-      Enum.reduce(new_vars, Map.put(previous_vars, :__changed__, %{}), fn
-        {key, value}, acc ->
-          Phoenix.Component.assign(acc, key, value)
+      Enum.reduce(new_vars, %{}, fn {key, value}, changed ->
+        case previous_vars do
+          %{^key => ^value} ->
+            changed
+
+          %{^key => old_val} when is_list(old_val) or is_map(old_val) or is_tuple(old_val) ->
+            Map.put(changed, key, old_val)
+
+          %{} ->
+            Map.put(changed, key, true)
+        end
       end)
-      |> Map.fetch!(:__changed__)
 
     {_counter, child_diff, child_prints, pending, components, template} =
       traverse_dynamic(
@@ -769,21 +776,17 @@ defmodule Phoenix.LiveView.Diff do
     new_prints =
       Map.put(new_prints, key, %{index: index, vars: new_vars, child_prints: child_prints})
 
-    # if the diff is empty, we need to check if the item moved
-    if child_diff == %{} or child_diff == nil do
-      # check if the entry moved, then annotate it with the previous index
-      diff = if previous_index != index, do: Map.put(diff, index, previous_index), else: diff
-      {diff, index + 1, new_prints, pending, components, template}
-    else
-      child_diff =
-        if previous_index != index do
-          [previous_index, child_diff]
-        else
-          child_diff
-        end
+    # Moved entries carry their previous index. If the entry also changed,
+    # wrap the child diff with the previous index so the client can move and patch it.
+    diff =
+      case {child_diff in [%{}, nil], previous_index == index} do
+        {true, true} -> diff
+        {true, false} -> Map.put(diff, index, previous_index)
+        {false, true} -> Map.put(diff, index, child_diff)
+        {false, false} -> Map.put(diff, index, [previous_index, child_diff])
+      end
 
-      {Map.put(diff, index, child_diff), index + 1, new_prints, pending, components, template}
-    end
+    {diff, index + 1, new_prints, pending, components, template}
   end
 
   # it's a new entry
