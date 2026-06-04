@@ -3493,7 +3493,7 @@ defmodule Phoenix.Component do
   ```elixir
   {:noreply,
     socket
-    |> assign_async(:page, :data, &reload_data/0)
+    |> assign_async(:page, &reload_data/0)
     |> assign(:page, AsyncResult.loading())}
   ```
   """
