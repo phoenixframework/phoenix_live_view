@@ -88,7 +88,7 @@ community at different stages of development:
 
 ## LiveDebugger
 
-[LiveDebugger](https://github.com/software-mansion/live-debugger) is a debugging tool built specifically for Phoenix LiveView applications. It provides a real-time view into your LiveView processes, making it easier to understand the component hierarchy, inspect assigns, trace lifecycle callbacks, and troubleshoot issues more efficiently.
+[LiveDebugger](https://github.com/software-mansion/live-debugger) is a debugging tool built specifically for Phoenix LiveView applications throughout the development process. It provides a real-time view into your LiveView processes, making it easier to understand the component hierarchy, inspect assigns, trace lifecycle callbacks, and troubleshoot issues more efficiently.
 
 To get started, follow the setup instructions in the [LiveDebugger repository](https://github.com/software-mansion/live-debugger?tab=readme-ov-file#getting-started).
 
@@ -103,7 +103,7 @@ which provides quick times for "First Meaningful Paint", in addition to
 helping search and indexing engines.
 
 Then LiveView uses a persistent connection between client and server.
-This allows LiveView applications to react faster to user events as
+This allows LiveView applications to react faster to user events, as
 there is less work to be done and less data to be sent compared to
 stateless requests that have to authenticate, decode, load, and encode
 data on every request.
@@ -114,9 +114,7 @@ build rich, real-time user experiences. We believe LiveView is built
 on top of a solid foundation that makes LiveView hard to replicate
 anywhere else:
 
-  * LiveView is built on top of the Elixir programming language and
-    functional programming, which provides a great model for reasoning
-    about your code and how your LiveView changes over time.
+  * LiveView is built on top of the Elixir programming language, taking the most advantage of the functional programming paradigm, which provides a great model for reasoning about your code and how state changes over time.
 
   * By building on top of a [scalable platform](https://dockyard.com/blog/2016/08/09/phoenix-channels-vs-rails-action-cable),
     LiveView scales well vertically (from small to large instances)
@@ -140,7 +138,7 @@ anywhere else:
 ## Browser Support
 
 All current Chrome, Safari, Firefox, and MS Edge are supported.
-IE11 support is available with the following polyfills:
+IE11 support is only available with the following polyfills:
 
 ```shell
 $ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill formdata-polyfill child-replace-with-polyfill classlist-polyfill new-event-polyfill @webcomponents/template shim-keyboard-event-key core-js
