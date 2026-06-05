@@ -2180,15 +2180,20 @@ defmodule Phoenix.LiveView do
     streams = socket.assigns.streams
 
     case streams do
-      %{^name => %LiveStream{}} ->
-        new_socket =
-          if opts[:reset] do
-            update_stream(socket, name, &LiveStream.reset(&1))
-          else
-            socket
-          end
+      %{^name => %LiveStream{} = original_stream} ->
+        at = Keyword.get(opts, :at, -1)
+        limit = Keyword.get(opts, :limit)
+        update_only = Keyword.get(opts, :update_only, false)
+        reset? = Keyword.get(opts, :reset, false)
 
-        Enum.reduce(items, new_socket, fn item, acc -> stream_insert(acc, name, item, opts) end)
+        stream = if reset?, do: LiveStream.reset(original_stream), else: original_stream
+        new_stream = Enum.reduce(items, stream, &LiveStream.insert_item(&2, &1, at, limit, update_only))
+
+        if new_stream === original_stream and not reset? do
+          socket
+        else
+          update_stream(socket, name, fn _ -> new_stream end)
+        end
 
       %{} ->
         config = get_in(streams, [:__configured__, name]) || []
