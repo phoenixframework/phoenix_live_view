@@ -2126,7 +2126,7 @@ defmodule Phoenix.LiveViewTest do
         %{} -> nil
       end)
 
-    if !entry_name do
+    if !entry_ref do
       raise ArgumentError, "no such entry with name #{inspect(entry_name)}"
     end
 
