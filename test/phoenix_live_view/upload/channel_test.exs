@@ -396,9 +396,9 @@ defmodule Phoenix.LiveView.UploadChannelTest do
             %{name: "foo.jpeg", content: String.duplicate("0", 100)}
           ])
 
-        assert UploadLive.exits_with(lv, avatar, RuntimeError, fn ->
-                 render_upload(avatar, "unknown.jpeg")
-               end) =~ "no file input with name \"unknown.jpeg\""
+        assert_raise ArgumentError, ~s(no such entry with name "unknown.jpeg"), fn ->
+          render_upload(avatar, "unknown.jpeg")
+        end
       end
 
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any, max_file_size: 1]
