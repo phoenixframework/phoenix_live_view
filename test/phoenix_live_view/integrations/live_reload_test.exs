@@ -37,12 +37,12 @@ defmodule Phoenix.LiveView.LiveReloadTest do
     {:ok, lv, _html} = live(conn, "/live-reload")
     assert render(lv) =~ "<div>Version 1</div>"
 
+    Application.put_env(:phoenix_live_view, :vsn, 2)
+
     send(
       socket.channel_pid,
       {:file_event, self(), {"lib/test_auth_web/live/user_live.ex", :created}}
     )
-
-    Application.put_env(:phoenix_live_view, :vsn, 2)
 
     assert_receive {:phoenix_live_reload, :live_view, "lib/test_auth_web/live/user_live.ex"}
     assert render(lv) =~ "<div>Version 2</div>"
@@ -61,12 +61,12 @@ defmodule Phoenix.LiveView.LiveReloadTest do
     {:ok, lv, _html} = live(conn, "/live-reload")
     assert render(lv) =~ "<div>Version 1</div>"
 
+    Application.put_env(:phoenix_live_view, :vsn, 2)
+
     send(
       socket.channel_pid,
       {:file_event, self(), {"lib/test_auth_web/live/user_live.ex", :created}}
     )
-
-    Application.put_env(:phoenix_live_view, :vsn, 2)
 
     assert_receive {:phoenix_live_reload, :live_view, "lib/test_auth_web/live/user_live.ex"}
     assert_receive :reloaded, 1000
