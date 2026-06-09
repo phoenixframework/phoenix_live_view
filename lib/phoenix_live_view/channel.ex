@@ -349,12 +349,7 @@ defmodule Phoenix.LiveView.Channel do
       nil -> :noop
     end
 
-    new_socket =
-      Enum.reduce(socket.assigns, socket, fn {key, val}, socket ->
-        Utils.force_assign(socket, key, val)
-      end)
-
-    handle_changed(state, new_socket, nil)
+    handle_changed(state, socket, nil, nil, true)
   end
 
   def handle_info(msg, %{socket: socket} = state) do
@@ -836,10 +831,10 @@ defmodule Phoenix.LiveView.Channel do
   defp gather_keys([%{} = map], acc), do: gather_keys(map, acc)
   defp gather_keys(_, acc), do: acc
 
-  defp handle_changed(state, %Socket{} = new_socket, ref, pending_live_patch \\ nil) do
+  defp handle_changed(state, %Socket{} = new_socket, ref, pending_live_patch \\ nil, force? \\ false) do
     new_state = %{state | socket: new_socket}
 
-    case maybe_diff(new_state, false) do
+    case maybe_diff(new_state, force?) do
       {:diff, diff, new_state} ->
         {:noreply,
          new_state
