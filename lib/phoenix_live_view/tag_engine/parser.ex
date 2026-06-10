@@ -113,6 +113,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
     indentation = Keyword.get(opts, :indentation, 0)
     trim_eex = Keyword.get(opts, :trim_eex, true)
     strip_eex_comments = Keyword.get(opts, :strip_eex_comments, false)
+    tag_handler = Keyword.fetch!(opts, :tag_handler)
     {:ok, eex_nodes} = EEx.tokenize(source, opts)
 
     {tokens, cont} =
@@ -123,7 +124,8 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
           file: file,
           indentation: indentation,
           trim_eex: trim_eex,
-          strip_eex_comments: strip_eex_comments
+          strip_eex_comments: strip_eex_comments,
+          tag_handler: tag_handler
         })
       )
 
@@ -132,11 +134,12 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
 
   defp do_tokenize({:text, text, meta}, {tokens, cont}, source, %{
          file: file,
-         indentation: indentation
+         indentation: indentation,
+         tag_handler: tag_handler
        }) do
     text = List.to_string(text)
     meta = [line: meta.line, column: meta.column]
-    state = Tokenizer.init(indentation, file, source, Phoenix.LiveView.HTMLEngine)
+    state = Tokenizer.init(indentation, file, source, tag_handler)
     Tokenizer.tokenize(text, meta, tokens, cont, state)
   end
 
@@ -378,7 +381,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
 
   # Matching close tag
   defp to_tree(
-         [{:close, _type, name, close_meta} | tokens],
+         [{:close, type, name, close_meta} | tokens],
          reversed_buffer,
          [{type, name, attrs, open_meta, upper_buffer} | stack],
          state
