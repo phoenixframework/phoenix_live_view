@@ -1909,7 +1909,7 @@ defmodule Phoenix.Component do
   A named slot may declare attributes by passing a block with calls to `attr/3`.
 
   Unlike attributes, slot attributes cannot accept the `:default` option. Passing one
-  will result in a compile warning being issued.
+  will result in a compilation error.
 
   ### The Default Slot
 
