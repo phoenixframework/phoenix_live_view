@@ -608,11 +608,7 @@ defmodule Phoenix.LiveComponent do
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
-  @callback handle_event(
-              event :: binary,
-              unsigned_params :: term(),
-              socket :: Socket.t()
-            ) ::
+  @callback handle_event(event :: binary, payload :: term(), socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, map, Socket.t()}
 
   @callback handle_async(
