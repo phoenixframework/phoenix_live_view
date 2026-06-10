@@ -145,7 +145,9 @@ LiveView currently exposes the following [`telemetry`](https://telemetry.hexdocs
           }
 
   * `[:phoenix, :live_view, :render, :start]` - Dispatched by a `Phoenix.LiveView`
-    immediately before [`render/1`](`c:Phoenix.LiveComponent.render/1`) is invoked.
+    immediately before a render starts. A render may invoke
+    [`Phoenix.LiveView.render/1`](`c:Phoenix.LiveView.render/1`) or
+    [`Phoenix.LiveComponent.render/1`](`c:Phoenix.LiveComponent.render/1`) callbacks.
 
     * Measurement:
 
@@ -159,8 +161,16 @@ LiveView currently exposes the following [`telemetry`](https://telemetry.hexdocs
             changed?: boolean
           }
 
+      For component renders, the metadata also includes:
+
+          %{
+            component: module,
+            id: term,
+            cid: integer
+          }
+
   * `[:phoenix, :live_view, :render, :stop]` - Dispatched by a `Phoenix.LiveView`
-    when the [`render/1`](`c:Phoenix.LiveView.render/1`) callback completes successfully.
+    when a render completes successfully.
 
     * Measurement:
 
@@ -174,8 +184,16 @@ LiveView currently exposes the following [`telemetry`](https://telemetry.hexdocs
             changed?: boolean
           }
 
+      For component renders, the metadata also includes:
+
+          %{
+            component: module,
+            id: term,
+            cid: integer
+          }
+
   * `[:phoenix, :live_view, :render, :exception]` - Dispatched by a `Phoenix.LiveView`
-    when an exception is raised in the [`render/1`](`c:Phoenix.LiveView.render/1`) callback.
+    when an exception is raised during a render.
 
     * Measurement:
 
@@ -189,6 +207,14 @@ LiveView currently exposes the following [`telemetry`](https://telemetry.hexdocs
             reason: term,
             force?: boolean,
             changed?: boolean
+          }
+
+      For component renders, the metadata also includes:
+
+          %{
+            component: module,
+            id: term,
+            cid: integer
           }
 
   * `[:phoenix, :live_component, :update, :start]` - Dispatched by a `Phoenix.LiveComponent`

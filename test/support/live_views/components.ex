@@ -209,6 +209,14 @@ defmodule Phoenix.LiveViewTest.Support.StatefulComponent do
     """
   end
 
+  def render(%{crash_render?: true} = assigns) do
+    ~H"""
+    <div id={@id}>
+      {1 / 0}
+    </div>
+    """
+  end
+
   def render(%{socket: _} = assigns) do
     ~H"""
     <div phx-click="transform" id={@id} phx-target={"#" <> @id <> include_parent_id(@parent_id)}>
@@ -234,6 +242,9 @@ defmodule Phoenix.LiveViewTest.Support.StatefulComponent do
 
       "dup" ->
         {:noreply, assign(socket, :dup_name, socket.assigns.name <> "-dup")}
+
+      "crash-render" ->
+        {:noreply, assign(socket, :crash_render?, true)}
 
       "push_navigate" ->
         {:noreply, push_navigate(socket, to: "/components?redirect=push")}

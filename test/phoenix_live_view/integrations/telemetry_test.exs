@@ -276,6 +276,39 @@ defmodule Phoenix.LiveView.TelemetryTest do
       assert metadata.params == %{"op" => "boom"}
     end
 
+    test "emits live view render telemetry when component render fails after callback", %{
+      conn: conn
+    } do
+      Process.flag(:trap_exit, true)
+
+      {:ok, view, _html} = live(conn, "/components")
+      attach_telemetry([:phoenix, :live_view, :render])
+
+      assert view |> element("#chris") |> render_click(%{"op" => "crash-render"}) |> catch_exit
+
+      assert_receive {:event, [:phoenix, :live_view, :render, :start], %{system_time: _},
+                      metadata}
+
+      assert metadata.socket.transport_pid
+      assert metadata.component == Phoenix.LiveViewTest.Support.StatefulComponent
+      assert metadata.id == "chris"
+      assert is_integer(metadata.cid)
+      refute metadata.force?
+      assert metadata.changed?
+
+      assert_receive {:event, [:phoenix, :live_view, :render, :exception], %{duration: _},
+                      metadata}
+
+      assert metadata.socket.transport_pid
+      assert metadata.component == Phoenix.LiveViewTest.Support.StatefulComponent
+      assert metadata.id == "chris"
+      assert is_integer(metadata.cid)
+      refute metadata.force?
+      assert metadata.changed?
+      assert metadata.kind == :error
+      assert metadata.reason == :badarith
+    end
+
     test "emits telemetry events for update calls", %{conn: conn} do
       attach_telemetry([:phoenix, :live_component, :update])
 
