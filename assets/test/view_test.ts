@@ -1266,6 +1266,30 @@ describe("View", function () {
     // still need a few tests
   });
 
+  test("onJoinError dispatches mount reply events before redirecting", () => {
+    liveSocket = new LiveSocket("/live", Socket);
+    const el = liveViewDOM();
+    const view = new View(el, liveSocket, null, null, null);
+    stubChannel(view);
+
+    const payloads: unknown[] = [];
+    window.addEventListener("phx:mount-error", (e) => {
+      payloads.push((e as CustomEvent).detail);
+    });
+
+    const redirectSpy = jest
+      .spyOn(view, "onRedirect")
+      .mockImplementation(() => undefined);
+
+    view.onJoinError({
+      events: [["mount-error", { from: "mount" }]],
+      redirect: { to: "/redirected" },
+    });
+
+    expect(payloads).toEqual([{ from: "mount" }]);
+    expect(redirectSpy).toHaveBeenCalledWith({ to: "/redirected" });
+  });
+
   test("sends _track_static and _mounts on params", () => {
     liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
