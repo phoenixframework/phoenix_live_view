@@ -4,7 +4,8 @@
 
 LiveView v1.2 introduces colocated CSS to allow writing CSS rules in the same file as your regular component code.
 
-To use Colocated CSS, you need to implement the `Phoenix.LiveView.ColocatedCSS` behaviour. See the module documentation for more details.
+To use colocated CSS, you need to implement the `Phoenix.LiveView.ColocatedCSS` behaviour. See the module documentation for more details.
+It also includes instructions for configuring `:tailwind` to bundle colocated CSS.
 
 Then, you can define it similar to how you would define a colocated hook or `Phoenix.LiveView.ColocatedJS`:
 
@@ -26,9 +27,9 @@ end
 
 ## Formatting script and style tags
 
-This behaviour allows you to format `<script>` and `<style>` tags with third party tooling
-when running `mix format`, especially useful if your project uses `Phoenix.LiveView.ColocatedHook`
-a lot.
+The `Phoenix.LiveView.HTMLFormatter.TagFormatter` behaviour allows you to format
+`<script>` and `<style>` tags with third party tooling when running `mix format`,
+especially useful if your project uses colocated assets.
 
 The module documentation contains an example using [prettier](https://prettier.io/), which we also
 use [in the LiveView repository itself](https://github.com/phoenixframework/phoenix_live_view/blob/main/lib/prettier.ex).
