@@ -205,14 +205,21 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     assert render(source, %{x: :bar}) == "\n"
   end
 
-  test "handles whitespace-only special form bodies" do
-    assert render("<%= try do %>\n<% rescue RuntimeError -> %>\nrescued\n<% end %>") == "\n"
-    assert render("<%= try do %>\n<% catch :throw, _ -> %>\ncaught\n<% end %>") == "\n"
+  test "handles split clause middle expressions" do
+    source =
+      "<%= with {:ok, x} <- @res do %>\n  <p>{x}</p>\n<% else %>\n  <% _ -> %>\n    <p>bad</p>\n<% end %>"
 
-    assert render(
-             "<%= try do %>\n<% else nil -> %>nil<% _ -> %>other<% rescue _ -> %>rescued<% end %>"
-           ) == "other"
+    assert render(source, %{res: {:ok, "ok"}}) == "\n  <p>ok</p>\n"
+    assert render(source, %{res: :error}) == "\n    <p>bad</p>\n"
 
+    assert render("<%= try do %>\n<% rescue %>\n<% RuntimeError -> %>rescued<% end %>") == ""
+
+    assert render("<%= try do %>\n<% catch %>\n<% :throw, :foo -> %>caught<% end %>") == ""
+
+    assert render("<%= receive do %>\n<% after %>\n<% 0 -> %>timeout<% end %>") == "timeout"
+  end
+
+  test "handles receive after clauses" do
     assert render("<%= receive do %>\n<% after 0 -> %>\ntimeout\n<% end %>") == "\ntimeout\n"
 
     assert render("<%= receive do %>\n<% :msg -> %>\n<% after 0 -> %>\ntimeout\n<% end %>") ==

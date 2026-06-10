@@ -183,8 +183,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
           clause_line = clause_meta.line
           newlines = String.duplicate("\n", clause_line - prev_line)
 
-          if all_spaces?(children) and not seen_clause? and
-               leading_stab_clause?(clause_expr, acc_expr) do
+          if all_spaces?(children) and not seen_clause? and stab_clause?(clause_expr) do
             # This handles the case where the start expression is immediately followed
             # by a middle expression, since we don't want to generate
             # case @status do __EEX__(0); :connecting -> __EEX__(1) ...
@@ -459,42 +458,10 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
     end)
   end
 
-  defp leading_stab_clause?(clause_expr, acc_expr) do
-    clause_expr = String.trim(clause_expr)
-    after? = starts_with_keyword?(clause_expr, "after")
-
-    ends_with?(clause_expr, "->") and
-      not starts_with_keyword?(clause_expr, "rescue") and
-      not starts_with_keyword?(clause_expr, "catch") and
-      not starts_with_keyword?(clause_expr, "else") and
-      (not after? or leading_receive?(acc_expr))
-  end
-
-  defp leading_receive?(expr) do
+  defp stab_clause?(expr) do
     expr
-    |> String.trim_leading()
-    |> starts_with_keyword?("receive")
-  end
-
-  defp starts_with_keyword?(expr, keyword) do
-    expr_size = byte_size(expr)
-    keyword_size = byte_size(keyword)
-
-    expr_size >= keyword_size and
-      :binary.match(expr, keyword, scope: {0, keyword_size}) == {0, keyword_size} and
-      (expr_size == keyword_size or whitespace?(:binary.at(expr, keyword_size)))
-  end
-
-  defp ends_with?(expr, suffix) do
-    expr_size = byte_size(expr)
-    suffix_size = byte_size(suffix)
-
-    expr_size >= suffix_size and
-      :binary.match(expr, suffix, scope: {expr_size - suffix_size, suffix_size}) != :nomatch
-  end
-
-  defp whitespace?(char) do
-    char in [?\s, ?\t, ?\n, ?\r, ?\f, ?\v]
+    |> String.trim_trailing()
+    |> String.ends_with?("->")
   end
 
   # Replace __EEX__(key) placeholders with actual compiled content
