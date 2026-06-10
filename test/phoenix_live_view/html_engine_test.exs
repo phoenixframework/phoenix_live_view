@@ -173,6 +173,61 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
            """) == "Hello world!"
   end
 
+  test "handles whitespace-only case clauses" do
+    nbsp = <<194, 160>>
+
+    source =
+      IO.iodata_to_binary([
+        "<%= case @x do %>\n",
+        nbsp,
+        nbsp,
+        "<% :foo -> %>\n",
+        nbsp,
+        nbsp,
+        "<% :bar -> %>\n",
+        "<% end %>"
+      ])
+
+    assert render(source, %{x: :foo}) == "\n#{nbsp}#{nbsp}"
+    assert render(source, %{x: :bar}) == "\n"
+  end
+
+  test "handles whitespace-only cond clauses" do
+    source =
+      """
+      <%= cond do %>
+        <% @x == :foo -> %>
+        <% @x == :bar -> %>
+      <% end %>
+      """
+
+    assert render(source, %{x: :foo}) == "\n  "
+    assert render(source, %{x: :bar}) == "\n"
+  end
+
+  test "handles whitespace-only special form bodies" do
+    assert render("<%= try do %>\n<% rescue RuntimeError -> %>\nrescued\n<% end %>") == "\n"
+    assert render("<%= try do %>\n<% catch :throw, _ -> %>\ncaught\n<% end %>") == "\n"
+
+    assert render(
+             "<%= try do %>\n<% else nil -> %>nil<% _ -> %>other<% rescue _ -> %>rescued<% end %>"
+           ) == "other"
+
+    assert render("<%= receive do %>\n<% after 0 -> %>\ntimeout\n<% end %>") == "\ntimeout\n"
+
+    assert render("<%= receive do %>\n<% :msg -> %>\n<% after 0 -> %>\ntimeout\n<% end %>") ==
+             "\ntimeout\n"
+  end
+
+  test "handles case clause patterns that start like special form keywords" do
+    assert render("<%= case @x do %><% catcher -> %>{catcher}<% end %>", %{x: "ok"}) == "ok"
+    assert render("<%= case @x do %><% rescuee -> %>{rescuee}<% end %>", %{x: "ok"}) == "ok"
+    assert render("<%= case @x do %><% elsee -> %>{elsee}<% end %>", %{x: "ok"}) == "ok"
+
+    assert render("<%= case @x do %><% afterwards -> %>{afterwards}<% end %>", %{x: "ok"}) ==
+             "ok"
+  end
+
   test "handles html blocks with regular blocks" do
     assert render("""
            Hello <div>w<%= if true do %>orld<% end %>!</div>

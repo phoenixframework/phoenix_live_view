@@ -176,21 +176,22 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
     #
     # Afterwards, the placeholders are replaced with the compiled content.
     #
-    {quoted, combined_expr, _current_line} =
-      Enum.reduce(blocks, {[], expr, line}, fn
-        {children, clause_expr, clause_meta}, {quoted, acc_expr, prev_line} ->
+    {quoted, combined_expr, _current_line, _seen_clause?} =
+      Enum.reduce(blocks, {[], expr, line, false}, fn
+        {children, clause_expr, clause_meta}, {quoted, acc_expr, prev_line, seen_clause?} ->
           # Calculate newlines needed to reach this clause's line
           clause_line = clause_meta.line
           newlines = String.duplicate("\n", clause_line - prev_line)
 
-          if all_spaces?(children) do
+          if all_spaces?(children) and not seen_clause? and
+               leading_stab_clause?(clause_expr, acc_expr) do
             # This handles the case where the start expression is immediately followed
             # by a middle expression, since we don't want to generate
             # case @status do __EEX__(0); :connecting -> __EEX__(1) ...
             # (we need to skip adding the first placeholder)
             # and instead generate
             # case @status do :connecting -> __EEX__(0); ...
-            {quoted, acc_expr <> newlines <> " " <> clause_expr, clause_line}
+            {quoted, acc_expr <> newlines <> " " <> clause_expr, clause_line, true}
           else
             inner_substate = state.engine.handle_begin(substate)
             {_state, inner_substate} = handle_node(children, inner_substate, state)
@@ -200,7 +201,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
             placeholder = "__EEX__(#{key});"
             quoted = [{key, clause_ast} | quoted]
             acc_expr = acc_expr <> " " <> placeholder <> newlines <> " " <> clause_expr
-            {quoted, acc_expr, clause_line}
+            {quoted, acc_expr, clause_line, true}
           end
       end)
 
@@ -456,6 +457,44 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
       {:text, text, _} -> String.trim_leading(text) == ""
       _ -> false
     end)
+  end
+
+  defp leading_stab_clause?(clause_expr, acc_expr) do
+    clause_expr = String.trim(clause_expr)
+    after? = starts_with_keyword?(clause_expr, "after")
+
+    ends_with?(clause_expr, "->") and
+      not starts_with_keyword?(clause_expr, "rescue") and
+      not starts_with_keyword?(clause_expr, "catch") and
+      not starts_with_keyword?(clause_expr, "else") and
+      (not after? or leading_receive?(acc_expr))
+  end
+
+  defp leading_receive?(expr) do
+    expr
+    |> String.trim_leading()
+    |> starts_with_keyword?("receive")
+  end
+
+  defp starts_with_keyword?(expr, keyword) do
+    expr_size = byte_size(expr)
+    keyword_size = byte_size(keyword)
+
+    expr_size >= keyword_size and
+      :binary.match(expr, keyword, scope: {0, keyword_size}) == {0, keyword_size} and
+      (expr_size == keyword_size or whitespace?(:binary.at(expr, keyword_size)))
+  end
+
+  defp ends_with?(expr, suffix) do
+    expr_size = byte_size(expr)
+    suffix_size = byte_size(suffix)
+
+    expr_size >= suffix_size and
+      :binary.match(expr, suffix, scope: {expr_size - suffix_size, suffix_size}) != :nomatch
+  end
+
+  defp whitespace?(char) do
+    char in [?\s, ?\t, ?\n, ?\r, ?\f, ?\v]
   end
 
   # Replace __EEX__(key) placeholders with actual compiled content
