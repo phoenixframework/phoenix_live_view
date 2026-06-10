@@ -5047,6 +5047,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       });
     }
     onJoinError(resp) {
+      if (resp.events) {
+        this.liveSocket.dispatchEvents(resp.events);
+      }
       if (resp.reason === "reload") {
         this.log("error", () => [
           `failed mount with ${resp.status}. Falling back to page reload`,
