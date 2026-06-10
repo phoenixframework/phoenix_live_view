@@ -103,7 +103,7 @@ which provides quick times for "First Meaningful Paint", in addition to
 helping search and indexing engines.
 
 Then LiveView uses a persistent connection between client and server.
-This allows LiveView applications to react faster to user events as
+This allows LiveView applications to react faster to user events, as
 there is less work to be done and less data to be sent compared to
 stateless requests that have to authenticate, decode, load, and encode
 data on every request.
