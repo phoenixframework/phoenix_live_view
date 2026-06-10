@@ -237,16 +237,37 @@ defmodule Phoenix.LiveView.Diff do
           |> configure_socket_for_component(assigns, private)
           |> fun.(component)
 
-        diff = render_private(csocket, %{})
+        changed? = Utils.changed?(csocket)
 
-        {pending, cdiffs, components} =
-          render_component(csocket, component, id, prints, cid, false, cids, %{}, components)
+        render = fn ->
+          diff = render_private(csocket, %{})
 
-        {cdiffs, components} =
-          render_pending_components(socket, pending, cids, cdiffs, components)
+          {pending, cdiffs, components} =
+            render_component(csocket, component, id, prints, cid, false, cids, %{}, components)
 
-        {diff, cdiffs} = extract_events({diff, cdiffs})
-        {maybe_put_cdiffs(diff, cdiffs), components, extra}
+          {cdiffs, components} =
+            render_pending_components(socket, pending, cids, cdiffs, components)
+
+          {diff, cdiffs} = extract_events({diff, cdiffs})
+          {maybe_put_cdiffs(diff, cdiffs), components, extra}
+        end
+
+        if changed? do
+          metadata = %{
+            socket: socket,
+            component: component,
+            id: id,
+            cid: cid,
+            force?: false,
+            changed?: changed?
+          }
+
+          :telemetry.span([:phoenix, :live_view, :render], metadata, fn ->
+            {render.(), metadata}
+          end)
+        else
+          render.()
+        end
 
       %{} ->
         :error
