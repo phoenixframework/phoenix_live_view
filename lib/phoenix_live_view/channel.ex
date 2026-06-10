@@ -349,8 +349,10 @@ defmodule Phoenix.LiveView.Channel do
       nil -> :noop
     end
 
+    assigns = Map.delete(socket.assigns, :__changed__)
+
     new_socket =
-      Enum.reduce(socket.assigns, socket, fn {key, val}, socket ->
+      Enum.reduce(assigns, socket, fn {key, val}, socket ->
         Utils.force_assign(socket, key, val)
       end)
 

@@ -14,23 +14,26 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - elixir: 1.15.4
-            otp: 25.3
+          - elixir: "1.15"
+            otp: "25"
 
-          - elixir: 1.16.3
-            otp: 26.2
+          - elixir: "1.16"
+            otp: "26"
 
-          - elixir: 1.18.4
-            otp: 27.3
+          - elixir: "1.18"
+            otp: "27"
+
+          - elixir: "1.19"
+            otp: "28"
 
           # update coverage report as well
-          - elixir: 1.19.1
-            otp: 28.1
+          - elixir: "1.20"
+            otp: "29"
             lint: lint
 
           # run against latest Elixir to catch warnings early
-          - elixir: main-otp-28
-            otp: maint-28
+          - elixir: "main-otp-29"
+            otp: "maint-29"
 
     runs-on: ubuntu-latest
 
@@ -103,8 +106,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - elixir: 1.19.1
-            otp: 28.1
+          - elixir: "1.20"
+            otp: "29"
 
     runs-on: ubuntu-latest
     steps:
@@ -168,8 +171,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - elixir: 1.19.1
-            otp: 28.1
+          - elixir: "1.20"
+            otp: "29"
 
     runs-on: ubuntu-latest
     container:
@@ -247,8 +250,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - elixir: 1.19.1
-            otp: 28.1
+          - elixir: "1.20"
+            otp: "29"
 
     steps:
       - name: Checkout
