@@ -57,6 +57,21 @@ defmodule Phoenix.LiveView.EventTest do
       assert_redirect(view, "/events")
     end
 
+    test "supports events with redirects during mount", %{conn: conn} do
+      for {kind, expected_kind, expected_opts} <- [
+            {"redirect", :redirect, %{to: "/thermo"}},
+            {"push_navigate", :live_redirect, %{kind: :push, to: "/thermo"}}
+          ] do
+        conn = get(conn, "/redir?during=connected&kind=#{kind}&to=/thermo&push_event=true")
+
+        assert html_response(conn, 200) =~ "parent_content"
+        assert {:error, {^expected_kind, opts}} = live(conn)
+        assert Map.take(opts, Map.keys(expected_opts)) == expected_opts
+
+        assert_receive {_ref, {:push_event, "mount-redirect", %{kind: ^kind, to: "/thermo"}}}
+      end
+    end
+
     test "sends updates with no assigns diff", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/events")
 

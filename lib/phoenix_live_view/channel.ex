@@ -1419,11 +1419,19 @@ defmodule Phoenix.LiveView.Channel do
         {:noreply, post_verified_mount(new_state)}
 
       {:live_redirect, opts, new_state} ->
-        GenServer.reply(from, {:error, %{live_redirect: opts}})
+        GenServer.reply(
+          from,
+          {:error, %{live_redirect: opts, events: Utils.get_push_events(new_state.socket)}}
+        )
+
         {:stop, :shutdown, new_state}
 
       {:redirect, opts, new_state} ->
-        GenServer.reply(from, {:error, %{redirect: opts}})
+        GenServer.reply(
+          from,
+          {:error, %{redirect: opts, events: Utils.get_push_events(new_state.socket)}}
+        )
+
         {:stop, :shutdown, new_state}
     end
   end
