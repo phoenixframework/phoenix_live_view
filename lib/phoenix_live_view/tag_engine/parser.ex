@@ -439,7 +439,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
          [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack],
          state
        ) do
-    middle_buffer = [{Enum.reverse(buffer), middle_expr, middle_meta} | middle_buffer]
+    middle_buffer = merge_middle_expr(middle_buffer, buffer, middle_expr, middle_meta)
 
     to_tree(
       tokens,
@@ -499,6 +499,49 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
   defp to_tree([{:eex, _type, expr, meta} | tokens], buffer, stack, state) do
     buffer = process_buffer([{:eex, expr, meta} | buffer], state)
     to_tree(tokens, buffer, stack, state)
+  end
+
+  defp merge_middle_expr(
+         [{prev_buffer, prev_expr, prev_meta} | middle_buffer],
+         buffer,
+         middle_expr,
+         middle_meta
+       ) do
+    if all_spaces?(buffer) and not stab_clause?(prev_expr) do
+      [
+        {prev_buffer, prev_expr <> rendered_spaces(buffer) <> middle_expr, prev_meta}
+        | middle_buffer
+      ]
+    else
+      [
+        {Enum.reverse(buffer), middle_expr, middle_meta},
+        {prev_buffer, prev_expr, prev_meta} | middle_buffer
+      ]
+    end
+  end
+
+  defp merge_middle_expr([], buffer, middle_expr, middle_meta) do
+    [{Enum.reverse(buffer), middle_expr, middle_meta}]
+  end
+
+  defp rendered_spaces(buffer) do
+    buffer
+    |> Enum.reverse()
+    |> Enum.map(fn {:text, text, _meta} -> text end)
+    |> IO.iodata_to_binary()
+  end
+
+  defp all_spaces?(nodes) do
+    Enum.all?(nodes, fn
+      {:text, text, _meta} -> String.trim_leading(text) == ""
+      _ -> false
+    end)
+  end
+
+  defp stab_clause?(expr) do
+    expr
+    |> String.trim_trailing()
+    |> String.ends_with?("->")
   end
 
   @special_attrs ~w(:if :for :key)

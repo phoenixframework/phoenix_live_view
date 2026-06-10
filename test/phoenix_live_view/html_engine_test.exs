@@ -173,6 +173,59 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
            """) == "Hello world!"
   end
 
+  test "handles whitespace-only case clauses" do
+    nbsp = <<194, 160>>
+
+    source =
+      IO.iodata_to_binary([
+        "<%= case @x do %>\n",
+        nbsp,
+        nbsp,
+        "<% :foo -> %>\n",
+        nbsp,
+        nbsp,
+        "<% :bar -> %>\n",
+        "<% end %>"
+      ])
+
+    assert render(source, %{x: :foo}) == "\n#{nbsp}#{nbsp}"
+    assert render(source, %{x: :bar}) == "\n"
+  end
+
+  test "handles whitespace-only cond clauses" do
+    source =
+      """
+      <%= cond do %>
+        <% @x == :foo -> %>
+        <% @x == :bar -> %>
+      <% end %>
+      """
+
+    assert render(source, %{x: :foo}) == "\n  "
+    assert render(source, %{x: :bar}) == "\n"
+  end
+
+  test "handles split clause middle expressions" do
+    source =
+      "<%= with {:ok, x} <- @res do %>\n  <p>{x}</p>\n<% else %>\n  <% _ -> %>\n    <p>bad</p>\n<% end %>"
+
+    assert render(source, %{res: {:ok, "ok"}}) == "\n  <p>ok</p>\n"
+    assert render(source, %{res: :error}) == "\n    <p>bad</p>\n"
+
+    assert render("<%= try do %>\n<% rescue %>\n<% RuntimeError -> %>rescued<% end %>") == ""
+
+    assert render("<%= try do %>\n<% catch %>\n<% :throw, :foo -> %>caught<% end %>") == ""
+
+    assert render("<%= receive do %>\n<% after %>\n<% 0 -> %>timeout<% end %>") == "timeout"
+  end
+
+  test "handles receive after clauses" do
+    assert render("<%= receive do %>\n<% after 0 -> %>\ntimeout\n<% end %>") == "\ntimeout\n"
+
+    assert render("<%= receive do %>\n<% :msg -> %>\n<% after 0 -> %>\ntimeout\n<% end %>") ==
+             "\ntimeout\n"
+  end
+
   test "handles html blocks with regular blocks" do
     assert render("""
            Hello <div>w<%= if true do %>orld<% end %>!</div>

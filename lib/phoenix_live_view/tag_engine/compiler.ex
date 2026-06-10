@@ -176,21 +176,21 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
     #
     # Afterwards, the placeholders are replaced with the compiled content.
     #
-    {quoted, combined_expr, _current_line} =
-      Enum.reduce(blocks, {[], expr, line}, fn
-        {children, clause_expr, clause_meta}, {quoted, acc_expr, prev_line} ->
+    {quoted, combined_expr, _current_line, _seen_clause?} =
+      Enum.reduce(blocks, {[], expr, line, false}, fn
+        {children, clause_expr, clause_meta}, {quoted, acc_expr, prev_line, seen_clause?} ->
           # Calculate newlines needed to reach this clause's line
           clause_line = clause_meta.line
           newlines = String.duplicate("\n", clause_line - prev_line)
 
-          if all_spaces?(children) do
+          if all_spaces?(children) and not seen_clause? and stab_clause?(clause_expr) do
             # This handles the case where the start expression is immediately followed
             # by a middle expression, since we don't want to generate
             # case @status do __EEX__(0); :connecting -> __EEX__(1) ...
             # (we need to skip adding the first placeholder)
             # and instead generate
             # case @status do :connecting -> __EEX__(0); ...
-            {quoted, acc_expr <> newlines <> " " <> clause_expr, clause_line}
+            {quoted, acc_expr <> newlines <> " " <> clause_expr, clause_line, true}
           else
             inner_substate = state.engine.handle_begin(substate)
             {_state, inner_substate} = handle_node(children, inner_substate, state)
@@ -200,7 +200,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
             placeholder = "__EEX__(#{key});"
             quoted = [{key, clause_ast} | quoted]
             acc_expr = acc_expr <> " " <> placeholder <> newlines <> " " <> clause_expr
-            {quoted, acc_expr, clause_line}
+            {quoted, acc_expr, clause_line, true}
           end
       end)
 
@@ -456,6 +456,12 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
       {:text, text, _} -> String.trim_leading(text) == ""
       _ -> false
     end)
+  end
+
+  defp stab_clause?(expr) do
+    expr
+    |> String.trim_trailing()
+    |> String.ends_with?("->")
   end
 
   # Replace __EEX__(key) placeholders with actual compiled content
