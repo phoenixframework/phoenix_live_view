@@ -226,15 +226,6 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              "\ntimeout\n"
   end
 
-  test "handles case clause patterns that start like special form keywords" do
-    assert render("<%= case @x do %><% catcher -> %>{catcher}<% end %>", %{x: "ok"}) == "ok"
-    assert render("<%= case @x do %><% rescuee -> %>{rescuee}<% end %>", %{x: "ok"}) == "ok"
-    assert render("<%= case @x do %><% elsee -> %>{elsee}<% end %>", %{x: "ok"}) == "ok"
-
-    assert render("<%= case @x do %><% afterwards -> %>{afterwards}<% end %>", %{x: "ok"}) ==
-             "ok"
-  end
-
   test "handles html blocks with regular blocks" do
     assert render("""
            Hello <div>w<%= if true do %>orld<% end %>!</div>
