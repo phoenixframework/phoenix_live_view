@@ -115,6 +115,19 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.0 (2026-06-10) 🚀
+
+### Enhancements
+
+* Support events pushed when connected mount redirects ([#4269](https://github.com/phoenixframework/phoenix_live_view/issues/4269))
+
+### Bug fixes
+
+* Ensure for comprehensions in HEEx use deterministic variables
+* Ensure `connect_params` are kept when following redirects in LiveViewTest ([#4005](https://github.com/phoenixframework/phoenix_live_view/issues/4005))
+* Ensure exceptions during LiveComponent renders are emitted as `:telemetry` event ([#4258](https://github.com/phoenixframework/phoenix_live_view/issues/4258))
+* Fix whitespace handling of EEx nodes in HEEx compiler ([#4277](https://github.com/phoenixframework/phoenix_live_view/pull/4277))
+
 ## v1.2.0-rc.3 (2026-05-29)
 
 ### Enhancements
