@@ -88,7 +88,7 @@ community at different stages of development:
 
 ## LiveDebugger
 
-[LiveDebugger](https://github.com/software-mansion/live-debugger) is a debugging tool built specifically for Phoenix LiveView applications throughout the development process. It provides a real-time view into your LiveView processes, making it easier to understand the component hierarchy, inspect assigns, trace lifecycle callbacks, and troubleshoot issues more efficiently.
+[LiveDebugger](https://github.com/software-mansion/live-debugger) is a debugging tool built specifically for Phoenix LiveView applications. It provides a real-time view into your LiveView processes, making it easier to understand the component hierarchy, inspect assigns, trace lifecycle callbacks, and troubleshoot issues more efficiently.
 
 To get started, follow the setup instructions in the [LiveDebugger repository](https://github.com/software-mansion/live-debugger?tab=readme-ov-file#getting-started).
 
