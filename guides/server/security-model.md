@@ -1,5 +1,9 @@
 # Security considerations
 
+> ### Phoenix security guide {: .tip}
+> This guide expects that you have gone through
+> [Phoenix's Security guide](https://phoenix.hexdocs.pm/security.html).
+
 LiveView begins its life-cycle as a regular HTTP request. Then a stateful
 connection is established. Both the HTTP request and the stateful connection
 receive the client data via parameters and session.
