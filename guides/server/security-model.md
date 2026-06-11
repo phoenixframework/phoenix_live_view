@@ -108,11 +108,10 @@ Then the [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback of your LiveView sho
       {:ok, socket}
     end
 
-There are a number of possible strategies that we will suggest in this guide for a developer to encapsulate any logic to be executed in every mount.
+There are a number of possible strategies to encapsulate any logic to be executed in every mount.
+We will suggest some below:
 
-1. Declaring the mount/1 callback repeating the authorization logic, making it visibly being repeated in every LiveView, such as stated above.
-
-2. Declaring an `on_mount/1` callback in a module and using it in every module you desire to verify authorization.
+1. Declaring an `on_mount/1` callback in a module and using it in every module you desire to verify authorization.
 
     defmodule MyAppWeb.UserLiveAuth do
       import Phoenix.Component
@@ -143,7 +142,7 @@ There are a number of possible strategies that we will suggest in this guide for
       on_mount {MyAppWeb.SomeHook, :user}
     end
 
-3. Declaring an `on_mount/1` callback in a module and specifying the hook  in your router under `live_session`:
+2. Declaring an `on_mount/1` callback in a module and specifying the hook  in your router under `live_session`:
 
     live_session :default, **on_mount: MyAppWeb.SomeHook** do
       # Your routes
