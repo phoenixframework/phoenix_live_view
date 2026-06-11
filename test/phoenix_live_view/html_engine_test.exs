@@ -31,6 +31,21 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     |> IO.iodata_to_binary()
   end
 
+  defp render_with_tag_handler(string, tag_handler) do
+    quoted =
+      Phoenix.LiveView.TagEngine.compile(string,
+        file: __ENV__.file,
+        caller: __ENV__,
+        tag_handler: tag_handler
+      )
+
+    {result, _} = Code.eval_quoted(quoted, [assigns: %{}], __ENV__)
+
+    result
+    |> Phoenix.HTML.Safe.to_iodata()
+    |> IO.iodata_to_binary()
+  end
+
   defmacrop compile(string) do
     quote do
       unquote(
@@ -99,14 +114,116 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     """
   end
 
+  defmodule CustomTagHandler do
+    @behaviour Phoenix.LiveView.TagEngine
+
+    @impl true
+    def classify_type("bad"), do: {:error, "custom rejected bad"}
+    def classify_type("void"), do: {:tag, "void"}
+    def classify_type(name), do: {:tag, name}
+
+    @impl true
+    def void?("void"), do: true
+    def void?(_name), do: false
+
+    @impl true
+    def handle_attributes(_ast, _meta), do: {:attributes, []}
+
+    @impl true
+    def annotate_body(_caller), do: nil
+
+    @impl true
+    def annotate_slot(_name, _tag_meta, _close_tag_meta, _caller), do: nil
+
+    @impl true
+    def annotate_caller(_file, _line, _caller), do: nil
+  end
+
   test "handles text" do
     assert render("Hello") == "Hello"
+  end
+
+  test "can still use TagEngine as an EEx.Engine" do
+    source = "<div>OK</div>"
+
+    warning =
+      capture_io(:stderr, fn ->
+        quoted =
+          EEx.compile_string(source,
+            engine: Phoenix.LiveView.TagEngine,
+            line: 1,
+            file: __ENV__.file,
+            caller: __ENV__,
+            source: source,
+            tag_handler: Phoenix.LiveView.HTMLEngine
+          )
+
+        {result, _} = Code.eval_quoted(quoted, [assigns: %{}], __ENV__)
+        send(self(), {:tag_engine_as_eex_engine_result, result})
+      end)
+
+    assert warning =~ "Using Phoenix.LiveView.TagEngine as an EEx.Engine is deprecated"
+    assert_receive {:tag_engine_as_eex_engine_result, result}
+    assert Phoenix.HTML.Safe.to_iodata(result) |> IO.iodata_to_binary() == "<div>OK</div>"
   end
 
   test "handles regular blocks" do
     assert render("""
            Hello <%= if true do %>world!<% end %>
            """) == "Hello world!"
+  end
+
+  test "handles whitespace-only case clauses" do
+    nbsp = <<194, 160>>
+
+    source =
+      IO.iodata_to_binary([
+        "<%= case @x do %>\n",
+        nbsp,
+        nbsp,
+        "<% :foo -> %>\n",
+        nbsp,
+        nbsp,
+        "<% :bar -> %>\n",
+        "<% end %>"
+      ])
+
+    assert render(source, %{x: :foo}) == "\n#{nbsp}#{nbsp}"
+    assert render(source, %{x: :bar}) == "\n"
+  end
+
+  test "handles whitespace-only cond clauses" do
+    source =
+      """
+      <%= cond do %>
+        <% @x == :foo -> %>
+        <% @x == :bar -> %>
+      <% end %>
+      """
+
+    assert render(source, %{x: :foo}) == "\n  "
+    assert render(source, %{x: :bar}) == "\n"
+  end
+
+  test "handles split clause middle expressions" do
+    source =
+      "<%= with {:ok, x} <- @res do %>\n  <p>{x}</p>\n<% else %>\n  <% _ -> %>\n    <p>bad</p>\n<% end %>"
+
+    assert render(source, %{res: {:ok, "ok"}}) == "\n  <p>ok</p>\n"
+    assert render(source, %{res: :error}) == "\n    <p>bad</p>\n"
+
+    assert render("<%= try do %>\n<% rescue %>\n<% RuntimeError -> %>rescued<% end %>") == ""
+
+    assert render("<%= try do %>\n<% catch %>\n<% :throw, :foo -> %>caught<% end %>") == ""
+
+    assert render("<%= receive do %>\n<% after %>\n<% 0 -> %>timeout<% end %>") == "timeout"
+  end
+
+  test "handles receive after clauses" do
+    assert render("<%= receive do %>\n<% after 0 -> %>\ntimeout\n<% end %>") == "\ntimeout\n"
+
+    assert render("<%= receive do %>\n<% :msg -> %>\n<% after 0 -> %>\ntimeout\n<% end %>") ==
+             "\ntimeout\n"
   end
 
   test "handles html blocks with regular blocks" do
@@ -1541,6 +1658,16 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
+    test "unmatched open/close tags with different tag types" do
+      assert_raise(ParseError, ~r/unmatched closing tag/, fn ->
+        eval("<.local_function_component></foo>")
+      end)
+
+      assert_raise(ParseError, ~r/unmatched closing tag/, fn ->
+        eval("<foo></.foo>")
+      end)
+    end
+
     test "invalid remote tag" do
       message = """
       test/phoenix_live_view/html_engine_test.exs:1:1: invalid tag <Foo>
@@ -1584,6 +1711,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert_raise(ParseError, message, fn ->
         eval("<link>Text</link>")
       end)
+    end
+
+    test "uses configured tag handler while tokenizing" do
+      assert_raise(ParseError, ~r/custom rejected bad/, fn ->
+        render_with_tag_handler("<bad></bad>", CustomTagHandler)
+      end)
+
+      assert render_with_tag_handler("<void>", CustomTagHandler) == "<void>"
     end
 
     test "missing closing tag" do

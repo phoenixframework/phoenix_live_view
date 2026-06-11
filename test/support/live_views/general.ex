@@ -250,10 +250,10 @@ defmodule Phoenix.LiveViewTest.Support.RedirLive do
     """
   end
 
-  def mount(%{"to" => to, "kind" => kind, "during" => during}, _session, socket) do
+  def mount(%{"to" => to, "kind" => kind, "during" => during} = params, _session, socket) do
     cond do
       during == "connected" and connected?(socket) ->
-        {:ok, do_redirect(socket, kind, to: to)}
+        {:ok, socket |> maybe_push_redirect_event(params) |> do_redirect(kind, to: to)}
 
       during == "disconnected" and not connected?(socket) ->
         {:ok, do_redirect(socket, kind, to: to)}
@@ -297,6 +297,12 @@ defmodule Phoenix.LiveViewTest.Support.RedirLive do
   defp do_redirect(socket, "redirect", opts), do: redirect(socket, opts)
   defp do_redirect(socket, "external", to: url), do: redirect(socket, external: url)
   defp do_redirect(socket, "push_patch", opts), do: push_patch(socket, opts)
+
+  defp maybe_push_redirect_event(socket, %{"push_event" => "true", "kind" => kind, "to" => to}) do
+    push_event(socket, "mount-redirect", %{kind: kind, to: to})
+  end
+
+  defp maybe_push_redirect_event(socket, _params), do: socket
 end
 
 defmodule Phoenix.LiveViewTest.Support.AssignsNotInSocketLive do

@@ -285,9 +285,7 @@ defmodule Phoenix.LiveView.TagEngine do
       line: line,
       caller: caller,
       indentation: indentation,
-      source: source,
       tag_handler: tag_handler,
-      trim_tokens: true,
       trim: trim
     ]
 

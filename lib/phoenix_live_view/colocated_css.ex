@@ -12,7 +12,58 @@ defmodule Phoenix.LiveView.ColocatedCSS do
 
   Colocated CSS uses the same folder structures as Colocated JS. See `Phoenix.LiveView.ColocatedJS` for more information.
 
-  To bundle and use colocated CSS with esbuild, you can import it like this in your `app.js` file:
+  ### Using with a bundler
+
+  Colocated CSS is meant to be used with a bundler like `:tailwind` or `:esbuild`.
+
+  <!-- tabs-open -->
+
+  ### Tailwind
+
+  The following setup requires Tailwind v4.2.3 or newer.
+
+  To use colocated CSS with `:tailwind`, it has to be configured to resolve the `phoenix-colocated` folder.
+  For new Phoenix applications starting with version `1.8.8`, this is already configured by default in your `config.exs`:
+
+      config :tailwind,
+        ...,
+        my_app: [
+          args: ~w(
+            --input=assets/css/app.css
+            --output=priv/static/assets/css/app.css
+          ),
+          cd: Path.expand("..", __DIR__),
+          env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
+        ]
+
+  Then, import the `colocated.css` file in your `app.css` file:
+
+  ```diff
+    @import "tailwindcss" source(none);
+  + @import "phoenix-colocated/my_app/colocated.css";
+    @source "../css";
+    @source "../js";
+    @source "../../lib/my_app_web";
+  + /* Required for Tailwind to automatically pick up changes in colocated CSS files in dev */
+  + @source "../../_build/dev/phoenix-colocated/my_app/*/";
+  ```
+
+  ### Esbuild
+
+  To use colocated CSS with `:esbuild`, ensure that the `NODE_PATH` is configured to include `Mix.Project.build_path()`:
+
+      config :esbuild,
+        ...
+        my_app: [
+          args:
+            ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
+          cd: Path.expand("../assets", __DIR__),
+          env: %{
+            "NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]
+          }
+        ]
+
+  This is the same setup as for `Phoenix.LiveView.ColocatedJS`. Then, import it like this in your `app.js` file:
 
   ```javascript
   import "phoenix-colocated/my_app/colocated.css"
@@ -24,6 +75,8 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   ```html
   <link phx-track-static rel="stylesheet" href={~p"/assets/js/app.css"} />
   ```
+
+  <!-- tabs-close -->
 
   ## Global CSS
 

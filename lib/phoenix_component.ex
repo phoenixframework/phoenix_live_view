@@ -554,6 +554,15 @@ defmodule Phoenix.Component do
 
   Changing this configuration will require `mix clean` and a full recompile.
 
+  You can also configure debug annotations for a specific module by setting the options
+  as module attribute:
+
+      @debug_heex_annotations false
+      @debug_attributes false
+
+  This is mostly useful to opt out of annotations, for example if you want to show
+  the raw HTML to users.
+
   ## Dynamic Component Rendering
 
   Sometimes you might need to decide at runtime which component to render.
@@ -1900,7 +1909,7 @@ defmodule Phoenix.Component do
   A named slot may declare attributes by passing a block with calls to `attr/3`.
 
   Unlike attributes, slot attributes cannot accept the `:default` option. Passing one
-  will result in a compile warning being issued.
+  will result in a compilation error.
 
   ### The Default Slot
 
@@ -3493,7 +3502,7 @@ defmodule Phoenix.Component do
   ```elixir
   {:noreply,
     socket
-    |> assign_async(:page, :data, &reload_data/0)
+    |> assign_async(:page, &reload_data/0)
     |> assign(:page, AsyncResult.loading())}
   ```
   """

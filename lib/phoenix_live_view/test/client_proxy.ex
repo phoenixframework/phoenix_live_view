@@ -227,10 +227,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             Process.demonitor(mon_ref, [:flush])
             {%{view | pid: pid}, Diff.merge_diff(%{}, rendered), resp}
 
-          {^ref, {:error, %{live_redirect: opts}}} ->
+          {^ref, {:error, %{live_redirect: opts} = resp}} ->
+            maybe_push_events(resp, state)
             throw(stop_redirect(state, view.topic, {:live_redirect, opts}))
 
-          {^ref, {:error, %{redirect: opts}}} ->
+          {^ref, {:error, %{redirect: opts} = resp}} ->
+            maybe_push_events(resp, state)
             throw(stop_redirect(state, view.topic, {:redirect, opts}))
 
           {^ref, {:error, %{reason: reason}}} when reason in ~w(stale unauthorized) ->
@@ -1389,13 +1391,21 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp maybe_push_events(diff, state) do
     case diff do
+      %{events: events} ->
+        push_events(events, state)
+        Map.delete(diff, :events)
+
       %{@events => events} ->
-        for [name, payload] <- events, do: send_caller(state, {:push_event, name, payload})
+        push_events(events, state)
         Map.delete(diff, @events)
 
       %{} ->
         diff
     end
+  end
+
+  defp push_events(events, state) do
+    for [name, payload | _] <- events, do: send_caller(state, {:push_event, name, payload})
   end
 
   defp maybe_push_reply(diff, state) do
