@@ -257,6 +257,12 @@ defmodule Phoenix.LiveView do
       this option will override any layout previously set via
       `Phoenix.LiveView.Router.live_session/2` or on `use Phoenix.LiveView`
 
+  > #### Security Note {: .warning}
+  >
+  > The `params` argument contains untrusted data from the client. You must
+  > authorize and validate this data before using it to fetch or modify
+  > resources. See the ["Security considerations" guide](security-model.html)
+  > for more information.
   """
   @callback mount(
               params :: unsigned_params() | :not_mounted_at_router,
@@ -302,12 +308,19 @@ defmodule Phoenix.LiveView do
   It must always return `{:noreply, socket}`, where `:noreply`
   means no additional information is sent to the client.
 
+  > #### Security Note {: .warning}
+  >
+  > The `params` argument contains untrusted data from the client. You must
+  > authorize and validate this data before using it to fetch or modify
+  > resources. See the ["Security considerations" guide](security-model.html)
+  > for more information.
+
   > #### Note {: .warning}
   >
   > `handle_params` is only allowed on LiveViews mounted at the router,
   > as it takes the current url of the page as the second parameter.
   """
-  @callback handle_params(unsigned_params(), uri :: String.t(), socket :: Socket.t()) ::
+  @callback handle_params(params :: unsigned_params(), uri :: String.t(), socket :: Socket.t()) ::
               {:noreply, Socket.t()}
 
   @doc """
@@ -319,6 +332,13 @@ defmodule Phoenix.LiveView do
   no additional information is sent to the client, or
   `{:reply, map(), socket}`, where the given `map()` is encoded
   and sent as a reply to the client.
+
+  > #### Security Note {: .warning}
+  >
+  > The event `payload` contains untrusted data from the client. You must
+  > authorize and validate this data before using it to fetch or modify
+  > resources. See the ["Security considerations" guide](security-model.html)
+  > for more information.
   """
   @callback handle_event(event :: binary, payload :: term(), socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, map, Socket.t()}

@@ -151,6 +151,13 @@ defmodule Phoenix.LiveComponent do
   only the diff of the component is sent to the client, making them
   extremely efficient.
 
+  > #### Security Note {: .warning}
+  >
+  > The event `payload` contains untrusted data from the client. You must
+  > authorize and validate this data before using it to fetch or modify
+  > resources. See the ["Security considerations" guide](security-model.html)
+  > for more information.
+
   Any valid query selector for `phx-target` is supported, provided that the
   matched nodes are children of a LiveView or LiveComponent, for example
   to send the `close` event to multiple components:
