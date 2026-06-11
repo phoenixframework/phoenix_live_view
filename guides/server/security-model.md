@@ -37,7 +37,7 @@ Plugs are used to ensure the user is authenticated and stores the
 relevant information in the session.
 
 Once the user is authenticated, we typically suggest to developers 
-to validate sessions on the `mount` callback, or even before at the `on_mount` callback (done before mount).
+to validate sessions in the `mount` callback. We explain how to encapsulate this into shared logic in the next section.
 
 An instance of such validation would be `Is the user allowed to see this page?` or `Is this user not authorized to use this org?`.
 Also, more specific rules can be verified at `handle_event` callbacks, such as  `Is the user allowed to delete this item?`.
