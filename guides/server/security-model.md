@@ -116,6 +116,7 @@ Then the [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback of your LiveView sho
 There are a number of possible strategies that we will suggest in this guide for a developer to encapsulate any logic to be executed in every mount.
 
 1. Declaring the mount/1 callback repeating the authorization logic, making it visibly being repeated in every LiveView, such as stated above.
+
 2. Declaring an `on_mount/1` callback in a module and using it in every module you desire to verify authorization.
 
     defmodule MyAppWeb.UserLiveAuth do
