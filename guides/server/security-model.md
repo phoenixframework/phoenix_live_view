@@ -36,9 +36,14 @@ Plugs are used to ensure the user is authenticated and stores the
 relevant information in the session.
 
 Once the user is authenticated, we typically validate the sessions on
-the `mount` callback. Authorization rules generally happen on `mount`
-(for instance, is the user allowed to see this page?) and also on
-`handle_event` (is the user allowed to delete this item?).
+the [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback.
+
+Authorization rules generally happen on
+[`mount/3`](`c:Phoenix.LiveView.mount/3`) (for instance, is the user allowed to
+see this page?), [`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`) (is
+the user allowed to navigate here?) and also on
+`c:Phoenix.LiveView.handle_event/3` or `c:Phoenix.LiveComponent.handle_event/3`
+(is the user allowed to delete this item?).
 
 ## `live_session`
 
@@ -75,10 +80,11 @@ Now every time you try to navigate to an admin panel, and out of it,
 a regular page navigation will happen and a brand new live connection
 will be established.
 
-It is worth remembering that LiveViews require their own security checks,
-so we use `pipe_through` above to protect the regular routes (get, post, etc.)
-and the LiveViews should run their own checks on the `mount` callback
-(or using `Phoenix.LiveView.on_mount/1` hooks).
+It is worth remembering that LiveViews require their own security checks, so we
+use `pipe_through` above to protect the regular routes (get, post, etc.) and the
+LiveViews should run their own checks on the
+[`mount/3`](`c:Phoenix.LiveView.mount/3`) callback (or using
+`Phoenix.LiveView.on_mount/1` hooks).
 
 For this purpose, you can combine `live_session` with `on_mount`, as well
 as other options, such as the `:root_layout`. Instead of declaring `on_mount`
@@ -207,8 +213,10 @@ by not showing the delete button in the projects listing, but a savvy user can
 directly talk to the server and request a deletion anyway. For this reason, **you
 must always verify permissions on the server**.
 
-In LiveView, most actions are handled by the `handle_event` callback. Therefore,
-you typically authorize the user within those callbacks. In the scenario just
+In LiveView, most actions are handled by the
+[`handle_event/3`](`c:Phoenix.LiveView.handle_event/3`) callback (or
+`c:Phoenix.LiveComponent.handle_event/3` in components). Therefore, you
+typically authorize the user within those callbacks. In the scenario just
 described, one might implement this:
 
     on_mount MyAppWeb.UserLiveAuth
@@ -218,22 +226,40 @@ described, one might implement this:
     end
 
     def handle_event("delete_project", %{"project_id" => project_id}, socket) do
-      Project.delete!(socket.assigns.current_user, project_id)
+      Project.delete!(socket.assigns.current_scope, project_id)
       {:noreply, update(socket, :projects, &Enum.reject(&1, fn p -> p.id == project_id end))}
     end
 
     defp load_projects(socket) do
-      projects = Project.all_projects(socket.assigns.current_user)
+      projects = Project.all_projects(socket.assigns.current_scope)
       assign(socket, projects: projects)
     end
 
 First, we used `on_mount` to authenticate the user based on the data stored in
-the session. Then we load all projects based on the authenticated user. Now,
-whenever there is a request to delete a project, we still pass the current user
-as argument to the `Project` context, so it verifies if the user is allowed to
-delete it or not. In case it cannot delete, it is fine to just raise an exception.
-After all, users are not meant to trigger this code path anyway (unless they are
-fiddling with something they are not supposed to!).
+the session. Then we load all projects based on the authenticated user and their
+authorized scope. Now, whenever there is a request to delete a project, we still
+pass the current scope as argument to the `Project` context, so it verifies if
+the user is allowed to delete it or not. In case it cannot delete, it is fine to
+just raise an exception. After all, users are not meant to trigger this code
+path anyway (unless they are fiddling with something they are not supposed to!).
+
+## Never trust user input: params and payloads
+
+As a general rule of web security, **never trust user input** (see the [OWASP
+Top 10](https://owasp.org/www-project-top-ten/)). In LiveView, this applies
+specifically to the `params` passed to the
+[`mount/3`](`c:Phoenix.LiveView.mount/3`) and
+[`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`) callbacks, as well as
+the `payload` passed to [`handle_event/3`](`c:Phoenix.LiveView.handle_event/3`)
+(or `c:Phoenix.LiveComponent.handle_event/3` in components).
+
+Because LiveView applications process UI interactions over a persistent
+connection, it's easy to forget that the client can manipulate the data sent to
+the server. An attacker can use browser developer tools or custom scripts to
+send any payload to your LiveView, bypassing your UI restrictions entirely. To
+follow guidelines from organizations like the [Erlang Ecosystem Foundation
+(EEF)](https://security.erlef.org/) and OWASP, you must be defensive when
+handling these parameters.
 
 ## Disconnecting all instances of a live user
 
@@ -282,7 +308,7 @@ The important concepts to keep in mind are:
     different authorization rules, doing so would lead to frequent page
     reloads. For this reason, we typically use `live_session` to enforce
     different *authentication* requirements or whenever you need to
-    change root layouts
+    change root layouts.
 
   * Your authentication logic (logging the user in) is typically part of
     your regular web request pipeline and it is shared by both controllers
@@ -290,10 +316,11 @@ The important concepts to keep in mind are:
     session. Regular web requests use `plug` to read the user from a session,
     LiveViews read it inside an `on_mount` callback. This is typically a
     single database lookup on both cases. Running `mix phx.gen.auth` sets
-    up all that is necessary
+    up all that is necessary.
 
-  * Once authenticated, your authorization logic in LiveViews will happen
-    both during `mount` (such as "can the user see this page?") and during
-    events (like "can the user delete this item?"). Those rules are often
-    domain/business specific, and typically happen in your context modules.
-    This is also a requirement for regular requests and responses
+  * Once authenticated, your authorization logic in LiveViews will happen both
+    during `mount`/`handle_params` (such as "can the user see this page?") and
+    during events (like "can the user delete this item?"). Those rules are often
+    domain/business specific, and typically happen in your context modules
+    through the use of scopes. This is also a requirement for regular requests
+    and responses.

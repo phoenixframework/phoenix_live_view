@@ -261,7 +261,7 @@ defmodule Phoenix.LiveView do
   >
   > The `params` argument contains untrusted data from the client. You must
   > authorize and validate this data before using it to fetch or modify
-  > resources. See the ["Security considerations" guide](security-model.html)
+  > resources. See the ["Security considerations" guide](security-model.md#never-trust-user-input-params-and-payloads)
   > for more information.
   """
   @callback mount(
@@ -312,7 +312,7 @@ defmodule Phoenix.LiveView do
   >
   > The `params` argument contains untrusted data from the client. You must
   > authorize and validate this data before using it to fetch or modify
-  > resources. See the ["Security considerations" guide](security-model.html)
+  > resources. See the ["Security considerations" guide](security-model.md#never-trust-user-input-params-and-payloads)
   > for more information.
 
   > #### Note {: .warning}
@@ -337,7 +337,7 @@ defmodule Phoenix.LiveView do
   >
   > The event `payload` contains untrusted data from the client. You must
   > authorize and validate this data before using it to fetch or modify
-  > resources. See the ["Security considerations" guide](security-model.html)
+  > resources. See the ["Security considerations" guide](security-model.md#never-trust-user-input-params-and-payloads)
   > for more information.
   """
   @callback handle_event(event :: binary, payload :: term(), socket :: Socket.t()) ::
