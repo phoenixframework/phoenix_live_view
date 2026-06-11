@@ -9,7 +9,7 @@ Both the HTTP request and the stateful connection receive the client data via pa
 When speaking about security, there are two terms commonly used:
 authentication and authorization. 
 
-**Authentication** is about identifying a user through credentials. 
+**Authentication** is about verifying the identity of a user. 
 
 In a regular web application, once a user is authenticated, 
 either by entering their email and password, or by using a third-party service such as
