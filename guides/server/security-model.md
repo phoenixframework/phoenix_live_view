@@ -40,7 +40,7 @@ Once the user is authenticated, we typically suggest to developers
 to validate sessions in the `mount` callback. We explain how to encapsulate this into shared logic in the next section.
 
 An instance of such validation would be `Is the user allowed to see this page?` or `Is this user not authorized to use this org?`.
-Also, more specific rules can be verified at `handle_event` callbacks, such as  `Is the user allowed to delete this item?`.
+Also, more specific rules can be verified in `handle_event` callbacks, such as  `Is the user allowed to delete this item?`.
 Any number or format of validations may be built, keep those in mind as a default pattern and an advisal.
 
 For more info, check `mount/3` and `on_mount/1`.
