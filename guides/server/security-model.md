@@ -290,7 +290,8 @@ the topic:
 
     MyAppWeb.Endpoint.broadcast("users_socket:#{user.id}", "disconnect", %{})
 
-> Note: If you use `mix phx.gen.auth` to generate your authentication system,
+> ### Note {: .info}
+> If you used `mix phx.gen.auth` to generate your authentication system,
 > lines to that effect are already present in the generated code. The generated
 > code uses a `user_token` instead of referring to the `user_id`.
 

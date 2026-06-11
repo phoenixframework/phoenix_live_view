@@ -2617,8 +2617,9 @@ defmodule Phoenix.Component do
 
   Here we see the `:sort_param` and `:drop_param` options in action.
 
-  > Note: `on_replace: :delete` on the `has_many` and `embeds_many` is required
-  > when using these options.
+  > ### Note {: .info}
+  > When using these options, `on_replace: :delete` on the `has_many` and
+  > `embeds_many` is required.
 
   When Ecto sees the specified sort or drop parameter from the form, it will sort
   the children based on the order they appear in the form, add new children it hasn't
