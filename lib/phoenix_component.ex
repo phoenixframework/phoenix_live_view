@@ -994,7 +994,7 @@ defmodule Phoenix.Component do
   * When rendering a LiveView inside a regular (non-live) controller/view.
 
   Most other cases for shared functionality, including state management and user interactions, can be
-  [achieved with function components or LiveComponents](welcome.html#compartmentalize-state-markup-and-events-in-liveview)
+  [achieved with function components or LiveComponents](welcome.md#compartmentalize-state-markup-and-events-in-liveview)
 
   ## Options
 

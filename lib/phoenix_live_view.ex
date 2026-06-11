@@ -1398,7 +1398,7 @@ defmodule Phoenix.LiveView do
   </div>
   ```
 
-  For larger projects, you can extract this into [a hook](https://phoenix-live-view.hexdocs.pm/Phoenix.LiveView.html#on_mount/1):
+  For larger projects, you can extract this into [a hook](`Phoenix.LiveView.on_mount/1`):
 
       # MyAppWeb.CheckStaticChanged
       def on_mount(:default, _params, _session, socket) do
@@ -1606,7 +1606,7 @@ defmodule Phoenix.LiveView do
 
   > Note: This function is for server-side lifecycle callbacks.
   > For client-side hooks, see the
-  > [JS Interop guide](js-interop.html#client-hooks-via-phx-hook).
+  > [JS Interop guide](js-interop.md#client-hooks-via-phx-hook).
 
   Hooks provide a mechanism to tap into key stages of the LiveView
   lifecycle in order to bind/update assigns, intercept events,
@@ -1653,7 +1653,7 @@ defmodule Phoenix.LiveView do
 
   Hooks attached to the `:handle_event` stage are able to reply to client events
   by returning `{:halt, reply, socket}`. This is useful especially for [JavaScript
-  interoperability](js-interop.html#client-hooks-via-phx-hook) because a client hook
+  interoperability](js-interop.md#client-hooks-via-phx-hook) because a client hook
   can push an event and receive a reply.
 
   ## Sharing event handling logic
@@ -1787,7 +1787,7 @@ defmodule Phoenix.LiveView do
 
   > Note: This function is for server-side lifecycle callbacks.
   > For client-side hooks, see the
-  > [JS Interop guide](js-interop.html#client-hooks-via-phx-hook).
+  > [JS Interop guide](js-interop.md#client-hooks-via-phx-hook).
 
   If no hook is found, this function is a no-op.
 
