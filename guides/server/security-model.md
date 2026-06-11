@@ -44,10 +44,10 @@ Also, more specific rules can be verified in `handle_event` callbacks, such as  
 
 ## `live_session`
 
-A second mechanism for validating authorization is grouping LiveViews 
-within a single `live_session`. This is primarily done in the router configuration using
-`Phoenix.LiveView.Router.live_session/2`, and by using this primary tactic,
- LiveView will then ensure that navigation events within the same `live_session` skip the regular initial
+The primary mechanism used for validating authorization is grouping LiveViews 
+within a single `live_session`. This is done in the router configuration using
+`Phoenix.LiveView.Router.live_session/2`. Then, LiveView will ensure that navigation
+events within the same `live_session` skip the regular initial
 HTTP requests without going through the plug pipeline. Events across live sessions will go through the router.
 
 For example, imagine you need to authenticate two distinct types of users.
@@ -73,18 +73,16 @@ for each authentication flow:
       end
     end
 
-Now, every time you try to navigate to and out of an admin panel,
-a regular page navigation will happen and a brand new WebSocket connection
+Now, every time you try to navigate into and out of an admin panel,
+a regular page navigation will happen and a brand new socket connection
 will be established.
 
-It is worth remembering the previous stated suggestion for authorization:
-that LiveViews require their own security checks aside from plugs.
-Use `pipe_through` above to protect the regular routes (get, post, etc.)
-and LiveViews should also run their own checks on the `mount` callback
+As previously mentioned, LiveViews require their own security checks,
+so we use `pipe_through` above to protect the regular routes (get, post, etc.)
+and LiveViews run their own checks in the `mount` callback.
 (or using `Phoenix.LiveView.on_mount/1` hooks).
 
-You can also combine `live_session` with `on_mount` to provide better control of authorization verification by separating similar LiveViews within a grouped context.
-It stands to reason that that will heavily depend on the application you are developing, and so we leave it to a developer's liking.
+Since we group LiveViews into `live_session`s, this is also the perfect place to define shared security checks. Let's look at the available strategies next.
 
 ## Strategies for validating authorization
 
@@ -174,7 +172,7 @@ to run it on all LiveViews by default:
 
 An `on_mount` module can be called in three ways:
 
-1. In every LiveView.
+1. In each LiveView it should apply to.
 
     defmodule MyAppWeb.TestLive do
       @moduledoc false
