@@ -553,7 +553,7 @@ defmodule Phoenix.LiveComponent do
   If the LiveComponent defines an `c:update/2`, be sure that the socket it returns
   includes the `:inner_block` assign it received.
 
-  See [the docs](Phoenix.Component.html#module-slots.md) for `Phoenix.Component` for more information.
+  See the [`Phoenix.Component` slots docs](`m:Phoenix.Component#module-slots`) for more information.
 
   ## Limitations
 

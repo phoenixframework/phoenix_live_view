@@ -199,7 +199,7 @@ defmodule Phoenix.LiveViewTest do
 
           - `:duplicate_id` - when LiveViewTest detects a duplicate DOM ID
           - `:duplicate_live_component` - when LiveViewTest detects a LiveComponent being rendered multiple times with the same ID
-          - `:missing_form_id` - when LiveViewTest detects a form without an ID attribute (this prevents [form recovery](form-bindings.html#recovery-following-crashes-or-disconnects))
+          - `:missing_form_id` - when LiveViewTest detects a form without an ID attribute (this prevents [form recovery](form-bindings.md#recovery-following-crashes-or-disconnects))
 
         The supported values are:
 
