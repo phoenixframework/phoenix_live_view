@@ -936,6 +936,159 @@ defmodule Phoenix.Component do
   end
 
   @doc ~S'''
+  Turns a `~H` template inside a macro into a quoted template, allowing it
+  to contain `unquote` fragments that are resolved when the macro is invoked.
+
+  Templates are usually compiled where they are written. This makes it
+  impossible to customize them when generating components through macros,
+  as `unquote` inside `~H` has no access to the variables of the macro
+  defining it:
+
+      defmacro build_carousel(opts) do
+        name = Keyword.fetch!(opts, :name)
+        base_class = Keyword.get(opts, :base_class, "carousel")
+
+        quote do
+          def unquote(name)(var!(assigns)) do
+            # unquote(base_class) would fail to compile inside ~H here!
+            ...
+          end
+        end
+      end
+
+  With `quoted/1`, the template is instead written (and parsed) directly in
+  the macro body, where `unquote` works as usual, and spliced into the
+  generated function with a regular `unquote` call:
+
+      defmacro build_carousel(opts) do
+        name = Keyword.fetch!(opts, :name)
+        base_class = Keyword.get(opts, :base_class, "carousel")
+
+        template =
+          Phoenix.Component.quoted(~H"""
+          <div class={unquote(base_class)} id={@id} phx-hook=".Carousel"></div>
+          <script :type={Phoenix.LiveView.ColocatedHook} name=".Carousel">
+            export default {
+              mounted() { ... }
+            }
+          </script>
+          """)
+
+        quote do
+          attr :id, :string, required: true
+
+          def unquote(name)(var!(assigns)) do
+            unquote(template)
+          end
+        end
+      end
+
+  The template is compiled when the macro is invoked, in the context of the
+  caller. Spliced values therefore behave exactly as if they had been written
+  in place: a string becomes a compile-time value that is escaped and tracked
+  as usual, while spliced AST (for example `quote do: @some_assign`) takes
+  part in change tracking like handwritten template code. Macro components,
+  such as `Phoenix.LiveView.ColocatedHook` in the example above, are also
+  only processed at the use site, so their content is extracted into the
+  caller's application.
+
+  Note the generated function must define an `assigns` variable visible to
+  the template, which inside `quote` requires `var!(assigns)`.
+
+  ## Limitations
+
+  `unquote` fragments are supported in `{...}` interpolations, both in
+  attribute values and in tag bodies, as well as in standalone `<% %>`
+  expressions. They are not supported in EEx block expressions, such as
+  `<%= if ... do %>` and their clauses, as those are compiled from their
+  source text.
+
+  The `:type` attribute that identifies macro components must be a
+  compile-time module, it cannot be spliced via `unquote`.
+  '''
+  @doc type: :macro
+  defmacro quoted({:sigil_H, call_meta, [{:<<>>, bin_meta, [template]}, modifiers]})
+           when is_binary(template) and (modifiers == [] or modifiers == ~c"noformat") do
+    file = __CALLER__.file
+    line = (call_meta[:line] || __CALLER__.line) + 1
+    indentation = bin_meta[:indentation] || 0
+
+    %Phoenix.LiveView.TagEngine.Parser{nodes: nodes} =
+      Phoenix.LiveView.TagEngine.Parser.parse!(template,
+        file: file,
+        line: line,
+        indentation: indentation,
+        caller: __CALLER__,
+        source: template,
+        tag_handler: Phoenix.LiveView.HTMLEngine,
+        skip_macro_components: true,
+        quote_exprs: true,
+        trim_eex: false,
+        strip_eex_comments: true
+      )
+
+    quote do
+      Phoenix.Component.__quoted__(
+        unquote(Macro.escape(nodes, unquote: true)),
+        unquote(template),
+        unquote(file),
+        unquote(line),
+        unquote(indentation)
+      )
+    end
+  end
+
+  defmacro quoted(other) do
+    raise ArgumentError,
+          "Phoenix.Component.quoted/1 expects a ~H template without interpolation " <>
+            "as argument, got: #{Macro.to_string(other)}"
+  end
+
+  @doc false
+  def __quoted__(nodes, source, file, line, indentation) do
+    template = %Phoenix.Component.QuotedTemplate{
+      nodes: nodes,
+      source: source,
+      file: file,
+      line: line,
+      indentation: indentation
+    }
+
+    quote do
+      require Phoenix.Component
+      Phoenix.Component.__compile_quoted__(unquote(Macro.escape(template)))
+    end
+  end
+
+  @doc false
+  defmacro __compile_quoted__(quoted_template) do
+    {%Phoenix.Component.QuotedTemplate{} = template, _binding} =
+      Code.eval_quoted(quoted_template)
+
+    if not Macro.Env.has_var?(__CALLER__, {:assigns, nil}) do
+      raise "quoted templates require a variable named \"assigns\" to exist " <>
+              "and be set to a map"
+    end
+
+    {nodes, directives} =
+      Phoenix.LiveView.TagEngine.Parser.process_macro_components!(template.nodes,
+        caller: __CALLER__,
+        source: template.source,
+        file: template.file,
+        indentation: template.indentation
+      )
+
+    Phoenix.LiveView.TagEngine.Compiler.compile(
+      %Phoenix.LiveView.TagEngine.Parser{nodes: nodes, directives: directives},
+      file: template.file,
+      caller: __CALLER__,
+      source: template.source,
+      indentation: template.indentation,
+      tag_handler: Phoenix.LiveView.HTMLEngine
+    )
+  end
+
+  @doc ~S'''
   Filters the assigns as a list of keywords for use in dynamic tag attributes.
 
   One should prefer to use declarative assigns and `:global` attributes

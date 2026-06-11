@@ -282,6 +282,11 @@ defmodule Phoenix.Component.MacroComponent do
       {name, {:string, binary, _meta}, _attr_meta} ->
         {name, binary}
 
+      # quoted templates (see Phoenix.Component.quoted/1) carry expressions
+      # in already-quoted form
+      {name, {:expr, {:quoted, ast}, _expr_meta}, _attr_meta} ->
+        {name, ast}
+
       {name, {:expr, code, expr_meta}, _attr_meta} ->
         ast =
           Code.string_to_quoted!(code,
