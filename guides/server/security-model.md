@@ -196,7 +196,7 @@ An `on_mount` module can be called in three ways:
       use MyAppWeb, :live_view
     end
 
-3. Instead of a declared `on_mount` on every LiveView, you can declare it at the router level and it will enforce it on all LiveViews under it:
+3. At the `live_session` level, so it applies to all LiveViews in the group.
 
     scope "/" do
       pipe_through [:authenticate_user]
