@@ -230,8 +230,8 @@ equivalent named `:authenticate_admin`, which will be used by any
 regular request. 
 
 Declaring the `on_mount` on `live_session` is exactly the same as
-declaring it in each LiveView. Let's talk about which logic we typically
-execute on mount.
+declaring it in each LiveView. But it is the preferred way most of the time,
+since it prevents you from accidentally forgetting to include it.
 
 ## Events considerations
 
