@@ -114,7 +114,9 @@ build rich, real-time user experiences. We believe LiveView is built
 on top of a solid foundation that makes LiveView hard to replicate
 anywhere else:
 
-  * LiveView is built on top of the Elixir programming language, taking the most advantage of the functional programming paradigm, which provides a great model for reasoning about your code and how state changes over time.
+  * LiveView is built on top of the Elixir programming language and
+    functional programming, which provides a great model for reasoning
+    about your code and how your LiveView changes over time.
 
   * By building on top of a [scalable platform](https://dockyard.com/blog/2016/08/09/phoenix-channels-vs-rails-action-cable),
     LiveView scales well vertically (from small to large instances)
@@ -138,7 +140,7 @@ anywhere else:
 ## Browser Support
 
 All current Chrome, Safari, Firefox, and MS Edge are supported.
-IE11 support is only available with the following polyfills:
+IE11 support is available with the following polyfills:
 
 ```shell
 $ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill formdata-polyfill child-replace-with-polyfill classlist-polyfill new-event-polyfill @webcomponents/template shim-keyboard-event-key core-js
