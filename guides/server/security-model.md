@@ -219,7 +219,7 @@ described, one might implement this:
 
     def handle_event("delete_project", %{"project_id" => project_id}, socket) do
       Project.delete!(socket.assigns.current_user, project_id)
-      {:noreply, update(socket, :projects, &Enum.reject(&1, fn p -> p.id == project_id end)}
+      {:noreply, update(socket, :projects, &Enum.reject(&1, fn p -> p.id == project_id end))}
     end
 
     defp load_projects(socket) do
