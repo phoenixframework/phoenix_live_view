@@ -862,8 +862,6 @@ defmodule Phoenix.LiveView.Engine do
   defp to_component_keys(:all), do: :all
   defp to_component_keys(map), do: Map.keys(map)
 
-  defp vars_changed_vars(:all), do: []
-
   defp vars_changed_vars(keys) do
     # when we calculate the changed map for components, we need to
     # also pass the variables for vars_changed;
