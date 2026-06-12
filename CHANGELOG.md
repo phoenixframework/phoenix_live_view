@@ -115,6 +115,12 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.1 (2026-06-11)
+
+### Bug fixes
+
+* Fix stale events from the previous LiveView being sent to the new LiveView after a live redirect ([#4291](https://github.com/phoenixframework/phoenix_live_view/pull/4291))
+
 ## v1.2.0 (2026-06-10) 🚀
 
 ### Enhancements
