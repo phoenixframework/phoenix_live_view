@@ -113,7 +113,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.navigate("/home")) ==
-               ~S<[["navigate",{"href":"/home","replace":false}]]>
+               ~S<[[&quot;navigate&quot;,{&quot;href&quot;:&quot;/home&quot;,&quot;replace&quot;:false}]]>
     end
   end
 
@@ -154,7 +154,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.patch("/home")) ==
-               ~S<[["patch",{"href":"/home","replace":false}]]>
+               ~S<[[&quot;patch&quot;,{&quot;href&quot;:&quot;/home&quot;,&quot;replace&quot;:false}]]>
     end
   end
 
