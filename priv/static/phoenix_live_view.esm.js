@@ -642,7 +642,9 @@ var DOM = {
         if (this.once(el, "bind-debounce")) {
           el.addEventListener("blur", () => {
             clearTimeout(this.private(el, THROTTLED));
-            this.triggerCycle(el, DEBOUNCE_TRIGGER);
+            if (asyncFilter()) {
+              this.triggerCycle(el, DEBOUNCE_TRIGGER);
+            }
           });
         }
     }
@@ -2796,7 +2798,7 @@ var DOMPatch = class {
   transitionPendingRemoves() {
     const { pendingRemoves, liveSocket } = this;
     if (pendingRemoves.length > 0) {
-      liveSocket.transitionRemoves(pendingRemoves, () => {
+      liveSocket.transitionRemoves(pendingRemoves, this.view, () => {
         pendingRemoves.forEach((el) => {
           const child = dom_default.firstPhxChild(el);
           if (child) {
@@ -4424,6 +4426,7 @@ var View = class _View {
     if (container) {
       const [tag, attrs] = container;
       this.el = dom_default.replaceRootContainer(this.el, tag, attrs);
+      dom_default.putPrivate(this.el, "view", this);
     }
     this.childJoins = 0;
     this.joinPending = true;
@@ -4510,6 +4513,7 @@ var View = class _View {
       throw new Error("unable to find root element for view");
     }
     this.el = el;
+    dom_default.putPrivate(this.el, "view", this);
     this.el.setAttribute(PHX_ROOT_ID, this.root.id);
   }
   // this is invoked for dead and live views, so we must filter by
@@ -4698,6 +4702,7 @@ var View = class _View {
     rootEl.setAttribute(PHX_SESSION, this.getSession());
     rootEl.setAttribute(PHX_STATIC, this.getStatic() ?? "");
     this.parent && rootEl.setAttribute(PHX_PARENT_ID, this.parent.id);
+    dom_default.putPrivate(rootEl, "view", this);
     const formsToRecover = (
       // we go over all forms in the new DOM; because this is only the HTML for the current
       // view, we can be sure that all forms are owned by this view:
@@ -6413,11 +6418,12 @@ var LiveSocket = class {
       `[${this.binding("remove")}]`
     ).filter((el) => !dom_default.isChildOfAny(el, stickies));
     const newMainEl = dom_default.cloneNode(this.outgoingMainEl, "");
-    this.main.showLoader(this.loaderTimeout);
-    this.main.destroy();
+    const oldMainView = this.main;
+    oldMainView.showLoader(this.loaderTimeout);
+    oldMainView.destroy();
     this.main = this.newRootView(newMainEl, flash, liveReferer);
     this.main.setRedirect(href);
-    this.transitionRemoves(removeEls);
+    this.transitionRemoves(removeEls, oldMainView);
     this.main.join((joinCount, onDone) => {
       if (joinCount === 1 && this.commitPendingLink(linkRef)) {
         this.requestDOMUpdate(() => {
@@ -6432,7 +6438,7 @@ var LiveSocket = class {
     });
   }
   /** @internal */
-  transitionRemoves(elements, callback) {
+  transitionRemoves(elements, view, callback) {
     const removeAttr = this.binding("remove");
     const silenceEvents = (e) => {
       e.preventDefault();
@@ -6442,7 +6448,8 @@ var LiveSocket = class {
       for (const event of this.boundEventNames) {
         el.addEventListener(event, silenceEvents, true);
       }
-      this.execJS(el, el.getAttribute(removeAttr), "remove");
+      const e = new CustomEvent("phx:exec", { detail: { sourceElement: el } });
+      js_default.exec(e, "remove", el.getAttribute(removeAttr), view, el);
     });
     this.requestDOMUpdate(() => {
       elements.forEach((el) => {
@@ -6468,7 +6475,7 @@ var LiveSocket = class {
     let view;
     const viewEl = dom_default.closestViewEl(childEl);
     if (viewEl) {
-      view = this.getViewByEl(viewEl);
+      view = dom_default.private(viewEl, "view");
     } else {
       if (!childEl.isConnected) {
         return null;
