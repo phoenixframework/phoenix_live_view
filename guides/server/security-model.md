@@ -174,11 +174,11 @@ The `on_mount` hook allows you to encapsulate this logic and execute it on every
       end
     end
 
-We also make of use [`assign_new/3`](`Phoenix.Component.assign_new/3`). This is a
-convenience to avoid fetching the `current_user` multiple times across
+We also make of use [`assign_new/3`](`Phoenix.Component.assign_new/3`), a convenient function
+that avoids fetching the `current_user` multiple times across
 parent-child LiveViews.
 
-Now we can use the hook whenever relevant. One option is to specify
+Now we can use the `on_mount` hook whenever relevant. One option is to specify
 the hook in your router under `live_session`:
 
     live_session :default, on_mount: MyAppWeb.UserLiveAuth do
@@ -206,11 +206,12 @@ to run it on all LiveViews by default:
       end
     end
 
-## Events considerations
+## Event considerations
 
-Every time the user performs an action on your system, the server should verify if the user
+Every time a user performs an action on your system, the server should verify if said user
 is authorized to do so, regardless if using LiveViews or not. For example,
 imagine a user may see all projects in a web application, but they may not delete any of them. 
+
 At the UI level, you handle this accordingly by not showing the delete button 
 in the projects listing, but a savvy user can directly talk to the server 
 and request a deletion anyway. For this reason, **you must always verify permissions on the server**.
