@@ -16,8 +16,8 @@ resource or feature in the system.
 
 In a regular web application, once a user is authenticated, either by
 entering their email and password or by using a third-party service (such as
-Google, Twitter, or Facebook), a token identifying the user is stored in the
-session, which is a Cookie (a key-value pair) stored in the user's browser.
+Google, Twitter, or Facebook), a token identifying the user is stored as a
+session cookie (a key-value pair) in the user's browser.
 
 Every time there is a request, we read the value from the session, and, if
 valid, we fetch the user stored in the session from the database. The session
