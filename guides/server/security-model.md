@@ -54,7 +54,7 @@ The primary mechanism for grouping LiveViews is via the
 `Phoenix.LiveView.Router.live_session/2`. LiveView will then ensure
 that navigation events within the same `live_session` skip the regular
 HTTP requests without going through the plug pipeline. Events across
-live sessions will go through the router.
+live sessions will necessarily go through the router.
 
 For example, imagine you need to authenticate two distinct types of users.
 Your regular users login via email and password, and you have an admin
@@ -79,8 +79,8 @@ for each authentication flow:
       end
     end
 
-Now every time you try to navigate to an admin panel, and out of it,
-a regular page navigation will happen and a brand new live connection
+Now every time you try to navigate to and out of an admin panel,
+a regular page navigation will happen and a brand new socket connection
 will be established.
 
 It is worth remembering that LiveViews require their own security checks, so we
@@ -89,7 +89,7 @@ LiveViews should run their own checks on the
 [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback (or using
 `Phoenix.LiveView.on_mount/1` hooks).
 
-For this purpose, you can combine `live_session` with `on_mount`, as well
+For this purpose, you can combine `live_session/2` with `on_mount/3`, as well
 as other options, such as the `:root_layout`. Instead of declaring `on_mount`
 on every LiveView, you can declare it at the router level and it will enforce
 it on all LiveViews under it:
@@ -128,7 +128,7 @@ execute on mount.
 
 ## Mounting considerations
 
-The [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback is invoked both on
+As previously mentioned, the [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback is invoked both on
 the initial HTTP mount and when LiveView is connected. Therefore, any
 authorization performed during mount will cover all scenarios.
 
@@ -174,7 +174,7 @@ The `on_mount` hook allows you to encapsulate this logic and execute it on every
       end
     end
 
-We use [`assign_new/3`](`Phoenix.Component.assign_new/3`). This is a
+We also make of use [`assign_new/3`](`Phoenix.Component.assign_new/3`). This is a
 convenience to avoid fetching the `current_user` multiple times across
 parent-child LiveViews.
 
@@ -208,19 +208,18 @@ to run it on all LiveViews by default:
 
 ## Events considerations
 
-Every time the user performs an action on your system, you should verify if the user
-is authorized to do so, regardless if you are using LiveViews or not. For example,
-imagine a user can see all projects in a web application, but they may not have
-permission to delete any of them. At the UI level, you handle this accordingly
-by not showing the delete button in the projects listing, but a savvy user can
-directly talk to the server and request a deletion anyway. For this reason, **you
-must always verify permissions on the server**.
+Every time the user performs an action on your system, the server should verify if the user
+is authorized to do so, regardless if using LiveViews or not. For example,
+imagine a user may see all projects in a web application, but they may not delete any of them. 
+At the UI level, you handle this accordingly by not showing the delete button 
+in the projects listing, but a savvy user can directly talk to the server 
+and request a deletion anyway. For this reason, **you must always verify permissions on the server**.
 
 In LiveView, most actions are handled by the
 [`handle_event/3`](`c:Phoenix.LiveView.handle_event/3`) callback (or
-`c:Phoenix.LiveComponent.handle_event/3` in components). Therefore, you
+`c:Phoenix.LiveComponent.handle_event/3` in components). Therefore, you should
 typically authorize the user within those callbacks. In the scenario just
-described, one might implement this:
+described above, one might implement this:
 
     on_mount MyAppWeb.UserLiveAuth
 
@@ -239,7 +238,7 @@ described, one might implement this:
     end
 
 First, we used `on_mount` to authenticate the user based on the data stored in
-the session. Then we load all projects based on the authenticated user and their
+the session. Second, we load all projects based on the authenticated user and their
 authorized scope. Now, whenever there is a request to delete a project, we still
 pass the current scope as argument to the `Project` context, so it verifies if
 the user is allowed to delete it or not. In case it cannot delete, it is fine to
@@ -256,10 +255,10 @@ specifically to the `params` passed to the
 the `payload` passed to [`handle_event/3`](`c:Phoenix.LiveView.handle_event/3`)
 (or `c:Phoenix.LiveComponent.handle_event/3` in components).
 
-Because LiveView applications process UI interactions over a persistent
-connection, it's easy to forget that the client can manipulate the data sent to
+Since a LiveView application processes UI interactions over a persistent
+connection, it is easy to forget that the client can manipulate data sent to
 the server. An attacker can use browser developer tools or custom scripts to
-send any payload to your LiveView, bypassing your UI restrictions entirely. To
+send any payload through the socket, bypassing your UI restrictions entirely. To
 follow guidelines from organizations like the [Erlang Ecosystem Foundation
 (EEF)](https://security.erlef.org/) and OWASP, you must be defensive when
 handling these parameters.
@@ -271,24 +270,24 @@ for examples and how to mitigate them.
 
 ## Disconnecting all instances of a live user
 
-So far, the security model between LiveView and regular web applications have
-been remarkably similar. After all, we must always authenticate and authorize
+So far, the security model for both LiveView and regular web applications have
+been remarkably similar. Overall, we must always authenticate and authorize
 every user. The main difference between them happens on logout or when revoking
 access.
 
-Because LiveView is a permanent connection between client and server, if a user
-is logged out, or removed from the system, this change won't reflect on the
-LiveView part unless the user reloads the page.
+However, because LiveView is a permanent connection between client and server, 
+even when a user is logged out or removed from the system, 
+this change won't reflect on the LiveView part unless the user reloads the page.
 
 Luckily, it is possible to address this by setting a `live_socket_id` in the
-session. For example, when logging in a user, you could do:
+session. When logging in a user, you could do:
 
     conn
     |> put_session(:current_user_id, user.id)
     |> put_session(:live_socket_id, "users_socket:#{user.id}")
 
-Now all LiveView sockets will be identified and listen to the given `live_socket_id`.
-You can then disconnect all live users identified by said ID by broadcasting on
+Now, all LiveView sockets will be identified and listen to the given `live_socket_id`.
+You can then disconnect all live sockets identified by said user ID by broadcasting on
 the topic:
 
     MyAppWeb.Endpoint.broadcast("users_socket:#{user.id}", "disconnect", %{})
@@ -318,16 +317,16 @@ The important concepts to keep in mind are:
     different *authentication* requirements or whenever you need to
     change root layouts.
 
-  * Your authentication logic (logging the user in) is typically part of
+  * Your authentication logic should typically be part of
     your regular web request pipeline and it is shared by both controllers
     and LiveViews. Authentication then stores the user information in the
     session. Regular web requests use `plug` to read the user from a session,
     LiveViews read it inside an `on_mount` callback. This is typically a
     single database lookup on both cases. Running `mix phx.gen.auth` sets
-    up all that is necessary.
+    up all the initial necessary modules and logic.
 
   * Once authenticated, your authorization logic in LiveViews will happen both
-    during `mount`/`handle_params` (such as "can the user see this page?") and
+    during `mount/3`/`handle_params/3` (such as "can the user see this page?") and
     during events (like "can the user delete this item?"). Those rules are often
     domain/business specific, and typically happen in your context modules
     through the use of scopes. This is also a requirement for regular requests
