@@ -10,11 +10,9 @@ This means that any session validation must happen both in the HTTP request
 ## Authentication vs authorization
 
 When speaking about security, there are two terms commonly used:
-authentication and authorization. 
-
-**Authentication** is about identifying a user. 
-
-**Authorization** is about telling whether a user has access to a certain resource or feature in the system.
+authentication and authorization. **Authentication** is about identifying
+a user. **Authorization** is about telling if a user has access to a certain
+resource or feature in the system.
 
 In a regular web application, once a user is authenticated, either by
 entering their email and password or by using a third-party service (such as
