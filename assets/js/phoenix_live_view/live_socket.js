@@ -472,12 +472,15 @@ export default class LiveSocket {
     ).filter((el) => !DOM.isChildOfAny(el, stickies));
 
     const newMainEl = DOM.cloneNode(this.outgoingMainEl, "");
-    this.main.showLoader(this.loaderTimeout);
-    this.main.destroy();
+    const oldMainView = this.main;
+    oldMainView.showLoader(this.loaderTimeout);
+    oldMainView.destroy();
 
     this.main = this.newRootView(newMainEl, flash, liveReferer);
     this.main.setRedirect(href);
-    this.transitionRemoves(removeEls);
+    // the old view is destroyed at this point; pass it explicitly so the
+    // phx-remove commands execute in the context of the outgoing view
+    this.transitionRemoves(removeEls, oldMainView);
     this.main.join((joinCount, onDone) => {
       if (joinCount === 1 && this.commitPendingLink(linkRef)) {
         this.requestDOMUpdate(() => {
@@ -493,7 +496,7 @@ export default class LiveSocket {
     });
   }
 
-  transitionRemoves(elements, callback) {
+  transitionRemoves(elements, view, callback) {
     const removeAttr = this.binding("remove");
     const silenceEvents = (e) => {
       e.preventDefault();
@@ -505,7 +508,8 @@ export default class LiveSocket {
       for (const event of this.boundEventNames) {
         el.addEventListener(event, silenceEvents, true);
       }
-      this.execJS(el, el.getAttribute(removeAttr), "remove");
+      const e = new CustomEvent("phx:exec", { detail: { sourceElement: el } });
+      JS.exec(e, "remove", el.getAttribute(removeAttr), view, el);
     });
     // remove the silenced listeners when transitions are done incase the element is re-used
     // and call caller's callback as soon as we are done with transitions
@@ -533,9 +537,12 @@ export default class LiveSocket {
     let view;
     const viewEl = DOM.closestViewEl(childEl);
     if (viewEl) {
-      // it can happen that we find a view that is already destroyed;
-      // in that case we DO NOT want to fallback to the main element
-      view = this.getViewByEl(viewEl);
+      // resolve the view by element identity instead of id; during live
+      // navigation the new view is registered under the same id while the
+      // old DOM is still attached, and events from the old DOM must not be
+      // routed to the new view. A destroyed view removes its element binding,
+      // in which case we DO NOT want to fallback to the main element
+      view = DOM.private(viewEl, "view");
     } else {
       if (!childEl.isConnected) {
         // if the element is not part of the DOM any more

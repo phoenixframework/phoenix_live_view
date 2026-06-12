@@ -711,7 +711,7 @@ export default class DOMPatch {
   transitionPendingRemoves() {
     const { pendingRemoves, liveSocket } = this;
     if (pendingRemoves.length > 0) {
-      liveSocket.transitionRemoves(pendingRemoves, () => {
+      liveSocket.transitionRemoves(pendingRemoves, this.view, () => {
         pendingRemoves.forEach((el) => {
           const child = DOM.firstPhxChild(el);
           if (child) {

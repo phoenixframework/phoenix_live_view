@@ -334,11 +334,9 @@ describe("pushEvent replies", () => {
       {
         s: [
           `
-      <div id="${view.id}" data-phx-session="abc123" data-phx-root-id="${view.id}">
-        <div id="gateway" phx-hook="Gateway">
-          <div data-foo="bar"></div>
-          <div data-foo="baz"></div>
-        </div>
+      <div id="gateway" phx-hook="Gateway">
+        <div data-foo="bar"></div>
+        <div data-foo="baz"></div>
       </div>
     `,
         ],

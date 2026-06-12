@@ -370,7 +370,9 @@ const DOM = {
             // we also clear the throttle timeout to prevent the callback
             // from being called again after the timeout fires
             clearTimeout(this.private(el, THROTTLED));
-            this.triggerCycle(el, DEBOUNCE_TRIGGER);
+            if (asyncFilter()) {
+              this.triggerCycle(el, DEBOUNCE_TRIGGER);
+            }
           });
         }
     }
