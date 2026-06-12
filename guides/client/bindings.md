@@ -1,19 +1,24 @@
 # Bindings
 
-Phoenix supports DOM element bindings for client-server interaction. For
+Phoenix LiveView supports DOM element bindings for client-server interaction. For
 example, to react to a click on a button, you would render the element:
 
 ```heex
 <button phx-click="inc_temperature">+</button>
 ```
 
-Then on the server, all LiveView bindings are handled with the `handle_event`
-callback, for example:
+Under the hood, in LiveView, when a client makes use of any binding, it will 
+form a socket message and send it through the socket to the server.
+In the example above, by clicking the element with a `phx-click` binding, 
+this message, alongside all other LiveView bindings, are dealt with by the server 
+by a `handle_event` callback declared on the LiveView:
 
     def handle_event("inc_temperature", _value, socket) do
       {:ok, new_temp} = Thermostat.inc_temperature(socket.assigns.id)
       {:noreply, assign(socket, :temperature, new_temp)}
     end
+
+Note: If a callback is not explicitly defined and therefore a message goes unhandled, the server will raise a FunctionClauseError exception and reload the page.
 
 | Binding                | Attributes |
 |------------------------|------------|
@@ -33,8 +38,8 @@ If you need to trigger commands actions via JavaScript, see [JavaScript interope
 
 ## Click Events
 
-The `phx-click` binding is used to send click events to the server.
-When any client event, such as a `phx-click` click is pushed, the value
+As previously stated, the `phx-click` binding is used to send click events to the server.
+When any client event, such as a `phx-click` click is pushed, the value sent via params
 sent to the server will be chosen with the following priority:
 
   * The `:value` specified in `Phoenix.LiveView.JS.push/3`, such as:
