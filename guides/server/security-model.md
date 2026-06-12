@@ -19,9 +19,9 @@ entering their email and password or by using a third-party service (such as
 Google, Twitter, or Facebook), a token identifying the user is stored in the
 session, which is a Cookie (a key-value pair) stored in the user's browser.
 
-In every request, we read the value from the session, and fetch 
-the user stored in the session from the database. The session
-is automatically validated by Phoenix and tools like [`mix phx.gen.auth`](https://phoenix.hexdocs.pm/mix_phx_gen_auth.html) can
+Every time there is a request, we read the value from the session, and, if
+valid, we fetch the user stored in the session from the database. The session
+is automatically validated by Phoenix and tools like [`mix phx.gen.auth`](https://phoenix.hexdocs.pm/mix_phx_gen_auth.html). can
 generate the building blocks of an authentication system for you.
 
 This tool will generate the initial building blocks of an authentication system for you.
