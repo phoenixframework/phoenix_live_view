@@ -1089,6 +1089,58 @@ defmodule Phoenix.Component do
   end
 
   @doc ~S'''
+  Converts a quoted template built with `quoted/1` into a string, with all
+  `unquote` fragments replaced by the values that were spliced in.
+
+  The result is formatted with `Phoenix.LiveView.HTMLFormatter`. This is
+  mostly useful to document components generated through macros, showing
+  the final template with all customizations applied:
+
+      defmacro build_carousel(opts) do
+        name = Keyword.fetch!(opts, :name)
+        base_class = Keyword.get(opts, :base_class, "carousel")
+
+        template =
+          Phoenix.Component.quoted(~H"""
+          <div class={unquote(base_class)} id={@id}></div>
+          """)
+
+        quote do
+          @doc """
+          Renders a carousel.
+
+          ```heex
+          #{unquote(Phoenix.Component.quoted_to_string(template))}
+          ```
+          """
+          attr :id, :string, required: true
+
+          def unquote(name)(var!(assigns)) do
+            unquote(template)
+          end
+        end
+      end
+
+  Spliced values are rendered as if they had been written in the template
+  directly, so for `build_carousel(name: :gallery)` the documentation above
+  shows `<div class="carousel" id={@id}></div>`.
+  '''
+  def quoted_to_string(quoted_template)
+
+  def quoted_to_string(
+        {:__block__, _, [_require, {{:., _, [_, :__compile_quoted__]}, _, [escaped]}]}
+      ) do
+    {%Phoenix.Component.QuotedTemplate{} = template, _binding} = Code.eval_quoted(escaped)
+    Phoenix.Component.QuotedTemplate.to_source(template)
+  end
+
+  def quoted_to_string(other) do
+    raise ArgumentError,
+          "quoted_to_string/1 expects a quoted template built by " <>
+            "Phoenix.Component.quoted/1 as argument, got: #{Macro.to_string(other)}"
+  end
+
+  @doc ~S'''
   Filters the assigns as a list of keywords for use in dynamic tag attributes.
 
   One should prefer to use declarative assigns and `:global` attributes

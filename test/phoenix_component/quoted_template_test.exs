@@ -88,6 +88,42 @@ defmodule Phoenix.Component.QuotedTemplateTest do
         def unquote(name)(var!(assigns)), do: unquote(template)
       end
     end
+
+    defmacro tag_source(class) do
+      template =
+        Phoenix.Component.quoted(~H"""
+        <div class={unquote(class)} id={@id}>{@inner}</div>
+        """)
+
+      Phoenix.Component.quoted_to_string(template)
+    end
+
+    defmacro block_source(value) do
+      template =
+        Phoenix.Component.quoted(~H"""
+        <%= if @show do %>
+          <div data-value={unquote(value)}><.inner /></div>
+        <% else %>
+          <img src={@src} />
+        <% end %>
+        """)
+
+      Phoenix.Component.quoted_to_string(template)
+    end
+
+    defmacro hook_source(hook_name) do
+      template =
+        Phoenix.Component.quoted(~H"""
+        <div id={@id} phx-hook={unquote(hook_name)}></div>
+        <script :type={Phoenix.LiveView.ColocatedHook} name={unquote(hook_name)}>
+          export default {
+            mounted() {},
+          };
+        </script>
+        """)
+
+      Phoenix.Component.quoted_to_string(template)
+    end
   end
 
   defmodule Tags do
@@ -96,6 +132,14 @@ defmodule Phoenix.Component.QuotedTemplateTest do
 
     Builder.build_tag(name: :card, class: "card")
     Builder.build_tag(name: :badge, class: "badge")
+  end
+
+  defmodule Sources do
+    require Builder
+
+    def tag, do: Builder.tag_source("card")
+    def block, do: Builder.block_source("a > b")
+    def hook, do: Builder.hook_source(".Widget")
   end
 
   defmodule Tracked do
@@ -205,6 +249,38 @@ defmodule Phoenix.Component.QuotedTemplateTest do
     after
       :code.delete(__MODULE__.WithHook)
       :code.purge(__MODULE__.WithHook)
+    end
+  end
+
+  describe "quoted_to_string" do
+    test "renders the template with spliced values in place" do
+      assert Sources.tag() == """
+             <div class="card" id={@id}>{@inner}</div>
+             """
+    end
+
+    test "renders EEx blocks, components and void tags" do
+      assert Sources.block() == """
+             <%= if @show do %>
+               <div data-value="a > b"><.inner /></div>
+             <% else %>
+               <img src={@src} />
+             <% end %>
+             """
+    end
+
+    test "renders macro components with their content" do
+      source = Sources.hook()
+
+      assert source =~ ~s(phx-hook=".Widget")
+      assert source =~ ~s(<script :type={Phoenix.LiveView.ColocatedHook} name=".Widget">)
+      assert source =~ "mounted() {},"
+    end
+
+    test "raises when the argument is not a quoted template" do
+      assert_raise ArgumentError,
+                   ~r/expects a quoted template built by Phoenix\.Component\.quoted\/1/,
+                   fn -> Phoenix.Component.quoted_to_string({:foo, [], []}) end
     end
   end
 
