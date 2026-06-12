@@ -1,9 +1,5 @@
 # Security considerations
 
-> ### Phoenix security guide {: .tip}
-> This guide expects that you have gone through
-> [Phoenix's Security guide](https://phoenix.hexdocs.pm/security.html).
-
 LiveView begins its life-cycle as a regular HTTP request. Then a stateful
 connection is established. Both the HTTP request and the stateful connection
 receive the client data via parameters and session.
@@ -264,6 +260,11 @@ send any payload to your LiveView, bypassing your UI restrictions entirely. To
 follow guidelines from organizations like the [Erlang Ecosystem Foundation
 (EEF)](https://security.erlef.org/) and OWASP, you must be defensive when
 handling these parameters.
+
+The mechanisms available to deal with untrusted data in LiveViews
+are the same as in controllers: changesets, Phoenix scopes, etc.
+We recommend reading [Phoenix's Security guide](https://phoenix.hexdocs.pm/security.html)
+for examples and how to mitigate them.
 
 ## Disconnecting all instances of a live user
 
