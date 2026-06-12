@@ -8,10 +8,7 @@ export const logError = (msg, obj) => console.error && console.error(msg, obj);
 // target over the existing socket. A full URL to a different origin (or a
 // non-http(s) scheme, which resolves to an opaque "null" origin) is a
 // programming error, so we fail loudly instead of attempting a broken join.
-export const ensureSameOrigin = (
-  href,
-  kind,
-) => {
+export const ensureSameOrigin = (href, kind) => {
   let url;
   try {
     url = new URL(href, window.location.href);
