@@ -211,7 +211,7 @@ defmodule Phoenix.LiveView.JS do
 
   defstruct ops: []
 
-  @opaque internal :: []
+  @opaque internal :: list()
   @type t :: %__MODULE__{ops: internal}
 
   @default_transition_time 200
@@ -1278,13 +1278,8 @@ defmodule Phoenix.LiveView.JS do
   def concat(%JS{ops: first}, %JS{ops: second}), do: %JS{ops: first ++ second}
 
   defp put_op(%JS{ops: ops} = js, kind, args) do
-    args = drop_nil_values(args)
-    struct!(js, ops: ops ++ [[kind, args]])
-  end
-
-  defp drop_nil_values(args) when is_list(args) do
-    Enum.reject(args, fn {_k, v} -> is_nil(v) end)
-    |> Map.new()
+    args = for {k, v} <- args, v != nil, into: %{}, do: {k, v}
+    %{js | ops: ops ++ [[kind, args]]}
   end
 
   defp class_names(names) do
