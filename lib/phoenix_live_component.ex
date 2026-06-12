@@ -155,7 +155,7 @@ defmodule Phoenix.LiveComponent do
   >
   > The event `payload` contains untrusted data from the client. You must
   > authorize and validate this data before using it to fetch or modify
-  > resources. See the ["Security considerations" guide](security-model.html)
+  > resources. See the ["Security considerations" guide](security-model.md#never-trust-user-input-params-and-payloads)
   > for more information.
 
   Any valid query selector for `phx-target` is supported, provided that the
