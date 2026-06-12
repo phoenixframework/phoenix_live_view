@@ -226,7 +226,6 @@ An `on_mount` module can be called in three ways:
       end
     end
 
-
 Each live route under the `:default` `live_session` will invoke
 the `MyAppWeb.UserLiveAuth` hook on mount. We will also pipe regular web requests through `:authenticate_user`, which must execute the same checks as `MyAppWeb.UserLiveAuth`.
 
@@ -239,10 +238,21 @@ Declaring the `on_mount` on `live_session` is exactly the same as
 declaring it in each LiveView. But it is the preferred way most of the time,
 since it prevents you from accidentally forgetting to include it.
 
+In this example, it is possible to see one can ultimately combine `live_session` with `on_mount`, 
+as well as with other strategies, such as the `:root_layout`. 
+
+    scope "/admin" do
+      pipe_through [:authenticate_admin, :root_layout]
+
+      live_session :admin, on_mount: MyAppWeb.AdminLiveAuth do
+        live ...
+      end
+    end
+
 ## Events considerations
 
-Every time the user performs an action on your system, you should verify if the user
-is authorized to do so, regardless if you are using LiveViews or not. For example,
+Every time the user performs an action on your system, one should verify if the user
+is authorized to do so, regardless if using LiveViews or not. For example,
 imagine a user can see all projects in a web application, but they may not have
 permission to delete any of them. At the UI level, you handle this accordingly
 by not showing the delete button in the projects listing, but a savvy user can
