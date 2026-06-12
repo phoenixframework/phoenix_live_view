@@ -24,7 +24,7 @@ valid, we fetch the user stored in the session from the database. The session
 is automatically validated by Phoenix and tools like [`mix phx.gen.auth`](https://phoenix.hexdocs.pm/mix_phx_gen_auth.html). can
 generate the building blocks of an authentication system for you.
 
-This tool will generate the initial building blocks of an authentication system for you.
+This CLI tool will generate the initial building blocks of an authentication system for you.
 
 Once the user is authenticated, they may perform many actions on the page,
 and some of those actions may require specific permissions. This is called
