@@ -1,67 +1,62 @@
 # Security considerations
 
-LiveView begins its life-cycle as a regular HTTP request. Afterwards, a second stateful connection is established. 
+LiveView begins its life-cycle as a regular HTTP request. 
+Afterwards, a stateful connection is established. 
 
-Both the HTTP request and the stateful connection receive the client data via parameters and session. This means that any session validation must happen both in the HTTP request (plug pipeline) and the stateful connection (LiveView mount).
+Both the HTTP request and the stateful connection receive the client data via parameters and session, 
+which means that any session validation must happen both in the HTTP request
+(plug pipeline) and the stateful connection (LiveView mount).
 
 ## Authentication vs authorization
 
 When speaking about security, there are two terms commonly used:
 authentication and authorization. 
 
-**Authentication** is about verifying the identity of a user. 
+**Authentication** is about identifying a user. 
 
-In a regular web application, once a user is authenticated, 
-either by entering their email and password, or by using a third-party service such as
-Google, Twitter, or Facebook, a token identifying the user is stored in the
-session, which is a cookie (a key-value pair) stored in the user's browser.
+**Authorization** is about telling whether a user has access to a certain resource or feature in the system.
 
-Every time there is a request, we read the value from the session, and, if
-valid, we fetch the user stored in the session from the database. The session
-is automatically validated by Phoenix and tools like `mix phx.gen.auth` can
-generate the building blocks of an authentication system for you.
+In a regular web application, once a user is authenticated, either by
+entering their email and password or by using a third-party service (such as
+Google, Twitter, or Facebook), a token identifying the user is stored in the
+session, which is a Cookie (a key-value pair) stored in the user's browser.
 
-**Authorization** is about telling whether or not an already authenticated user 
-*should be allowed access* to a certain resource or feature in the system.
+In every request, we validate the cookie and extract its value, 
+and fetch the user from the database by using the token stored in the session. 
+The session is automatically validated by Phoenix when building the project from scratch
+by using tools like [`mix phx.gen.auth`](https://phoenix.hexdocs.pm/mix_phx_gen_auth.html). 
 
-Once a user is authenticated, they may perform any number of actions on a page,
-and some of those actions may require specific permissions. 
-The specific rules for authorization often change per application.
+This tool will generate the initial building blocks of an authentication system for you.
 
-Overall, we tend to perform authentication and authorization checks 
-on every request in a regular web application. 
-Given that LiveViews start as a regular HTTP request,
+Once the user is authenticated, they may perform many actions on the page,
+and some of those actions may require specific permissions. This is called
+authorization and the specific rules often change per application.
+
+In a regular web application, we perform authentication and authorization
+checks on every request. Since a LiveView starts as a regular HTTP request,
 they share the authentication logic with regular requests through plugs.
 The request starts in your endpoint, which then invokes the router.
-Plugs are used to ensure the user is authenticated and stores the
+
+Plugs are often used to ensure the user is authenticated and stores the
 relevant information in the session.
 
 Once the user is authenticated, we typically validate the sessions on
 the [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback.
 
-Once the user is authenticated, we typically suggest to developers 
-to validate sessions in the [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback. 
-We explain how to encapsulate this into shared logic in the next section.
-
-Authorization rules should generally happen on callbacks:
-1. [`mount/3`](`c:Phoenix.LiveView.mount/3`). On this level, it solves issues like:
-  -> (`Is the user allowed to see this page?`)
-  -> (`Is this user authorized to access with this org?`)
-
-2. [`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`). On this level, it solves a bit more fine-grained issues like:
-  -> (is the user allowed to navigate here using these *params*?) 
-  -> (is the user allowed to access this resource?) 
-
-3. `c:Phoenix.LiveView.handle_event/3` or `c:Phoenix.LiveComponent.handle_event/3`.  On this level, it solves much more fine-grained issues like:
-    -> (is the user allowed to delete this item?).
+Authorization rules generally happen on
+[`mount/3`](`c:Phoenix.LiveView.mount/3`) (for instance, is the user allowed to
+see this page?), [`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`) (is
+the user allowed to navigate here?) and also on
+`c:Phoenix.LiveView.handle_event/3` or `c:Phoenix.LiveComponent.handle_event/3`
+(is the user allowed to delete this item?).
 
 ## `live_session`
 
-The primary mechanism used for validating authorization is grouping LiveViews 
-within a single `live_session`. This is done in the router configuration using
-`Phoenix.LiveView.Router.live_session/2`. Then, LiveView will ensure that navigation
-events within the same `live_session` skip the regular initial
-HTTP requests without going through the plug pipeline. Events across live sessions will go through the router.
+The primary mechanism for grouping LiveViews is via the
+`Phoenix.LiveView.Router.live_session/2`. LiveView will then ensure
+that navigation events within the same `live_session` skip the regular
+HTTP requests without going through the plug pipeline. Events across
+live sessions will go through the router.
 
 For example, imagine you need to authenticate two distinct types of users.
 Your regular users login via email and password, and you have an admin
@@ -86,26 +81,66 @@ for each authentication flow:
       end
     end
 
-Now, every time you try to navigate into and out of an admin panel,
-a regular page navigation will happen and a brand new socket connection
+Now every time you try to navigate to an admin panel, and out of it,
+a regular page navigation will happen and a brand new live connection
 will be established.
 
 It is worth remembering that LiveViews require their own security checks, so we
-use `pipe_through` above to protect the regular routes (get, post, etc.) 
-and LiveViews run their own checks in the `mount` callback or by using `Phoenix.LiveView.on_mount/1` hooks.
+use `pipe_through` above to protect the regular routes (get, post, etc.) and the
+LiveViews should run their own checks on the
+[`mount/3`](`c:Phoenix.LiveView.mount/3`) callback (or using
+`Phoenix.LiveView.on_mount/1` hooks).
 
-Since we group LiveViews into `live_session`s, this is also the perfect place to define shared security checks. Let's look at the available strategies next.
+For this purpose, you can combine `live_session` with `on_mount`, as well
+as other options, such as the `:root_layout`. Instead of declaring `on_mount`
+on every LiveView, you can declare it at the router level and it will enforce
+it on all LiveViews under it:
 
-## Strategies for validating authorization
+    scope "/" do
+      pipe_through [:authenticate_user]
 
-Remember that the [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback is invoked both on the initial HTTP mount and when LiveView is connected. Therefore, any authorization performed during both disconnected and connected mount will cover all scenarios.
+      live_session :default, on_mount: MyAppWeb.UserLiveAuth do
+        live ...
+      end
+    end
 
-Once the user is authenticated and stored in the session, the logic to fetch the user and further authorize its account should happen inside LiveView. For example, if you have the following plugs:
+    scope "/admin" do
+      pipe_through [:authenticate_admin]
+
+      live_session :admin, on_mount: MyAppWeb.AdminLiveAuth do
+        live ...
+      end
+    end
+
+Each live route under the `:default` `live_session` will invoke
+the `MyAppWeb.UserLiveAuth` hook on mount. This module was defined
+earlier in this guide. We will also pipe regular web requests through
+`:authenticate_user`, which must execute the same checks as
+`MyAppWeb.UserLiveAuth`, but tailored to plug.
+
+Similarly, the `:admin` `live_session` has its own authentication
+flow, powered by `MyAppWeb.AdminLiveAuth`. It also defines a plug
+equivalent named `:authenticate_admin`, which will be used by any
+regular request. If there are no regular web requests defined under
+a live session, then the `pipe_through` checks are not necessary.
+
+Declaring the `on_mount` on `live_session` is exactly the same as
+declaring it in each LiveView. Let's talk about which logic we typically
+execute on mount.
+
+## Mounting considerations
+
+The [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback is invoked both on
+the initial HTTP mount and when LiveView is connected. Therefore, any
+authorization performed during mount will cover all scenarios.
+
+Once the user is authenticated and stored in the session, the logic to fetch the user and further authorize its account needs to happen inside LiveView. For example, if you have the following plugs:
 
     plug :ensure_user_authenticated
     plug :ensure_user_confirmed
 
-Then the [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback of your LiveView should also execute those same verifications:
+Then the [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback of your LiveView
+should execute those same verifications:
 
     def mount(_params, %{"user_id" => user_id} = _session, socket) do
       socket = assign(socket, current_user: Accounts.get_user!(user_id))
@@ -120,10 +155,7 @@ Then the [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback of your LiveView sho
       {:ok, socket}
     end
 
-There are a number of possible strategies to encapsulate any logic to be executed in every mount.
-We will suggest some below:
-
-1. Declaring an `on_mount/1` callback in a module and using it in every module you desire to verify authorization.
+The `on_mount` hook allows you to encapsulate this logic and execute it on every mount:
 
     defmodule MyAppWeb.UserLiveAuth do
       import Phoenix.Component
@@ -144,19 +176,14 @@ We will suggest some below:
       end
     end
 
-  We use [`assign_new/3`](`Phoenix.Component.assign_new/3`) in such cases  as a convenience to avoid fetching the `current_user` multiple times across parent-child LiveViews.
+We use [`assign_new/3`](`Phoenix.Component.assign_new/3`). This is a
+convenience to avoid fetching the `current_user` multiple times across
+parent-child LiveViews.
 
-    defmodule MyAppWeb.IndexLive do
-      @moduledoc false
+Now we can use the hook whenever relevant. One option is to specify
+the hook in your router under `live_session`:
 
-      use Phoenix.LiveView
-
-      on_mount {MyAppWeb.SomeHook, :user}
-    end
-
-2. Declaring an `on_mount/1` callback in a module and specifying the hook  in your router under `live_session`:
-
-    live_session :default, **on_mount: MyAppWeb.SomeHook** do
+    live_session :default, on_mount: MyAppWeb.UserLiveAuth do
       # Your routes
     end
 
@@ -181,78 +208,10 @@ to run it on all LiveViews by default:
       end
     end
 
-An `on_mount` module can be called in three ways:
-
-1. In each LiveView it should apply to.
-
-    defmodule MyAppWeb.TestLive do
-      @moduledoc false
-      use Phoenix.LiveView
-
-      on_mount MyAppWeb.AdminLiveAuth
-    end
-
-2. Called in the `live_view` macro generated by your Phoenix project 
-(usually in the `your_project.ex` file.)
-
-    def live_view do
-      quote do
-        use Phoenix.LiveView
-
-        on_mount MyAppWeb.AdminLiveAuth
-      end
-    end
-
-    defmodule MyAppWeb.TestLive do
-      @moduledoc false
-      use MyAppWeb, :live_view
-    end
-
-3. At the `live_session` level, so it applies to all LiveViews in the group.
-
-    scope "/" do
-      pipe_through [:authenticate_user]
-
-      live_session :default, on_mount: MyAppWeb.UserLiveAuth do
-        live ...
-      end
-    end
-
-    scope "/admin" do
-      pipe_through [:authenticate_admin]
-
-      live_session :admin, on_mount: MyAppWeb.AdminLiveAuth do
-        live ...
-      end
-    end
-
-Each live route under the `:default` `live_session` will invoke
-the `MyAppWeb.UserLiveAuth` hook on mount. We will also pipe regular web requests through `:authenticate_user`, which must execute the same checks as `MyAppWeb.UserLiveAuth`.
-
-Similarly, the `:admin` `live_session` has its own authentication
-flow, powered by `MyAppWeb.AdminLiveAuth`. It also defines a plug
-equivalent named `:authenticate_admin`, which will be used by any
-regular request. 
-
-Declaring the `on_mount` on `live_session` is exactly the same as
-declaring it in each LiveView. But it is the preferred way most of the time,
-since it prevents you from accidentally forgetting to include it.
-
-In this example, it is possible to see one can ultimately combine `live_session` with `on_mount`, 
-as well as with other strategies, such as the `:root_layout`. 
-
-    scope "/admin" do
-      pipe_through [:authenticate_admin, :root_layout]
-
-      live_session :admin, on_mount: MyAppWeb.AdminLiveAuth do
-        live ...
-      end
-    end
-
 ## Events considerations
 
-Every time the user performs an action on your system, one should verify if the user
-is authorized to do so, regardless if using LiveViews or not. For example,
+Every time the user performs an action on your system, you should verify if the user
+is authorized to do so, regardless if you are using LiveViews or not. For example,
 imagine a user can see all projects in a web application, but they may not have
 permission to delete any of them. At the UI level, you handle this accordingly
 by not showing the delete button in the projects listing, but a savvy user can
