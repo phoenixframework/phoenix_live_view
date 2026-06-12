@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "1.2.0"
+  @version "1.2.1"
 
   def project do
     [
@@ -12,7 +12,7 @@ defmodule Phoenix.LiveView.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       test_options: [docs: true],
       test_coverage: [summary: [threshold: 85], ignore_modules: coverage_ignore_modules()],
-      xref: [exclude: [LazyHTML, LazyHTML.Tree]],
+      elixirc_options: [no_warn_undefined: [LazyHTML, LazyHTML.Tree]],
       package: package(),
       deps: deps(),
       aliases: aliases(),
@@ -63,7 +63,7 @@ defmodule Phoenix.LiveView.MixProject do
       {:phoenix_live_reload, "~> 1.4", only: :test},
       {:phoenix_html_helpers, "~> 1.0", only: :test},
       {:bandit, "~> 1.5", only: :e2e},
-      {:ecto, "~> 3.11", only: :e2e},
+      {:ecto, "~> 3.11", only: [:docs, :e2e]},
       {:phoenix_ecto, "~> 4.5", only: :e2e}
     ]
   end

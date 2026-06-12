@@ -257,6 +257,12 @@ defmodule Phoenix.LiveView do
       this option will override any layout previously set via
       `Phoenix.LiveView.Router.live_session/2` or on `use Phoenix.LiveView`
 
+  > #### Security Note {: .warning}
+  >
+  > The `params` argument contains untrusted data from the client. You must
+  > authorize and validate this data before using it to fetch or modify
+  > resources. See the ["Security considerations" guide](security-model.md#never-trust-user-input-params-and-payloads)
+  > for more information.
   """
   @callback mount(
               params :: unsigned_params() | :not_mounted_at_router,
@@ -302,12 +308,19 @@ defmodule Phoenix.LiveView do
   It must always return `{:noreply, socket}`, where `:noreply`
   means no additional information is sent to the client.
 
+  > #### Security Note {: .warning}
+  >
+  > The `params` argument contains untrusted data from the client. You must
+  > authorize and validate this data before using it to fetch or modify
+  > resources. See the ["Security considerations" guide](security-model.md#never-trust-user-input-params-and-payloads)
+  > for more information.
+
   > #### Note {: .warning}
   >
   > `handle_params` is only allowed on LiveViews mounted at the router,
   > as it takes the current url of the page as the second parameter.
   """
-  @callback handle_params(unsigned_params(), uri :: String.t(), socket :: Socket.t()) ::
+  @callback handle_params(params :: unsigned_params(), uri :: String.t(), socket :: Socket.t()) ::
               {:noreply, Socket.t()}
 
   @doc """
@@ -319,6 +332,13 @@ defmodule Phoenix.LiveView do
   no additional information is sent to the client, or
   `{:reply, map(), socket}`, where the given `map()` is encoded
   and sent as a reply to the client.
+
+  > #### Security Note {: .warning}
+  >
+  > The event `payload` contains untrusted data from the client. You must
+  > authorize and validate this data before using it to fetch or modify
+  > resources. See the ["Security considerations" guide](security-model.md#never-trust-user-input-params-and-payloads)
+  > for more information.
   """
   @callback handle_event(event :: binary, payload :: term(), socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, map, Socket.t()}
@@ -1378,7 +1398,7 @@ defmodule Phoenix.LiveView do
   </div>
   ```
 
-  For larger projects, you can extract this into [a hook](https://phoenix-live-view.hexdocs.pm/Phoenix.LiveView.html#on_mount/1):
+  For larger projects, you can extract this into [a hook](`Phoenix.LiveView.on_mount/1`):
 
       # MyAppWeb.CheckStaticChanged
       def on_mount(:default, _params, _session, socket) do
@@ -1586,7 +1606,7 @@ defmodule Phoenix.LiveView do
 
   > Note: This function is for server-side lifecycle callbacks.
   > For client-side hooks, see the
-  > [JS Interop guide](js-interop.html#client-hooks-via-phx-hook).
+  > [JS Interop guide](js-interop.md#client-hooks-via-phx-hook).
 
   Hooks provide a mechanism to tap into key stages of the LiveView
   lifecycle in order to bind/update assigns, intercept events,
@@ -1633,7 +1653,7 @@ defmodule Phoenix.LiveView do
 
   Hooks attached to the `:handle_event` stage are able to reply to client events
   by returning `{:halt, reply, socket}`. This is useful especially for [JavaScript
-  interoperability](js-interop.html#client-hooks-via-phx-hook) because a client hook
+  interoperability](js-interop.md#client-hooks-via-phx-hook) because a client hook
   can push an event and receive a reply.
 
   ## Sharing event handling logic
@@ -1767,7 +1787,7 @@ defmodule Phoenix.LiveView do
 
   > Note: This function is for server-side lifecycle callbacks.
   > For client-side hooks, see the
-  > [JS Interop guide](js-interop.html#client-hooks-via-phx-hook).
+  > [JS Interop guide](js-interop.md#client-hooks-via-phx-hook).
 
   If no hook is found, this function is a no-op.
 
