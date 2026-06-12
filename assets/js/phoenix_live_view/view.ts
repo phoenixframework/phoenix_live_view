@@ -408,6 +408,7 @@ export default class View {
     if (container) {
       const [tag, attrs] = container;
       this.el = DOM.replaceRootContainer(this.el, tag, attrs);
+      DOM.putPrivate(this.el, "view", this);
     }
     this.childJoins = 0;
     this.joinPending = true;
@@ -516,7 +517,10 @@ export default class View {
     if (!el) {
       throw new Error("unable to find root element for view");
     }
+    // child views are initially bound to an element inside the join HTML
+    // fragment (see onJoinComplete), so the binding must move to the real el
     this.el = el;
+    DOM.putPrivate(this.el, "view", this);
     this.el.setAttribute(PHX_ROOT_ID, this.root.id);
   }
 
@@ -746,6 +750,7 @@ export default class View {
     });
 
     // because we work with a template element, we must manually copy the attributes
+    // and bind the template root to this view,
     // otherwise the owner / target helpers don't work properly
     const rootEl = template.content.firstElementChild!;
     rootEl.id = this.id;
@@ -753,6 +758,7 @@ export default class View {
     rootEl.setAttribute(PHX_SESSION, this.getSession());
     rootEl.setAttribute(PHX_STATIC, this.getStatic() ?? "");
     this.parent && rootEl.setAttribute(PHX_PARENT_ID, this.parent.id);
+    DOM.putPrivate(rootEl, "view", this);
 
     // we go over all form elements in the new HTML for the LV
     // and look for old forms in the `formsForRecovery` object;
