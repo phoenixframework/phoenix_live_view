@@ -53,7 +53,7 @@ The primary mechanism for grouping LiveViews is via the
 `Phoenix.LiveView.Router.live_session/2`. LiveView will then ensure
 that navigation events within the same `live_session` skip the regular
 HTTP requests without going through the plug pipeline. Events across
-live sessions will necessarily go through the router.
+live sessions will always go through the router.
 
 For example, imagine you need to authenticate two distinct types of users.
 Your regular users login via email and password, and you have an admin
