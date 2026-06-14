@@ -299,7 +299,7 @@ the topic:
 Once a LiveView is disconnected, the client will attempt to reestablish
 the connection and re-execute the [`mount/3`](`c:Phoenix.LiveView.mount/3`)
 callback. In this case, if the user is no longer logged in or it no longer has
-access to the current resource, `mount/3` will fail and the user will be
+access to the current resource, [`mount/3`](`c:Phoenix.LiveView.mount/3`) will fail and the user will be
 redirected.
 
 This is the same mechanism provided by `Phoenix.Channel`s. Therefore, if
@@ -326,7 +326,7 @@ The important concepts to keep in mind are:
     up all the initial necessary modules and logic.
 
   * Once authenticated, your authorization logic in LiveViews will happen both
-    during `mount/3`/`handle_params/3` (such as "can the user see this page?") and
+    during [`mount/3`](`c:Phoenix.LiveView.mount/3`)/[`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`) (such as "can the user see this page?") and
     during events (like "can the user delete this item?"). Those rules are often
     domain/business specific, and typically happen in your context modules
     through the use of scopes. This is also a requirement for regular requests
