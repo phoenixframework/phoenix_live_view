@@ -88,7 +88,7 @@ LiveViews should run their own checks on the
 [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback (or using
 `Phoenix.LiveView.on_mount/1` hooks).
 
-For this purpose, you can combine `live_session/2` with `on_mount/3`, as well
+For this purpose, you can combine `live_session` with `on_mount`, as well
 as other options, such as the `:root_layout`. Instead of declaring `on_mount`
 on every LiveView, you can declare it at the router level and it will enforce
 it on all LiveViews under it:
