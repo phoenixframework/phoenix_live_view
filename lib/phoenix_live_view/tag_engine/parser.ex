@@ -43,6 +43,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
     skip_macro_components = Keyword.get(opts, :skip_macro_components, false)
     prune_text_after_slots = Keyword.get(opts, :prune_text_after_slots, true)
     process_buffer = Keyword.get(opts, :process_buffer)
+    quote_exprs = Keyword.get(opts, :quote_exprs, false)
 
     source
     |> tokenize(opts)
@@ -52,6 +53,8 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
       skip_macro_components: skip_macro_components,
       prune_text_after_slots: prune_text_after_slots,
       process_buffer: process_buffer,
+      quote_exprs: quote_exprs,
+      file: Keyword.get(opts, :file, "nofile"),
       directives: []
     })
   catch
@@ -290,7 +293,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
   end
 
   defp to_tree([{:body_expr, value, meta} | tokens], buffer, stack, state) do
-    buffer = process_buffer([{:body_expr, value, meta} | buffer], state)
+    buffer = process_buffer([{:body_expr, quote_expr(value, meta, state), meta} | buffer], state)
     to_tree(tokens, buffer, stack, state)
   end
 
@@ -302,6 +305,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
          state
        )
        when parent_type in [:local_component, :remote_component] do
+    attrs = quote_attrs(attrs, state)
     meta = meta |> Map.put(:special, extract_special_attrs(attrs)) |> maybe_macro_component(attrs)
 
     {tokens, buffer, state} =
@@ -337,6 +341,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
          state
        )
        when parent_type in [:local_component, :remote_component] do
+    attrs = quote_attrs(attrs, state)
     meta = meta |> Map.put(:special, extract_special_attrs(attrs)) |> maybe_macro_component(attrs)
     to_tree(tokens, [], [{:slot, name, attrs, meta, buffer} | stack], state)
   end
@@ -364,6 +369,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
   # Self-closing tag or component
   defp to_tree([{type, name, attrs, %{closing: _} = meta} | tokens], buffer, stack, state)
        when is_tag_open(type) do
+    attrs = quote_attrs(attrs, state)
     meta = meta |> Map.put(:special, extract_special_attrs(attrs)) |> maybe_macro_component(attrs)
 
     {tokens, buffer, state} =
@@ -375,6 +381,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
   # Opening tag or component
   defp to_tree([{type, name, attrs, meta} | tokens], buffer, stack, state)
        when is_tag_open(type) do
+    attrs = quote_attrs(attrs, state)
     meta = meta |> Map.put(:special, extract_special_attrs(attrs)) |> maybe_macro_component(attrs)
     to_tree(tokens, [], [{type, name, attrs, meta, buffer} | stack], state)
   end
@@ -472,7 +479,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
          state
        ) do
     block = Enum.reverse([{Enum.reverse(buffer), end_expr, end_meta} | middle_buffer])
-    to_tree(tokens, [{:eex_block, expr, block, meta} | upper_buffer], stack, state)
+    to_tree(tokens, [build_eex_block(expr, block, meta, state) | upper_buffer], stack, state)
   end
 
   defp to_tree(
@@ -482,7 +489,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
          state
        ) do
     block = [{Enum.reverse(buffer), end_expr, end_meta}]
-    to_tree(tokens, [{:eex_block, expr, block, meta} | upper_buffer], stack, state)
+    to_tree(tokens, [build_eex_block(expr, block, meta, state) | upper_buffer], stack, state)
   end
 
   # end_expr reached but unclosed tag on stack (inside a do-block)
@@ -497,7 +504,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
   end
 
   defp to_tree([{:eex, _type, expr, meta} | tokens], buffer, stack, state) do
-    buffer = process_buffer([{:eex, expr, meta} | buffer], state)
+    buffer = process_buffer([{:eex, quote_expr(expr, meta, state), meta} | buffer], state)
     to_tree(tokens, buffer, stack, state)
   end
 
@@ -547,6 +554,82 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
   @special_attrs ~w(:if :for :key)
   defp extract_special_attrs(attrs) do
     for {name, _, _} <- attrs, name in @special_attrs, do: name
+  end
+
+  # Quoted templates (see Phoenix.Component.quoted/1) parse all expressions
+  # when the template is defined, replacing the source string with
+  # {:quoted, ast}, so that escaping the tree with
+  # `Macro.escape(nodes, unquote: true)` resolves unquote fragments just
+  # like `quote do ... end` does.
+  defp quote_expr(source, _meta, %{quote_exprs: false}), do: source
+
+  defp quote_expr(source, %{line: line, column: column}, state) do
+    {:quoted, Code.string_to_quoted!(source, line: line, column: column, file: state.file)}
+  end
+
+  defp quote_attrs(attrs, %{quote_exprs: false}), do: attrs
+
+  defp quote_attrs(attrs, state) do
+    Enum.map(attrs, fn
+      # :type identifies macro components and must be resolvable
+      # from the template source alone
+      {":type", _value, _attr_meta} = attr ->
+        attr
+
+      {name, {:expr, source, expr_meta}, attr_meta} ->
+        {name, {:expr, quote_expr(source, expr_meta, state), expr_meta}, attr_meta}
+
+      attr ->
+        attr
+    end)
+  end
+
+  # EEx block expressions are reassembled textually by the compiler,
+  # so they cannot carry expressions in already-quoted form
+  defp build_eex_block(expr, block, meta, %{quote_exprs: true}) do
+    assert_no_unquote!(expr, meta)
+
+    for {_nodes, clause_expr, clause_meta} <- block do
+      assert_no_unquote!(clause_expr, clause_meta)
+    end
+
+    {:eex_block, expr, block, meta}
+  end
+
+  defp build_eex_block(expr, block, meta, _state) do
+    {:eex_block, expr, block, meta}
+  end
+
+  defp assert_no_unquote!(expr, meta) do
+    # block expressions are incomplete ("if foo do"), so we can only
+    # detect unquote fragments in them on a best-effort basis
+    case Code.string_to_quoted(expr <> " end") do
+      {:ok, ast} ->
+        if has_unquote?(ast) do
+          throw_syntax_error!(
+            "unquote is not supported inside <% %> expressions of quoted templates. " <>
+              "Use {...} interpolation instead",
+            meta
+          )
+        end
+
+      {:error, _} ->
+        :ok
+    end
+  end
+
+  defp has_unquote?(ast) do
+    {_ast, found?} =
+      Macro.prewalk(ast, false, fn
+        {unquote_call, _, [_]} = node, _acc
+        when unquote_call in [:unquote, :unquote_splicing] ->
+          {node, true}
+
+        node, acc ->
+          {node, acc}
+      end)
+
+    found?
   end
 
   # Prune leading whitespace from the next text token (used after slots)
@@ -600,6 +683,23 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
 
   defp maybe_process_macro_component(tree_node, tokens, buffer, state)
        when is_macro_component(tree_node) and not skip_macro_components(state) do
+    case run_macro_component(tree_node, state) do
+      {_new_node, _module, directives} when directives != [] and buffer != [] ->
+        throw_directive_position_error!(tree_node, state)
+
+      {{:text, "", _}, _module, directives} ->
+        {strip_text(tokens), buffer, %{state | directives: directives}}
+
+      {new_node, _module, directives} ->
+        {strip_text(tokens), [new_node | buffer], %{state | directives: directives}}
+    end
+  end
+
+  defp maybe_process_macro_component(tree_node, tokens, buffer, state) do
+    {tokens, [tree_node | buffer], state}
+  end
+
+  defp run_macro_component(tree_node, state) do
     caller = state.caller
 
     if is_nil(caller) do
@@ -637,24 +737,105 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
     module_string = meta.macro_component
     module = validate_module!(module_string, meta, state)
 
-    case process_macro_component(tree_node, module, state) do
-      {_new_node, directives} when directives != [] and buffer != [] ->
-        throw_syntax_error!(
-          "macro component #{inspect(module)} specified directives and therefore must appear at the very beginning of the template",
-          get_meta(tree_node)
-        )
+    {new_node, directives} = process_macro_component(tree_node, module, state)
+    {new_node, module, directives}
+  end
 
-      {{:text, "", _}, directives} ->
-        {strip_text(tokens), buffer, %{state | directives: directives}}
+  defp throw_directive_position_error!(tree_node, state) do
+    meta = get_meta(tree_node)
+    module = validate_module!(meta.macro_component, meta, state)
 
-      {new_node, directives} ->
-        {strip_text(tokens), [new_node | buffer], %{state | directives: directives}}
+    throw_syntax_error!(
+      "macro component #{inspect(module)} specified directives and therefore must appear at the very beginning of the template",
+      meta
+    )
+  end
+
+  @doc false
+  # Processes macro components in a tree that was parsed with
+  # `skip_macro_components: true`. Used by quoted templates (see
+  # `Phoenix.Component.quoted/1`), which parse the template when the macro
+  # holding it is defined, but process macro components only when the
+  # template is compiled at the use site, so that macro components (such as
+  # colocated hooks) extract into the caller's application.
+  def process_macro_components!(nodes, opts) do
+    caller = Keyword.fetch!(opts, :caller)
+    source = Keyword.fetch!(opts, :source)
+    file = Keyword.get(opts, :file, "nofile")
+    indentation = Keyword.get(opts, :indentation, 0)
+
+    state = %{caller: caller, directives: []}
+
+    try do
+      walk_macro_components(nodes, [], [], true, state)
+    catch
+      {:syntax_error, line, column, message} ->
+        raise Tokenizer.ParseError,
+          line: line,
+          column: column,
+          file: file,
+          description:
+            message <>
+              Tokenizer.ParseError.code_snippet(
+                source,
+                %{line: line, column: column},
+                indentation
+              )
     end
   end
 
-  defp maybe_process_macro_component(tree_node, tokens, buffer, state) do
-    {tokens, [tree_node | buffer], state}
+  defp walk_macro_components([node | rest], acc, directives, beginning?, state)
+       when is_macro_component(node) do
+    case run_macro_component(node, state) do
+      {_new_node, _module, node_directives} when node_directives != [] and not beginning? ->
+        throw_directive_position_error!(node, state)
+
+      {{:text, "", _}, _module, node_directives} ->
+        walk_macro_components(strip_text(rest), acc, directives ++ node_directives, false, state)
+
+      {new_node, _module, node_directives} ->
+        walk_macro_components(
+          strip_text(rest),
+          [new_node | acc],
+          directives ++ node_directives,
+          false,
+          state
+        )
+    end
   end
+
+  defp walk_macro_components([node | rest], acc, directives, beginning?, state) do
+    {node, child_directives} = walk_macro_component_children(node, state)
+    beginning? = beginning? and whitespace_text?(node)
+    walk_macro_components(rest, [node | acc], directives ++ child_directives, beginning?, state)
+  end
+
+  defp walk_macro_components([], acc, directives, _beginning?, _state) do
+    {Enum.reverse(acc), directives}
+  end
+
+  defp walk_macro_component_children(
+         {:block, type, name, attrs, children, meta, close_meta},
+         state
+       ) do
+    {children, directives} = walk_macro_components(children, [], [], false, state)
+    {{:block, type, name, attrs, children, meta, close_meta}, directives}
+  end
+
+  defp walk_macro_component_children({:eex_block, expr, clauses, meta}, state) do
+    {clauses, directives} =
+      Enum.map_reduce(clauses, [], fn {nodes, clause_expr, clause_meta}, acc ->
+        {nodes, directives} = walk_macro_components(nodes, [], [], false, state)
+        {{nodes, clause_expr, clause_meta}, acc ++ directives}
+      end)
+
+    {{:eex_block, expr, clauses, meta}, directives}
+  end
+
+  defp walk_macro_component_children(node, _state), do: {node, []}
+
+  defp whitespace_text?({:text, text, _meta}), do: String.trim(text) == ""
+  defp whitespace_text?(_node), do: false
 
   # Process a macro component: call transform and convert result back to tree nodes
   defp process_macro_component(tree_node, module, state) do

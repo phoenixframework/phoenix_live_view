@@ -97,14 +97,14 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
 
   ## HEEx interpolation {...}
   defp handle_node({:body_expr, expr, %{line: line, column: column}}, substate, state) do
-    ast = Code.string_to_quoted!(expr, line: line, column: column, file: state.file)
+    ast = to_quoted!(expr, line, column, state.file)
     substate = state.engine.handle_expr(substate, "=", ast)
     {state, substate}
   end
 
   ## EEx expression (<% ... %> or any modifier like <%= ... %>)
   defp handle_node({:eex, expr, %{opt: opt, line: line, column: column}}, substate, state) do
-    ast = Code.string_to_quoted!(expr, line: line, column: column, file: state.file)
+    ast = to_quoted!(expr, line, column, state.file)
     # opt is a charlist from the tokenizer, convert to string for the engine
     marker = to_string(opt)
     substate = state.engine.handle_expr(substate, marker, ast)
@@ -618,7 +618,16 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
   end
 
   defp parse_expr!({:expr, value, %{line: line, column: col}}, file) do
-    Code.string_to_quoted!(value, line: line, column: col, file: file)
+    to_quoted!(value, line, col, file)
+  end
+
+  # Quoted templates (see Phoenix.Component.quoted/1) parse expressions
+  # to AST when the template is defined, before unquote fragments are
+  # resolved, so the tree may carry expressions in already-quoted form.
+  defp to_quoted!({:quoted, ast}, _line, _column, _file), do: ast
+
+  defp to_quoted!(source, line, column, file) when is_binary(source) do
+    Code.string_to_quoted!(source, line: line, column: column, file: file)
   end
 
   defp literal_keys?([{key, _value} | rest]) when is_atom(key) or is_binary(key),
@@ -700,7 +709,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
          state,
          _type_component
        ) do
-    quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
+    quoted_value = to_quoted!(value, line, col, state.file)
     quoted_value = quote line: line, do: Map.new(unquote(quoted_value))
     {special, [quoted_value | r], a, locs}
   end
@@ -733,7 +742,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
         raise_syntax_error!(message, attr_meta, state)
 
       %{} ->
-        quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
+        quoted_value = to_quoted!(value, line, col, state.file)
         validate_quoted_special_attr!(attr, quoted_value, attr_meta, state)
         {Map.put(special, attr, {quoted_value, attr_meta}), r, a, locs}
     end
@@ -756,7 +765,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
          state,
          _type_component
        ) do
-    quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
+    quoted_value = to_quoted!(value, line, col, state.file)
     {special, r, [{String.to_atom(name), quoted_value} | a], [line_column(attr_meta) | locs]}
   end
 
@@ -1163,6 +1172,10 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
       case {key, value, meta} do
         {"phx-hook", {:string, "." <> name, str_meta}, meta} ->
           {key, {:string, "#{inspect(state.caller.module)}.#{name}", str_meta}, meta}
+
+        # allow compile-time strings
+        {"phx-hook", {:expr, {:quoted, "." <> name}, expr_meta}, meta} ->
+          {key, {:expr, {:quoted, "#{inspect(state.caller.module)}.#{name}"}, expr_meta}, meta}
 
         _ ->
           {key, value, meta}
