@@ -1604,7 +1604,8 @@ defmodule Phoenix.LiveView do
   @doc """
   Attaches the given `fun` by `name` for the lifecycle `stage` into `socket`.
 
-  > Note: This function is for server-side lifecycle callbacks.
+  > ### Note {: .info}
+  > This function is for server-side lifecycle callbacks.
   > For client-side hooks, see the
   > [JS Interop guide](js-interop.md#client-hooks-via-phx-hook).
 
@@ -1615,8 +1616,9 @@ defmodule Phoenix.LiveView do
   lifecycle stages: `:handle_params`, `:handle_event`, `:handle_info`, `:handle_async`, and
   `:after_render`. To attach a hook to the `:mount` stage, use `on_mount/1`.
 
-  > Note: only `:after_render`, `:handle_event` and `:handle_async` hooks are currently supported in
-  > LiveComponents.
+  > ### LiveComponents support {: .warning}
+  > In LiveComponents, only `:after_render`, `:handle_event` and `:handle_async`
+  > hooks are currently supported.
 
   ## Return Values
 
@@ -1785,7 +1787,8 @@ defmodule Phoenix.LiveView do
   @doc """
   Detaches a hook with the given `name` from the lifecycle `stage`.
 
-  > Note: This function is for server-side lifecycle callbacks.
+  > ### Note {: .info}
+  > This function is for server-side lifecycle callbacks.
   > For client-side hooks, see the
   > [JS Interop guide](js-interop.md#client-hooks-via-phx-hook).
 

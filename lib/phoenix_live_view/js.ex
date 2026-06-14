@@ -932,8 +932,8 @@ defmodule Phoenix.LiveView.JS do
   > <.button phx-click={JS.dispatch("input:clear", to: "#my_input")}>...</.button>
   > ```
   >
-  > Note: this uses `Phoenix.LiveView.ColocatedJS`, but you can also define the event listener directly inside
-  > your `app.js` instead.
+  > While the example above uses `Phoenix.LiveView.ColocatedJS`, you can also
+  > define the event listener directly inside your `app.js` instead.
   """
   def set_attribute({attr, val}), do: set_attribute(%JS{}, {attr, val}, [])
 
