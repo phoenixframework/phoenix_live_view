@@ -2209,7 +2209,9 @@ defmodule Phoenix.LiveView do
         reset? = Keyword.get(opts, :reset, false)
 
         stream = if reset?, do: LiveStream.reset(original_stream), else: original_stream
-        new_stream = Enum.reduce(items, stream, &LiveStream.insert_item(&2, &1, at, limit, update_only))
+
+        new_stream =
+          Enum.reduce(items, stream, &LiveStream.insert_item(&2, &1, at, limit, update_only))
 
         if new_stream === original_stream and not reset? do
           socket
