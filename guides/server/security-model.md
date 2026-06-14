@@ -34,7 +34,7 @@ checks on every request. Since a LiveView starts as a regular HTTP request,
 they share the authentication logic with regular requests through plugs.
 The request starts in your endpoint, which then invokes the router.
 
-Plugs are often used to ensure the user is authenticated and stores the
+Plugs are used to ensure the user is authenticated and stores the
 relevant information in the session.
 
 Once the user is authenticated, we typically validate the sessions on
@@ -209,7 +209,7 @@ to run it on all LiveViews by default:
 
 Every time a user performs an action on your system, the server should verify if said user
 is authorized to do so, regardless if using LiveViews or not. For example,
-imagine a user may see all projects in a web application, but they may not delete any of them. 
+imagine a user can see all projects in a web application, but they cannot delete any of them. 
 
 At the UI level, you handle this accordingly by not showing the delete button 
 in the projects listing, but a savvy user can directly talk to the server 
