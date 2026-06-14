@@ -21,8 +21,7 @@ session cookie (a key-value pair) in the user's browser.
 
 Every time there is a request, we read the value from the session, and, if
 valid, we fetch the user stored in the session from the database. The session
-is automatically validated by Phoenix and tools like [`mix phx.gen.auth`](https://phoenix.hexdocs.pm/mix_phx_gen_auth.html). can
-generate the building blocks of an authentication system for you.
+is automatically validated by Phoenix and tools like `mix phx.gen.auth`.
 
 This CLI tool will generate the initial building blocks of an authentication system for you.
 
