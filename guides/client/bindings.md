@@ -7,16 +7,17 @@ example, to react to a click on a button, you would render the element:
 <button phx-click="inc_temperature">+</button>
 ```
 
-Under the hood, in LiveView, when a client makes use of any binding, it will 
-form a socket message and send it through the socket to the server.
-In the example above, by clicking the element with a `phx-click` binding, 
-this message, alongside all other LiveView bindings, are dealt with by the server 
-by a `handle_event` callback declared on the LiveView:
+When a client makes use of any binding, it will form a socket message 
+and send it to the server. By clicking an element with a `phx-click` binding, 
+a message is dealt with by a `handle_event` callback declared on the LiveView:
 
     def handle_event("inc_temperature", _value, socket) do
       {:ok, new_temp} = Thermostat.inc_temperature(socket.assigns.id)
       {:noreply, assign(socket, :temperature, new_temp)}
     end
+
+The behavior of using a DOM element binding to enable the client 
+to send a message to the server is a hallmark of client-server interaction in LiveView.
 
 Note: If a callback is not explicitly defined and therefore a message goes unhandled, the server will raise a FunctionClauseError exception and reload the page.
 
