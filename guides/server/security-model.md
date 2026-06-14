@@ -127,7 +127,7 @@ execute on mount.
 
 ## Mounting considerations
 
-As previously mentioned, the [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback is invoked both on
+The [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback is invoked both on
 the initial HTTP mount and when LiveView is connected. Therefore, any
 authorization performed during mount will cover all scenarios.
 
