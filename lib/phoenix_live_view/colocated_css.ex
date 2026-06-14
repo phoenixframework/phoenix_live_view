@@ -20,7 +20,7 @@ defmodule Phoenix.LiveView.ColocatedCSS do
 
   ### Tailwind
 
-  The following setup requires Tailwind v4.2.3 or newer.
+  The following setup requires Tailwind v4.2.3 or newer and the `:tailwind` Hex package version 0.5 or newer.
 
   To use colocated CSS with `:tailwind`, it has to be configured to resolve the `phoenix-colocated` folder.
   For new Phoenix applications starting with version `1.8.8`, this is already configured by default in your `config.exs`:

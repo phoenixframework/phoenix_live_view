@@ -1604,7 +1604,8 @@ defmodule Phoenix.LiveView do
   @doc """
   Attaches the given `fun` by `name` for the lifecycle `stage` into `socket`.
 
-  > Note: This function is for server-side lifecycle callbacks.
+  > ### Note {: .info}
+  > This function is for server-side lifecycle callbacks.
   > For client-side hooks, see the
   > [JS Interop guide](js-interop.md#client-hooks-via-phx-hook).
 
@@ -1615,8 +1616,9 @@ defmodule Phoenix.LiveView do
   lifecycle stages: `:handle_params`, `:handle_event`, `:handle_info`, `:handle_async`, and
   `:after_render`. To attach a hook to the `:mount` stage, use `on_mount/1`.
 
-  > Note: only `:after_render`, `:handle_event` and `:handle_async` hooks are currently supported in
-  > LiveComponents.
+  > ### LiveComponents support {: .warning}
+  > In LiveComponents, only `:after_render`, `:handle_event` and `:handle_async`
+  > hooks are currently supported.
 
   ## Return Values
 
@@ -1785,7 +1787,8 @@ defmodule Phoenix.LiveView do
   @doc """
   Detaches a hook with the given `name` from the lifecycle `stage`.
 
-  > Note: This function is for server-side lifecycle callbacks.
+  > ### Note {: .info}
+  > This function is for server-side lifecycle callbacks.
   > For client-side hooks, see the
   > [JS Interop guide](js-interop.md#client-hooks-via-phx-hook).
 
@@ -2199,15 +2202,20 @@ defmodule Phoenix.LiveView do
     streams = socket.assigns.streams
 
     case streams do
-      %{^name => %LiveStream{}} ->
-        new_socket =
-          if opts[:reset] do
-            update_stream(socket, name, &LiveStream.reset(&1))
-          else
-            socket
-          end
+      %{^name => %LiveStream{} = original_stream} ->
+        at = Keyword.get(opts, :at, -1)
+        limit = Keyword.get(opts, :limit)
+        update_only = Keyword.get(opts, :update_only, false)
+        reset? = Keyword.get(opts, :reset, false)
 
-        Enum.reduce(items, new_socket, fn item, acc -> stream_insert(acc, name, item, opts) end)
+        stream = if reset?, do: LiveStream.reset(original_stream), else: original_stream
+        new_stream = Enum.reduce(items, stream, &LiveStream.insert_item(&2, &1, at, limit, update_only))
+
+        if new_stream === original_stream and not reset? do
+          socket
+        else
+          update_stream(socket, name, fn _ -> new_stream end)
+        end
 
       %{} ->
         config = get_in(streams, [:__configured__, name]) || []
