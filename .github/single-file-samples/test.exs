@@ -6,17 +6,15 @@ Application.put_env(:phoenix, Example.Endpoint,
   secret_key_base: String.duplicate("a", 64)
 )
 
-Mix.install(
-  [
-    {:bandit, "~> 1.8"},
-    {:jason, "~> 1.0"},
-    {:phoenix, "~> 1.8"},
-    # please test your issue using the latest version of LV from GitHub!
-    {:phoenix_live_view,
-     github: "phoenixframework/phoenix_live_view", branch: "main", override: true},
-    {:lazy_html, ">= 0.1.0"}
-  ]
-)
+Mix.install([
+  {:bandit, "~> 1.8"},
+  {:jason, "~> 1.2"},
+  {:phoenix, "~> 1.8"},
+  # please test your issue using the latest version of LV from GitHub!
+  {:phoenix_live_view,
+   github: "phoenixframework/phoenix_live_view", branch: "main", override: true},
+  {:lazy_html, ">= 0.1.0"}
+])
 
 ExUnit.start()
 
@@ -41,8 +39,8 @@ defmodule Example.HomeLive do
     <script src="/assets/phoenix_html/phoenix_html.js">
     </script>
     <script>
-      let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket)
-      liveSocket.connect()
+      let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket);
+      liveSocket.connect();
     </script>
     <style>
       * { font-size: 1.1em; }
@@ -63,23 +61,26 @@ defmodule Example.Router do
   import Phoenix.LiveView.Router
 
   pipeline :browser do
-    plug(:accepts, ["html"])
+    plug :accepts, ["html"]
   end
 
   scope "/", Example do
-    pipe_through(:browser)
+    pipe_through :browser
 
-    live("/", HomeLive, :index)
+    live "/", HomeLive, :index
   end
 end
 
 defmodule Example.Endpoint do
   use Phoenix.Endpoint, otp_app: :phoenix
-  socket("/live", Phoenix.LiveView.Socket)
+
+  socket "/live", Phoenix.LiveView.Socket
+
   plug Plug.Static, from: {:phoenix, "priv/static"}, at: "/assets/phoenix"
   plug Plug.Static, from: {:phoenix_live_view, "priv/static"}, at: "/assets/phoenix_live_view"
   plug Plug.Static, from: {:phoenix_html, "priv/static"}, at: "/assets/phoenix_html"
-  plug(Example.Router)
+
+  plug Example.Router
 end
 
 defmodule Example.HomeLiveTest do
