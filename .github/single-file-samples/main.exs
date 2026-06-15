@@ -44,7 +44,7 @@ defmodule Example.HomeLive do
     </script>
     <script src="/assets/phoenix_html/phoenix_html.js">
     </script>
-    <%!-- uncomment to use enable tailwind --%>
+    <%!-- uncomment to use Tailwind --%>
     <%!-- <script src="https://cdn.tailwindcss.com"></script> --%>
     <script>
       let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket);
