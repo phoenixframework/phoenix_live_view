@@ -8,7 +8,7 @@ Application.put_env(:phoenix, Example.Endpoint,
 
 Mix.install([
   {:bandit, "~> 1.8"},
-  {:jason, "~> 1.0"},
+  {:jason, "~> 1.2"},
   {:phoenix, "~> 1.8"},
   # please test your issue using the latest version of LV from GitHub!
   {:phoenix_live_view,
