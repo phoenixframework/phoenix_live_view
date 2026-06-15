@@ -61,23 +61,26 @@ defmodule Example.Router do
   import Phoenix.LiveView.Router
 
   pipeline :browser do
-    plug(:accepts, ["html"])
+    plug :accepts, ["html"]
   end
 
   scope "/", Example do
-    pipe_through(:browser)
+    pipe_through :browser
 
-    live("/", HomeLive, :index)
+    live "/", HomeLive, :index
   end
 end
 
 defmodule Example.Endpoint do
   use Phoenix.Endpoint, otp_app: :phoenix
-  socket("/live", Phoenix.LiveView.Socket)
+
+  socket "/live", Phoenix.LiveView.Socket
+
   plug Plug.Static, from: {:phoenix, "priv/static"}, at: "/assets/phoenix"
   plug Plug.Static, from: {:phoenix_live_view, "priv/static"}, at: "/assets/phoenix_live_view"
   plug Plug.Static, from: {:phoenix_html, "priv/static"}, at: "/assets/phoenix_html"
-  plug(Example.Router)
+
+  plug Example.Router
 end
 
 defmodule Example.HomeLiveTest do
