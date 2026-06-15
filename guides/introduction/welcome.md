@@ -46,13 +46,6 @@ directory `my_app_web` and the module `MyAppWeb` with your app's name:
 defmodule MyAppWeb.ThermostatLive do
   use MyAppWeb, :live_view
 
-  def render(assigns) do
-    ~H"""
-    Current temperature: {@temperature}°F
-    <button phx-click="inc_temperature">+</button>
-    """
-  end
-
   def mount(_params, _session, socket) do
     temperature = 70 # Let's assume a fixed temperature for now
     {:ok, assign(socket, :temperature, temperature)}
@@ -61,38 +54,56 @@ defmodule MyAppWeb.ThermostatLive do
   def handle_event("inc_temperature", _params, socket) do
     {:noreply, update(socket, :temperature, &(&1 + 1))}
   end
+
+  def render(assigns) do
+    ~H"""
+    Current temperature: {@temperature}°F
+    <button phx-click="inc_temperature">+</button>
+    """
+  end
 end
 ```
 
-The module above defines three functions (they are callbacks
-required by LiveView). The first one is `render/1`,
-which receives the socket `assigns` and is responsible for returning
-the content to be rendered on the page. We use the `~H` sigil to define
-a HEEx template, which stands for HTML+EEx. They are an extension of
-Elixir's builtin EEx templates, with support for HTML validation, syntax-based
-components, smart change tracking, and more. You can learn more about
-the template syntax in `Phoenix.Component.sigil_H/2` (note
-`Phoenix.Component` is automatically imported when you use `Phoenix.LiveView`).
+The module above defines three functions, which are callbacks required by LiveView. 
 
-The data used on rendering comes from the `mount` callback. The
-`mount` callback is invoked when the LiveView starts. In it, you
+The first one is `mount/3`, which defines the data used on rendering.
+The `mount` callback is invoked when the LiveView starts, and in it you
 can access the request parameters, read information stored in the
-session (typically information which identifies who is the current
-user), and a socket. The socket is where we keep all state, including
-assigns. `mount` proceeds to assign a default temperature to the socket.
-Because Elixir data structures are immutable, LiveView APIs often
-receive the socket and return an updated socket. Then we return
+session (typically information that identifies the current
+user), and a `%Socket{}`. The socket is where we keep all state, including
+assigns. In this example, `mount` starts by assigning a default temperature to the socket.
+Since Elixir data structures are immutable, LiveView APIs 
+receive the socket and return an updated socket. We return
 `{:ok, socket}` to signal that we were able to mount the LiveView
-successfully. After `mount`, LiveView will render the page with the
-values from `assigns` and send it to the client.
+successfully. 
+
+After `mount`, LiveView will `render/1` the page with the
+values from `assigns` and send it to the client. The `render/1` callback 
+receives the socket `assigns` and is responsible for returning
+the content to be rendered on the page. 
+
+To render, we use the `~H` sigil to define a HEEx template, which stands for HTML+EEx. 
+They are an extension of Elixir's builtin EEx templates, with support for HTML validation, 
+syntax-based components, smart change tracking, and more. 
+
+   ~H"""
+    // Your HTML here
+    Current temperature: {@temperature}°F
+    <button phx-click="inc_temperature">+</button>
+  """
+
+
+You can learn more about the template syntax in `Phoenix.Component.sigil_H/2` 
+(note `Phoenix.Component` is automatically imported when you use `Phoenix.LiveView`).
 
 If you look at the HTML rendered, you will notice there is a button
-with a `phx-click` attribute. When the button is clicked, a
+with a `phx-click` attribute. When the button is clicked, an
 `"inc_temperature"` event is sent to the server, which is matched and
 handled by the `handle_event` callback. This callback updates the socket
 and returns `{:noreply, socket}` with the updated socket.
-`handle_*` callbacks in LiveView (and in Elixir in general) are
-invoked based on some action, in this case, the user clicking a button.
+`handle_*` callbacks in LiveView are invoked based on some action, 
+in this case, the user clicking a button.
+
 The `{:noreply, socket}` return means there is no additional replies
 sent to the browser, only that a new version of the page is rendered.
 LiveView then computes diffs and sends them to the client.
