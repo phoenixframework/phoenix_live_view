@@ -6,17 +6,15 @@ Application.put_env(:sample, Example.Endpoint,
   secret_key_base: String.duplicate("a", 64)
 )
 
-Mix.install(
-  [
-    {:bandit, "~> 1.8"},
-    {:jason, "~> 1.0"},
-    {:phoenix, "~> 1.8"},
-    {:phoenix_html, "~> 4.0"},
-    # please test your issue using the latest version of LV from GitHub!
-    {:phoenix_live_view,
-     github: "phoenixframework/phoenix_live_view", branch: "main", override: true}
-  ]
-)
+Mix.install([
+  {:bandit, "~> 1.8"},
+  {:jason, "~> 1.0"},
+  {:phoenix, "~> 1.8"},
+  {:phoenix_html, "~> 4.0"},
+  # please test your issue using the latest version of LV from GitHub!
+  {:phoenix_live_view,
+   github: "phoenixframework/phoenix_live_view", branch: "main", override: true}
+])
 
 # if you're trying to test a specific LV commit, it may be necessary to manually build
 # the JS assets. To do this, uncomment the following lines:
@@ -49,8 +47,8 @@ defmodule Example.HomeLive do
     <%!-- uncomment to use enable tailwind --%>
     <%!-- <script src="https://cdn.tailwindcss.com"></script> --%>
     <script>
-      let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket)
-      liveSocket.connect()
+      let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket);
+      liveSocket.connect();
     </script>
     <style>
       * { font-size: 1.1em; }
