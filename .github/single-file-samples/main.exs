@@ -1,4 +1,4 @@
-Application.put_env(:sample, Example.Endpoint,
+Application.put_env(:phoenix, Example.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 5001],
   adapter: Bandit.PhoenixAdapter,
   server: true,
@@ -90,7 +90,7 @@ defmodule Example.Router do
 end
 
 defmodule Example.Endpoint do
-  use Phoenix.Endpoint, otp_app: :sample
+  use Phoenix.Endpoint, otp_app: :phoenix
 
   socket "/live", Phoenix.LiveView.Socket
 
