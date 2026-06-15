@@ -193,15 +193,16 @@ $ mix test
 
 Running all JavaScript tests:
 ```bash
-$ npm install
-$ npm run setup
-$ npm run test
+$ mix deps.get
+$ npm ci
+$ npm test
 ```
 
 Running the JavaScript unit tests:
 
 ```bash
-$ npm run setup
+$ mix deps.get
+$ npm ci
 $ npm run js:test
 # to automatically run tests for files that have been changed
 $ npm run js:test.watch
@@ -210,7 +211,8 @@ $ npm run js:test.watch
 Running the JavaScript end-to-end tests:
 
 ```bash
-$ npm run setup
+$ mix deps.get
+$ npm ci
 $ npm run e2e:test
 ```
 
