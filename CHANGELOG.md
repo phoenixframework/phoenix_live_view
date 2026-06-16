@@ -115,6 +115,11 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.3 (2026-06-12)
+
+This is a followup release to v1.2.2 that fixes the TypeScript declaration files being in the wrong subfolder.
+Again, it does not contain any changes to the Elixir or JavaScript code itself.
+
 ## v1.2.2 (2026-06-12)
 
 This release fixes the [npm package](https://www.npmjs.com/package/phoenix_live_view) missing the TypeScript declaration files.
