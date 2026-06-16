@@ -16,7 +16,7 @@
     },
     "declaration": true,
     "emitDeclarationOnly": true,
-    "rootDir": ".",
+    "rootDir": "./assets/js/phoenix_live_view",
     "outDir": "./assets/js/types"
   },
   "include": [
