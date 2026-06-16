@@ -22,7 +22,7 @@ Mix.install([
 #
 # path = Phoenix.LiveView.__info__(:compile)[:source] |> Path.dirname() |> Path.join("../")
 # System.cmd("mix", ["deps.get"], cd: path, into: IO.binstream())
-# System.cmd("npm", ["install"], cd: Path.join(path, "./assets"), into: IO.binstream())
+# System.cmd("npm", ["ci"], cd: Path.join(path, "./assets"), into: IO.binstream())
 # System.cmd("mix", ["assets.build"], cd: path, into: IO.binstream())
 
 defmodule Example.ErrorView do

@@ -204,7 +204,7 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp generate_js_docs(_) do
     Mix.Task.run("app.start")
-    {_, 0} = System.cmd("npm", ["install"], into: IO.stream())
+    {_, 0} = System.cmd("npm", ["ci"], into: IO.stream())
     {_, 0} = System.cmd("npm", ["run", "docs"], into: IO.stream())
   end
 
