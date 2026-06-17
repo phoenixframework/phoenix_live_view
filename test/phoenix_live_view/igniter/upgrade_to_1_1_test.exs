@@ -288,7 +288,7 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=.),
         |    cd: Path.expand("../assets", __DIR__),
       - |    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
-      + |    env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
+      + |    env: %{"NODE_PATH" => [Mix.Project.build_path(), Path.expand("../deps", __DIR__)]}
       """)
       |> assert_has_notice(fn notice -> notice =~ "Final step for colocated hooks" end)
     end
@@ -347,7 +347,7 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=.),
         |    cd: Path.expand("../assets", __DIR__),
       - |    env: %{"NODE_PATH" => "something_custom"}
-      + |    env: %{"NODE_PATH" => ["something_custom", Mix.Project.build_path()]}
+      + |    env: %{"NODE_PATH" => [Mix.Project.build_path(), "something_custom"]}
       """)
       |> assert_has_notice(fn notice -> notice =~ "Final step for colocated hooks" end)
     end
@@ -405,6 +405,37 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       # yes to esbuild but no config exists (no deps prompt since no existing deps)
       |> run_upgrade(input: "y\n")
       |> refute_has_notice()
+    end
+
+    test "updates esbuild env when NODE_PATH is not configured initially" do
+      test_project(
+        app_name: :my_app,
+        files: %{
+          "config/config.exs" => """
+          import Config
+
+          config :esbuild,
+            my_app: [
+              args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
+              cd: Path.expand("../assets", __DIR__),
+              env: %{}
+            ]
+          """
+        }
+      )
+      # yes to esbuild
+      |> run_upgrade(input: "y\n")
+      |> assert_has_patch("mix.exs", """
+      + |      {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
+      """)
+      |> assert_has_patch("config/config.exs", """
+      - |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
+      + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=.),
+        |    cd: Path.expand("../assets", __DIR__),
+      - |    env: %{}
+      + |    env: %{"NODE_PATH" => [Mix.Project.build_path(), Path.expand("../deps", __DIR__)]}
+      """)
+      |> assert_has_notice(fn notice -> notice =~ "Final step for colocated hooks" end)
     end
   end
 
@@ -477,7 +508,7 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=.),
         |    cd: Path.expand("../assets", __DIR__),
       - |    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
-      + |    env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
+      + |    env: %{"NODE_PATH" => [Mix.Project.build_path(), Path.expand("../deps", __DIR__)]}
       """)
     end
   end

@@ -120,7 +120,7 @@ if Code.ensure_loaded?(Igniter) do
                   args:
                     ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
                   cd: "...",
-                  env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
+                  env: %{"NODE_PATH" => [Mix.Project.build_path(), Path.expand("../deps", __DIR__)]}
                 ]
           """
 
@@ -144,7 +144,7 @@ if Code.ensure_loaded?(Igniter) do
                 if Igniter.Code.Keyword.keyword_has_path?(zipper, [:args]) and
                      Igniter.Code.Keyword.keyword_has_path?(zipper, [:env]) do
                   with {:ok, zipper} <- update_esbuild_args(zipper, warning),
-                       {:ok, zipper} <- update_esbuild_env(zipper) do
+                       {:ok, zipper} <- update_esbuild_env(zipper, warning) do
                     {:ok, zipper}
                   end
                 else
@@ -209,7 +209,7 @@ if Code.ensure_loaded?(Igniter) do
       end)
     end
 
-    defp update_esbuild_env(zipper) do
+    defp update_esbuild_env(zipper, warning) do
       Igniter.Code.Keyword.put_in_keyword(
         zipper,
         [:env],
@@ -219,7 +219,9 @@ if Code.ensure_loaded?(Igniter) do
           Igniter.Code.Map.put_in_map(
             zipper,
             ["NODE_PATH"],
-            ~s<"[Path.expand("../deps", __DIR__), Mix.Project.build_path()])>,
+            Sourceror.parse_string!(
+              "[Mix.Project.build_path(), Path.expand(\"../deps\", __DIR__)]"
+            ),
             fn zipper ->
               if Igniter.Code.List.list?(zipper) do
                 index =
@@ -233,16 +235,32 @@ if Code.ensure_loaded?(Igniter) do
                     end
                   end)
 
-                if index do
-                  {:ok, zipper}
-                else
-                  Igniter.Code.List.append_to_list(zipper, {:code, "Mix.Project.build_path()"})
+                cond do
+                  index == 0 ->
+                    {:ok, zipper}
+
+                  index > 0 ->
+                    zipper
+                    |> Igniter.Code.List.remove_index(index)
+                    |> case do
+                      {:ok, zipper} ->
+                        Igniter.Code.List.prepend_to_list(
+                          zipper,
+                          {:code, "Mix.Project.build_path()"}
+                        )
+
+                      :error ->
+                        {:warning, warning}
+                    end
+
+                  true ->
+                    Igniter.Code.List.prepend_to_list(zipper, {:code, "Mix.Project.build_path()"})
                 end
               else
-                # If NODE_PATH is not a list, convert it to a list with the original value and Mix.Project.build_path()
+                # If NODE_PATH is not a list, convert it to a list with Mix.Project.build_path() and the original value
                 zipper
                 |> Igniter.Code.Common.replace_code("[Mix.Project.build_path()]")
-                |> Igniter.Code.List.prepend_to_list(zipper.node)
+                |> Igniter.Code.List.append_to_list(zipper.node)
               end
             end
           )
