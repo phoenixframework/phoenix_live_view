@@ -17,10 +17,10 @@ Let's get started with an example:
 </.form>
 ```
 
-`.form` is the function component defined in `Phoenix.Component.form/1`,
-we recommend reading its documentation for more details on how it works
-and all supported options. `.form` expects a `@form` assign, which can
-be created from a changeset or user parameters via `Phoenix.Component.to_form/1`.
+`.form` is the function component defined in `Phoenix.Component.form/1`.
+We recommend reading its documentation for more details on how it works
+and all supported options. The `.form` component expects a `@form` assign, which can either
+be created from a changeset or user parameters via the helper `Phoenix.Component.to_form/1`.
 
 `input/1` is a function component for rendering inputs, most often
 defined in your own application, often encapsulating labelling,
