@@ -33,7 +33,7 @@ defmodule Phoenix.LiveView.ColocatedCSS do
             --output=priv/static/assets/css/app.css
           ),
           cd: Path.expand("..", __DIR__),
-          env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
+          env: %{"NODE_PATH" => [Mix.Project.build_path(), Path.expand("../deps", __DIR__)]}
         ]
 
   Then, import the `colocated.css` file in your `app.css` file:
@@ -58,7 +58,7 @@ defmodule Phoenix.LiveView.ColocatedCSS do
           args:
             ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
           cd: Path.expand("../assets", __DIR__),
-          env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
+          env: %{"NODE_PATH" => [Mix.Project.build_path(), Path.expand("../deps", __DIR__)]}
         ]
 
   This is the same setup as for `Phoenix.LiveView.ColocatedJS`. Then, import it like this in your `app.js` file:
