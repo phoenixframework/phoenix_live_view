@@ -113,7 +113,7 @@ uploads, consider using chunking as shown above.
 This guide assumes an existing S3 bucket is set up with the correct CORS configuration
 which allows uploading directly to the bucket.
 
-An example of CORS configuration for an S3 bucket that allows for client-side uploads would be:
+An example of CORS configuration for client-side uploads would be:
 
 ```json
 [
