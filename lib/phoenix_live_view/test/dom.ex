@@ -71,7 +71,9 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   defp detect_forms_without_id(lazydoc, error_reporter) do
     lazydoc
-    |> LazyHTML.query("form:not([id])")
+    |> LazyHTML.query(
+      ~s|form:not([id])[phx-change]:not([phx-ignore-missing-id]):not([phx-auto-recover="ignore"])|
+    )
     |> Enum.each(fn el ->
       error_reporter.(:missing_form_id, """
       Detected a form with phx-change but missing id:
