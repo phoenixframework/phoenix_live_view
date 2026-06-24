@@ -357,8 +357,9 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
 
   defp detect_forms_without_id({"form", attrs, _children} = node, error_reporter) do
     case {attribute(node, "id"), attribute(node, "phx-change"),
-          attribute(node, "phx-ignore-missing-id")} do
-      {nil, phx_change, nil} when is_binary(phx_change) ->
+          attribute(node, "phx-ignore-missing-id"), attribute(node, "phx-auto-recover")} do
+      {nil, phx_change, nil, auto_recover}
+      when is_binary(phx_change) and auto_recover != "ignore" ->
         error_reporter.(:missing_form_id, """
         Detected a form with phx-change but missing id:
 

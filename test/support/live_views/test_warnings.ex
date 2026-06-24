@@ -111,7 +111,10 @@ defmodule Phoenix.LiveViewTest.Support.FormMissingIdLive do
 
   def render(assigns) do
     ~H"""
-    <form phx-change="foo" phx-submit="bar"></form>
+    <form phx-change="should-warn"></form>
+    <form phx-change="opted-out" phx-auto-recover="ignore"></form>
+    <form phx-change="ignored" phx-ignore-missing-id></form>
+    <form phx-submit="no-change"></form>
     """
   end
 end
