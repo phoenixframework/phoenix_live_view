@@ -3404,7 +3404,7 @@ defmodule Phoenix.Component do
       "the id of the img tag. Derived by default from the entry ref, but can be overridden as needed if you need to render a preview of the same entry multiple times on the same page"
   )
 
-  attr.(:rest, :global, [])
+  attr.(:rest, :global, include: ~w(alt width height))
 
   def live_img_preview(assigns) do
     ~H"""
