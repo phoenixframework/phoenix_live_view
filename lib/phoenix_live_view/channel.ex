@@ -476,7 +476,8 @@ defmodule Phoenix.LiveView.Channel do
 
         Process.send_after(self(), {@prefix, :adoption_timeout}, timeout)
 
-        {:reply, {:ok, Diff.to_iodata(diff)}, {:adoptable, state}}
+        # TODO: check if we can avoid sending the assigns back
+        {:reply, {:ok, Diff.to_iodata(diff), socket.assigns}, {:adoptable, state}}
 
       {:stop, socket} ->
         {:stop, :shutdown, {:stop, socket}, nil}
@@ -1100,7 +1101,13 @@ defmodule Phoenix.LiveView.Channel do
     new_socket = Utils.clear_temp(socket)
 
     {:diff, diff,
-     %{state | socket: new_socket, fingerprints: fingerprints, components: components, initial_diff: nil}}
+     %{
+       state
+       | socket: new_socket,
+         fingerprints: fingerprints,
+         components: components,
+         initial_diff: nil
+     }}
   end
 
   defp reply(state, {ref, extra}, status, payload) do

@@ -37,14 +37,14 @@ defmodule Phoenix.LiveView.Controller do
   """
   def live_render(%Plug.Conn{} = conn, view, opts \\ []) do
     case LiveView.Static.render(conn, view, opts) do
-      {:ok, content} ->
+      {:ok, content, socket_assigns} ->
         conn
         |> Plug.Conn.fetch_query_params()
         |> ensure_format()
         |> Phoenix.Controller.put_view(LiveView.Static)
         |> Phoenix.Controller.render(
           :template,
-          %{content: content}
+          Map.merge(socket_assigns, %{content: content, live_module: view})
         )
 
       {:stop, %Socket{redirected: {:redirect, %{status: status} = opts}} = socket} ->

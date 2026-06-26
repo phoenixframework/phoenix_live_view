@@ -174,7 +174,7 @@ defmodule Phoenix.LiveView.Static do
             ]
 
             try do
-              {:ok, to_rendered_content_tag(socket, tag, view, attrs)}
+              {:ok, to_rendered_content_tag(socket, tag, view, attrs), socket.assigns}
             catch
               :throw, {:phoenix, :child_redirect, redirected, flash} ->
                 {:stop, Utils.replace_flash(%{socket | redirected: redirected}, flash)}
@@ -210,7 +210,8 @@ defmodule Phoenix.LiveView.Static do
           )
 
         # TODO: handle call timeout
-        with {:ok, iodata} <- GenServer.call(pid, {:phoenix, :disconnected_adoptable_render}) do
+        with {:ok, iodata, assigns} <-
+               GenServer.call(pid, {:phoenix, :disconnected_adoptable_render}) do
           data_attrs = [
             phx_session: sign_root_session(socket, router, view, to_sign_session, live_session),
             phx_static: sign_static_token(socket),
@@ -225,7 +226,9 @@ defmodule Phoenix.LiveView.Static do
             | extended_attrs
           ]
 
-          {:ok, content_tag(tag, attrs, iodata)}
+          # TODO: we currently expect the socket assigns for LiveViewTest
+          # check if we can aboid copying assigns...
+          {:ok, content_tag(tag, attrs, iodata), assigns}
         end
     end
   end
