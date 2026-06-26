@@ -486,6 +486,12 @@ defmodule Phoenix.LiveView do
     * `:on_mount` - a list of tuples with module names and arguments to be invoked
       as `on_mount` hooks
 
+    * `:adoptable` - a boolean indicating whether the LiveView is adoptable.
+      If true, the LiveView can be adopted after the initial mount.
+
+    * `:adoption_timeout` - the timeout in milliseconds for the adoption.
+      If no socket connects within this time, the LiveView process is terminated. Defaults to 5000ms.
+
   """
   def __live__(opts \\ []) do
     on_mount = opts[:on_mount] || []
@@ -508,7 +514,9 @@ defmodule Phoenix.LiveView do
       kind: :view,
       layout: layout,
       lifecycle: Phoenix.LiveView.Lifecycle.build(on_mount),
-      log: log
+      log: log,
+      adoptable: Keyword.get(opts, :adoptable, false),
+      adoption_timeout: Keyword.get(opts, :adoption_timeout, 5000)
     }
   end
 

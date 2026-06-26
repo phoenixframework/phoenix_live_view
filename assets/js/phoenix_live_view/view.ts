@@ -44,6 +44,7 @@ import {
   PHX_PORTAL,
   PHX_TELEPORTED_REF,
   PHX_TELEPORTED_SRC,
+  PHX_ADOPT,
 } from "./constants";
 
 import {
@@ -97,6 +98,7 @@ export default class View {
   private channel: Channel;
   private rendered: Rendered | null;
   private flash: string | null;
+  private liveReferer: string | null;
   private parent: View | null;
   private ref: number;
   private lastAckRef: number | null;
@@ -130,6 +132,7 @@ export default class View {
     this.isDead = false;
     this.liveSocket = liveSocket;
     this.flash = flash;
+    this.liveReferer = liveReferer;
     this.parent = parentView;
     this.root = parentView ? parentView.root : this;
     this.el = el;
@@ -190,19 +193,23 @@ export default class View {
     this.children = this.parent ? null : {};
     this.root.children![this.id] = {};
     this.formsForRecovery = {};
-    this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
+    this.channel = this.buildChannel();
+    this.portalElementIds = new Set();
+  }
+
+  buildChannel() {
+    return this.liveSocket.channel(`lv:${this.id}`, () => {
       const url = this.href && this.expandURL(this.href);
       return {
         redirect: this.redirect ? url : undefined,
         url: this.redirect ? undefined : url || undefined,
-        params: this.connectParams(liveReferer),
+        params: this.connectParams(this.liveReferer),
         session: this.getSession(),
         static: this.getStatic(),
         flash: this.flash ?? undefined,
         sticky: this.el.hasAttribute(PHX_STICKY),
       };
     });
-    this.portalElementIds = new Set();
   }
 
   setHref(href) {
@@ -249,6 +256,14 @@ export default class View {
   getStatic(): string | null {
     const val = this.el.getAttribute(PHX_STATIC);
     return val === "" ? null : val;
+  }
+
+  getAdopt(): string | null {
+    return this.el.getAttribute(PHX_ADOPT);
+  }
+  
+  clearAdopt() {
+    this.el.removeAttribute(PHX_ADOPT);
   }
 
   destroy(callback = function () {}) {
@@ -1150,11 +1165,28 @@ export default class View {
       callback ? callback(this.joinCount, onDone) : onDone();
     };
 
-    this.wrapPush(() => this.channel.join(), {
-      ok: (resp) => this.liveSocket.requestDOMUpdate(() => this.onJoin(resp)),
-      error: (error) => this.onJoinError(error),
-      timeout: () => this.onJoinError({ reason: "timeout" }),
-    });
+    const adoptToken = this.getAdopt();
+    this.clearAdopt();
+    if (adoptToken && "adopt" in this.channel) {
+      // @ts-expect-error adopt is not in the type definitions yet
+      this.wrapPush(() => this.channel.adopt(adoptToken), {
+        ok: (resp) => this.liveSocket.requestDOMUpdate(() => this.onJoin(resp)),
+        error: ({ reason }) => {
+          if (reason === "invalid adoption") {
+            this.channel.leave();
+            this.channel = this.buildChannel();
+            this.join();
+          }
+        },
+        timeout: () => this.onJoinError({ reason: "timeout" }),
+      });
+    } else {
+      this.wrapPush(() => this.channel.join(), {
+        ok: (resp) => this.liveSocket.requestDOMUpdate(() => this.onJoin(resp)),
+        error: (error) => this.onJoinError(error),
+        timeout: () => this.onJoinError({ reason: "timeout" }),
+      });
+    }
   }
 
   onJoinError(resp) {
