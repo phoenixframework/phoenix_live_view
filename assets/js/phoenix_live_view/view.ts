@@ -261,7 +261,7 @@ export default class View {
   getAdopt(): string | null {
     return this.el.getAttribute(PHX_ADOPT);
   }
-  
+
   clearAdopt() {
     this.el.removeAttribute(PHX_ADOPT);
   }
