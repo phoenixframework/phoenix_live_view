@@ -74,7 +74,11 @@ defmodule Phoenix.LiveView.Static do
   end
 
   @doc """
-  Renders a live view without spawning a LiveView server.
+  Renders a live view without spawning a LiveView server,
+  except if the view is marked as adoptable.
+
+  In case the view is adoptable, a separate process will be joined
+  that can be claimed by a socket connection up to a configured timeout.
 
     * `conn` - the Plug.Conn struct form the HTTP request
     * `view` - the LiveView module
@@ -152,30 +156,87 @@ defmodule Phoenix.LiveView.Static do
         host_uri
       )
 
-    case call_mount_and_handle_params!(socket, view, mount_session, conn.params, request_url) do
-      {:ok, socket} ->
-        data_attrs = [
-          phx_session: sign_root_session(socket, router, view, to_sign_session, live_session),
-          phx_static: sign_static_token(socket)
-        ]
+    case adoptable?(view) do
+      nil ->
+        case call_mount_and_handle_params!(socket, view, mount_session, conn.params, request_url) do
+          {:ok, socket} ->
+            data_attrs = [
+              phx_session: sign_root_session(socket, router, view, to_sign_session, live_session),
+              phx_static: sign_static_token(socket)
+            ]
 
-        data_attrs = if(router, do: [phx_main: true], else: []) ++ data_attrs
+            data_attrs = if(router, do: [phx_main: true], else: []) ++ data_attrs
 
-        attrs = [
-          {:id, socket.id},
-          {:data, data_attrs}
-          | extended_attrs
-        ]
+            attrs = [
+              {:id, socket.id},
+              {:data, data_attrs}
+              | extended_attrs
+            ]
 
-        try do
-          {:ok, to_rendered_content_tag(socket, tag, view, attrs), socket.assigns}
-        catch
-          :throw, {:phoenix, :child_redirect, redirected, flash} ->
-            {:stop, Utils.replace_flash(%{socket | redirected: redirected}, flash)}
+            try do
+              {:ok, to_rendered_content_tag(socket, tag, view, attrs), socket.assigns}
+            catch
+              :throw, {:phoenix, :child_redirect, redirected, flash} ->
+                {:stop, Utils.replace_flash(%{socket | redirected: redirected}, flash)}
+            end
+
+          {:stop, socket} ->
+            {:stop, socket}
         end
 
-      {:stop, socket} ->
-        {:stop, socket}
+      # TODO: maybe make the use option adoptable: true (-> defaults) / adoptable: %{timeout: 5000} (config map)
+      # instead of separate adoption_timeout
+      %{timeout: timeout} ->
+        # from usually is a {endpoint, pid} tuple set by the
+        # Phoenix channel server
+        from =
+          {:adoptable_mount,
+           fn ->
+             call_mount_and_handle_params!(
+               socket,
+               view,
+               mount_session,
+               conn.params,
+               request_url
+             )
+           end, timeout}
+
+        opts = {endpoint, from}
+
+        {:ok, pid} =
+          DynamicSupervisor.start_child(
+            Phoenix.LiveView.AdoptionSupervisor,
+            {Phoenix.LiveView.Channel, opts}
+          )
+
+        # TODO: handle call timeout
+        with {:ok, iodata, assigns} <-
+               GenServer.call(pid, {:phoenix, :disconnected_adoptable_render}) do
+          data_attrs = [
+            phx_session: sign_root_session(socket, router, view, to_sign_session, live_session),
+            phx_static: sign_static_token(socket),
+            phx_adopt: Phoenix.Socket.sign_adoption_token(endpoint, pid)
+          ]
+
+          data_attrs = if(router, do: [phx_main: true], else: []) ++ data_attrs
+
+          attrs = [
+            {:id, socket.id},
+            {:data, data_attrs}
+            | extended_attrs
+          ]
+
+          # TODO: we currently expect the socket assigns for LiveViewTest
+          # check if we can aboid copying assigns...
+          {:ok, content_tag(tag, attrs, iodata), assigns}
+        end
+    end
+  end
+
+  defp adoptable?(view) do
+    case view.__live__() do
+      %{adoptable: true} = config -> %{timeout: Map.get(config, :adoption_timeout, 5000)}
+      _ -> nil
     end
   end
 
