@@ -645,10 +645,11 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
         )
 
       {{:text, "", _}, directives} ->
-        {strip_text(tokens), buffer, %{state | directives: directives}}
+        {strip_text(tokens), buffer, %{state | directives: state.directives ++ directives}}
 
       {new_node, directives} ->
-        {strip_text(tokens), [new_node | buffer], %{state | directives: directives}}
+        {strip_text(tokens), [new_node | buffer],
+         %{state | directives: state.directives ++ directives}}
     end
   end
 
