@@ -488,7 +488,8 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
           ~H"""
           <div :type={DirectiveMacroComponent}></div>
           <div id="hello">
-            <script :type={NoDirectiveMacroComponent}></script>
+            <script :type={NoDirectiveMacroComponent}>
+            </script>
           </div>
           """
         end
