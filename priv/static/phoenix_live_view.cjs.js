@@ -6094,7 +6094,7 @@ var LiveSocket = class {
    * Returns the version of the LiveView client.
    */
   version() {
-    return "1.2.3";
+    return "1.2.4";
   }
   /**
    * Returns true if profiling is enabled. See {@link enableProfiling} and {@link disableProfiling}.
