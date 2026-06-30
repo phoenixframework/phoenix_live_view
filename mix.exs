@@ -46,7 +46,8 @@ defmodule Phoenix.LiveView.MixProject do
   defp deps do
     [
       {:igniter, "~> 0.6 and >= 0.6.16", optional: true},
-      {:phoenix, "~> 1.6.15 or ~> 1.7.0 or ~> 1.8.0"},
+      # {:phoenix, "~> 1.6.15 or ~> 1.7.0 or ~> 1.8.0"},
+      {:phoenix, github: "phoenixframework/phoenix", branch: "sd-adopt", override: true},
       {:plug, "~> 1.15"},
       {:phoenix_template, "~> 1.0"},
       {:phoenix_html, "~> 3.3 or ~> 4.0 or ~> 4.1"},
