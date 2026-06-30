@@ -102,15 +102,20 @@ defmodule Phoenix.LiveView.UploadChannel do
           {:reply, :ok, new_socket}
 
         {:error, reason, new_socket} ->
+          # a close(:done) failure already closed the writer; don't close it twice
           new_socket =
-            case close_writer(new_socket, {:error, reason}) do
-              {:ok, new_socket} -> new_socket
-              {:error, _reason, new_socket} -> new_socket
+            if new_socket.assigns.writer_closed? do
+              new_socket
+            else
+              case close_writer(new_socket, {:error, reason}) do
+                {:ok, new_socket} -> new_socket
+                {:error, _reason, new_socket} -> new_socket
+              end
             end
 
           Channel.report_writer_error(socket.assigns.live_view_pid, reason)
 
-          {:reply, {:error, %{reason: :writer_error}}, new_socket}
+          {:stop, {:shutdown, :closed}, {:error, %{reason: :writer_error}}, new_socket}
       end
     else
       reply = %{reason: :file_size_limit_exceeded, limit: max_file_size}
