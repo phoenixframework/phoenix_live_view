@@ -250,7 +250,10 @@ defmodule Phoenix.LiveView.TagEngine do
       Using Phoenix.LiveView.TagEngine as an EEx.Engine is deprecated!
 
       To compile HEEx, use Phoenix.LiveView.TagEngine.compile/2 instead.
-      """, line: line, file: file)
+      """,
+      line: line,
+      file: file
+    )
 
     %{
       subengine: subengine,

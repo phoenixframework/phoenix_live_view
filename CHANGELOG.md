@@ -115,6 +115,13 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.5 (2026-06-30)
+
+### Enhancements
+
+* Ensure `Phoenix.LiveView.TagEngine`'s `EEx.Engine` deprecation warning includes file and line information
+* Ensure a failing custom UploadWriter does not crash the LiveView process ([#4320](https://github.com/phoenixframework/phoenix_live_view/pull/4320))
+
 ## v1.2.4 (2026-06-29)
 
 ### Bug fixes
