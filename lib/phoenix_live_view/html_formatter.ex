@@ -611,10 +611,19 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     line_extra =
       source
       |> binary_part(line_offset, byte_size(source) - line_offset)
-      |> String.slice(0, column - 1)
-      |> byte_size()
+      |> codepoint_byte_size(column - 1)
 
     line_offset + line_extra
+  end
+
+  defp codepoint_byte_size(binary, count),
+    do: codepoint_byte_size(binary, count, byte_size(binary))
+
+  defp codepoint_byte_size(binary, 0, original_size), do: original_size - byte_size(binary)
+  defp codepoint_byte_size(<<>>, _count, original_size), do: original_size
+
+  defp codepoint_byte_size(<<_codepoint::utf8, rest::binary>>, count, original_size) do
+    codepoint_byte_size(rest, count - 1, original_size)
   end
 
   defp maybe_format_tag(
