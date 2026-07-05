@@ -2457,4 +2457,12 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
       attribute_formatters: %{upcased: UpcaseFormatter, unloaded: Unloaded}
     )
   end
+
+  test "handles multi-codepoint emoji characters in :preserve mode" do
+    assert_formatter_doesnt_change("""
+    <.component>
+      <:icon>⚠️</:icon>{@test}
+    </.component>
+    """)
+  end
 end

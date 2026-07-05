@@ -299,7 +299,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       source
     else
       line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
-      newlines = :binary.matches(source, ["\r\n", "\n"])
+      newlines = newlines(source)
 
       opts =
         Enum.reduce([:attribute_formatters, :tag_formatters], opts, fn type, opts ->
@@ -345,6 +345,28 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
       IO.iodata_to_binary([formatted, newline])
     end
+  end
+
+  defp newlines(source) do
+    source
+    |> String.codepoints()
+    |> do_newlines(0, [])
+  end
+
+  defp do_newlines(["\r", "\n" | rest], idx, newlines) do
+    do_newlines(rest, idx + 2, [{idx, 2} | newlines])
+  end
+
+  defp do_newlines(["\n" | rest], idx, newlines) do
+    do_newlines(rest, idx + 1, [{idx, 1} | newlines])
+  end
+
+  defp do_newlines([_codepoint | rest], idx, newlines) do
+    do_newlines(rest, idx + 1, newlines)
+  end
+
+  defp do_newlines([], _idx, newlines) do
+    Enum.reverse(newlines)
   end
 
   # Buffer processing callback for Parser - handles preserve mode propagation and text metadata
@@ -599,20 +621,24 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     [first_line | _] = lines
     [last_line | _] = Enum.reverse(lines)
 
-    offset_start = line_byte_offset(source, first_line, column_start)
-    offset_end = line_byte_offset(source, last_line, column_end)
+    codepoints = String.codepoints(source)
 
-    binary_part(source, offset_start, offset_end - offset_start)
+    offset_start = line_codepoint_offset(codepoints, first_line, column_start)
+    offset_end = line_codepoint_offset(codepoints, last_line, column_end)
+
+    codepoints
+    |> Enum.slice(offset_start, offset_end - offset_start)
+    |> Enum.join()
   end
 
-  defp line_byte_offset(source, {line_before, line_size}, column) do
+  defp line_codepoint_offset(codepoints, {line_before, line_size}, column) do
     line_offset = line_before + line_size
 
     line_extra =
-      source
-      |> binary_part(line_offset, byte_size(source) - line_offset)
-      |> String.slice(0, column - 1)
-      |> byte_size()
+      codepoints
+      |> Enum.drop(line_offset)
+      |> Enum.take(column - 1)
+      |> length()
 
     line_offset + line_extra
   end
