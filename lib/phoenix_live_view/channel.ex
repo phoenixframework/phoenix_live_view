@@ -74,14 +74,27 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   @impl true
+  def init({:adoptable_mount, init, timeout}) do
+    # adoptable render happens in handle_call
+    {:ok, {:adoptable, init, timeout}}
+  end
+
   def init({pid, _ref}) do
     {:ok, Process.monitor(pid)}
   end
 
   @impl true
+  def handle_info({Phoenix.Channel, auth_payload, from, phx_socket}, {:adoptable, state}) do
+    IO.puts("adopting existing channel!")
+    mount(auth_payload, from, phx_socket, state)
+  rescue
+    # Normalize exceptions for better client debugging
+    e -> reraise(e, __STACKTRACE__)
+  end
+
   def handle_info({Phoenix.Channel, auth_payload, from, phx_socket}, ref) do
     Process.demonitor(ref)
-    mount(auth_payload, from, phx_socket)
+    mount(auth_payload, from, phx_socket, nil)
   rescue
     # Normalize exceptions for better client debugging
     e -> reraise(e, __STACKTRACE__)
@@ -359,6 +372,21 @@ defmodule Phoenix.LiveView.Channel do
     handle_changed(state, new_socket, nil)
   end
 
+  def handle_info({@prefix, :adoption_timeout}, {:adoptable, state}) do
+    # State is still {:adoptable, _}, so we were not adopted.
+    # Bye!
+    IO.puts("shutting down adoptable socket due to timeout")
+    {:stop, :shutdown, {:adoptable, state}}
+  end
+
+  def handle_info({@prefix, :adoption_timeout}, state) do
+    {:noreply, state}
+  end
+
+  def handle_info({@prefix, :connected_diff, diff}, state) do
+    {:noreply, push_diff(state, diff, nil)}
+  end
+
   def handle_info(msg, %{socket: socket} = state) do
     msg
     |> view_handle_info(socket)
@@ -429,6 +457,31 @@ defmodule Phoenix.LiveView.Channel do
       end)
 
     {:reply, {:ok, component_info}, state}
+  end
+
+  # Phoenix.LiveView.Static.render/3
+  def handle_call({@prefix, :disconnected_adoptable_render}, _from, {:adoptable, init, timeout})
+      when is_function(init, 0) do
+    case init.() do
+      {:ok, socket} ->
+        state = %{
+          socket: socket,
+          components: Diff.new_components(),
+          fingerprints: Diff.new_fingerprints(),
+          initial_diff: nil
+        }
+
+        {:diff, diff, state} = render_diff(state, socket, true)
+        state = %{state | initial_diff: diff}
+
+        Process.send_after(self(), {@prefix, :adoption_timeout}, timeout)
+
+        # TODO: check if we can avoid sending the assigns back
+        {:reply, {:ok, Diff.to_iodata(diff), socket.assigns}, {:adoptable, state}}
+
+      {:stop, socket} ->
+        {:stop, :shutdown, {:stop, socket}, nil}
+    end
   end
 
   def handle_call(msg, from, %{socket: socket} = state) do
@@ -1035,11 +1088,26 @@ defmodule Phoenix.LiveView.Channel do
         {socket, %{}, state.fingerprints, state.components}
       end
 
-    diff = Diff.render_private(socket, diff)
+    diff =
+      case state do
+        %{initial_diff: initial_diff} when is_map(initial_diff) ->
+          send(self(), {@prefix, :connected_diff, Diff.render_private(socket, diff)})
+          initial_diff
+
+        _ ->
+          Diff.render_private(socket, diff)
+      end
+
     new_socket = Utils.clear_temp(socket)
 
     {:diff, diff,
-     %{state | socket: new_socket, fingerprints: fingerprints, components: components}}
+     %{
+       state
+       | socket: new_socket,
+         fingerprints: fingerprints,
+         components: components,
+         initial_diff: nil
+     }}
   end
 
   defp reply(state, {ref, extra}, status, payload) do
@@ -1066,7 +1134,7 @@ defmodule Phoenix.LiveView.Channel do
 
   ## Mount
 
-  defp mount(%{"session" => session_token} = params, from, phx_socket) do
+  defp mount(%{"session" => session_token} = params, from, phx_socket, adopted_state) do
     %Phoenix.Socket{endpoint: endpoint, topic: topic} = phx_socket
 
     case Session.verify_session(endpoint, topic, session_token, params["static"]) do
@@ -1126,7 +1194,8 @@ defmodule Phoenix.LiveView.Channel do
                 params,
                 from,
                 phx_socket,
-                connect_info
+                connect_info,
+                adopted_state
               )
             else
               {:error, :unauthorized} ->
@@ -1145,7 +1214,7 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp mount(%{}, from, phx_socket) do
+  defp mount(%{}, from, phx_socket, _adopted_state) do
     Logger.error("Mounting #{phx_socket.topic} failed because no session was provided")
     GenServer.reply(from, {:error, %{reason: "stale"}})
     {:stop, :shutdown, :no_session}
@@ -1171,7 +1240,8 @@ defmodule Phoenix.LiveView.Channel do
          params,
          from,
          phx_socket,
-         connect_info
+         connect_info,
+         adopted_state
        ) do
     %Session{
       id: id,
@@ -1206,16 +1276,24 @@ defmodule Phoenix.LiveView.Channel do
     Process.monitor(transport_pid)
     load_csrf_token(endpoint, socket_session)
 
-    socket = %Socket{
-      endpoint: endpoint,
-      view: view,
-      transport_pid: transport_pid,
-      parent_pid: parent,
-      root_pid: root_pid || self(),
-      id: id,
-      router: router,
-      sticky?: params["sticky"]
-    }
+    socket =
+      %Socket{
+        endpoint: endpoint,
+        view: view,
+        transport_pid: transport_pid,
+        parent_pid: parent,
+        root_pid: root_pid || self(),
+        id: id,
+        router: router,
+        sticky?: params["sticky"]
+      }
+      # For adoption, we only need to copy assigns and private.
+      # The state already contains existing fingerprints and
+      # components, but we need to do a full render anyway, since
+      # the client needs the full diff and the connected mount may
+      # have changed assigns. Unchanged expressions won't be executed.
+      |> maybe_copy_adopted(adopted_state, :private)
+      |> maybe_copy_adopted(adopted_state, :assigns)
 
     {params, host_uri, action} =
       case route do
@@ -1237,7 +1315,7 @@ defmodule Phoenix.LiveView.Channel do
           socket
           |> load_layout(route)
           |> Utils.maybe_call_live_view_mount!(view, params, merged_session, url)
-          |> build_state(phx_socket)
+          |> build_state(phx_socket, adopted_state)
           |> maybe_call_mount_handle_params(router, url, params)
           |> reply_mount(from, verified, route)
           |> maybe_subscribe_to_live_reload()
@@ -1274,6 +1352,12 @@ defmodule Phoenix.LiveView.Channel do
         GenServer.reply(from, {:error, %{reason: "stale"}})
         {:stop, :shutdown, :no_state}
     end
+  end
+
+  defp maybe_copy_adopted(socket, nil, _), do: socket
+
+  defp maybe_copy_adopted(socket, adopted_state, key) do
+    Map.put(socket, key, Map.fetch!(adopted_state.socket, key))
   end
 
   defp verify_flash(endpoint, %Session{} = verified, flash_token, connect_params) do
@@ -1446,18 +1530,24 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket) do
-    %{
+  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, adopted_state) do
+    base =
+      adopted_state ||
+        %{
+          components: Diff.new_components(),
+          fingerprints: Diff.new_fingerprints(),
+          initial_diff: nil
+        }
+
+    Map.merge(base, %{
       join_ref: phx_socket.join_ref,
       serializer: phx_socket.serializer,
       socket: lv_socket,
       topic: phx_socket.topic,
-      components: Diff.new_components(),
-      fingerprints: Diff.new_fingerprints(),
       redirect_count: 0,
       upload_names: %{},
       upload_pids: %{}
-    }
+    })
   end
 
   defp build_uri(%{socket: socket}, "/" <> _ = to) do
