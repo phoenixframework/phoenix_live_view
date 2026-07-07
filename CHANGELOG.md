@@ -115,6 +115,12 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.6 (2026-07-07)
+
+### Bug fixes
+
+* Fix HTMLFormatter inserting extra characters in template with multi-codepoint emojis ([#4321](https://github.com/phoenixframework/phoenix_live_view/issues/4321))
+
 ## v1.2.5 (2026-06-30)
 
 ### Enhancements
