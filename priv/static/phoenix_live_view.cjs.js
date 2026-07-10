@@ -3794,7 +3794,7 @@ var JS = {
     const alteredAttrs = sets.map(([attr, _val]) => attr).concat(removes);
     const newSets = prevSets.filter(([attr, _val]) => !alteredAttrs.includes(attr)).concat(sets);
     const newRemoves = prevRemoves.filter((attr) => !alteredAttrs.includes(attr)).concat(removes);
-    if (sets.some(([attr, _val]) => attr === "id")) {
+    if (sets.some(([attr, val]) => attr === "id" && el.getAttribute("id") !== val)) {
       dom_default.putPrivate(el, "clientsideIdAttribute", true);
     }
     dom_default.putSticky(el, "attrs", (currentEl) => {
