@@ -696,6 +696,21 @@ const DOM = {
     );
   },
 
+  /**
+   * Returns true if the element is a Form-Associated Custom Element (FACE).
+   * Unlike native inputs, FACEs store their value in ElementInternals (via
+   * setFormValue), not in DOM attributes or children. Their light-DOM
+   * children and slotted elements must be patched normally by morphdom even
+   * while the element has focus.
+   */
+  isFormAssociatedCustomElement(el: Element | EventTarget | null): boolean {
+    if (!(el instanceof HTMLElement) || !el.localName) return false;
+    const ctor = customElements.get(el.localName);
+    return (
+      !!ctor && (ctor as { formAssociated?: boolean }).formAssociated === true
+    );
+  },
+
   syncAttrsToProps(el) {
     if (
       el instanceof HTMLInputElement &&
