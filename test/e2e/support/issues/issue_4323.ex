@@ -42,6 +42,18 @@ defmodule Phoenix.LiveViewTest.E2E.Issue4323Live do
           // Case 5: Non-FACE custom element
           class NonFaceEl extends HTMLElement {}
           customElements.define("non-face-el", NonFaceEl);
+
+          // Case 6: FACE with shadow DOM + slot + delegatesFocus
+          class FaceSlottedDelegates extends HTMLElement {
+            static formAssociated = true;
+            constructor() {
+              super();
+              this.attachInternals();
+              this.attachShadow({ mode: "open", delegatesFocus: true });
+              this.shadowRoot.innerHTML = '<input type="text" /><div><slot></slot></div>';
+            }
+          }
+          customElements.define("face-slotted-delegates", FaceSlottedDelegates);
         </script>
         """
       end)
@@ -86,6 +98,12 @@ defmodule Phoenix.LiveViewTest.E2E.Issue4323Live do
       <non-face-el id="case5" tabindex="0">
         <span id="case5-child">count:{@counter}</span>
       </non-face-el>
+
+      <%!-- Case 6: FACE with slot + delegatesFocus --%>
+      <face-slotted-delegates id="case6">
+        <input id="case6-input" type="text" name="case6_input" />
+        <span id="case6-child">count:{@counter}</span>
+      </face-slotted-delegates>
 
       <button id="inc-btn" type="button" phx-click="inc">Increment</button>
     </form>
