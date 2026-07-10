@@ -84,6 +84,23 @@ test.describe("FACE children patching", () => {
     await expect(page.locator("#case4-child")).toHaveText("count:1");
   });
 
+  test("FACE with slot + delegatesFocus: slotted children are patched", async ({
+    page,
+  }) => {
+    await expect(page.locator("#case6-child")).toHaveText("count:0");
+
+    // Click the FACE host; delegatesFocus sends focus to the shadow input,
+    // but document.activeElement returns the shadow host
+    await page.locator("#case6").click();
+    const activeId = await page.evaluate(() => document.activeElement?.id);
+    expect(activeId).toBe("case6");
+
+    await incrementCounter(page);
+
+    // Slotted light DOM children should be patched (FACE branch descends)
+    await expect(page.locator("#case6-child")).toHaveText("count:1");
+  });
+
   test("non-FACE custom element: children are patched normally", async ({
     page,
   }) => {
