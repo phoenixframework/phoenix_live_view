@@ -16,6 +16,7 @@ defmodule Phoenix.LiveView.Diff do
   @static :s
   @keyed :k
   @keyed_count :kc
+  @keyed_moved :km
   @events :e
   @reply :r
   @title :t
@@ -793,14 +794,22 @@ defmodule Phoenix.LiveView.Diff do
     # if the diff is empty, we need to check if the item moved
     if child_diff == %{} do
       # check if the entry moved, then annotate it with the previous index
-      diff = if previous_index != index, do: Map.put(diff, index, previous_index), else: diff
+      diff =
+        if previous_index != index do
+          diff
+          |> Map.put(@keyed_moved, true)
+          |> Map.put(index, previous_index)
+        else
+          diff
+        end
+
       {diff, index + 1, new_prints, pending, components, template}
     else
-      child_diff =
+      {diff, child_diff} =
         if previous_index != index do
-          [previous_index, child_diff]
+          {Map.put(diff, @keyed_moved, true), [previous_index, child_diff]}
         else
-          child_diff
+          {diff, child_diff}
         end
 
       {Map.put(diff, index, child_diff), index + 1, new_prints, pending, components, template}

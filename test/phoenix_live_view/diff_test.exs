@@ -2019,7 +2019,7 @@ defmodule Phoenix.LiveView.DiffTest do
       {second_render, fingerprints, components} =
         render(keyed_comprehension_with_pattern(assigns), fingerprints, components)
 
-      assert second_render == %{0 => %{k: %{0 => 1, 1 => 0, :kc => 2}}}
+      assert second_render == %{0 => %{k: %{0 => 1, 1 => 0, :kc => 2, :km => true}}}
 
       # update count
       assigns = Phoenix.Component.assign(assigns, :count, 1)
@@ -2041,7 +2041,9 @@ defmodule Phoenix.LiveView.DiffTest do
       {fourth_render, _fingerprints, _components} =
         render(keyed_comprehension_with_pattern(assigns), fingerprints, components)
 
-      assert fourth_render == %{0 => %{k: %{0 => 1, 1 => %{0 => "1", 1 => "Third"}, :kc => 2}}}
+      assert fourth_render == %{
+               0 => %{k: %{0 => 1, 1 => %{0 => "1", 1 => "Third"}, :kc => 2, :km => true}}
+             }
     end
 
     test "change tracking when no key is given" do
@@ -2430,7 +2432,7 @@ defmodule Phoenix.LiveView.DiffTest do
         render(keyed_comprehension_with_component(assigns), fingerprints, components)
 
       # only the order changed
-      assert second_render == %{0 => %{k: %{0 => 1, 1 => 0, :kc => 2}}}
+      assert second_render == %{0 => %{k: %{0 => 1, 1 => 0, :kc => 2, :km => true}}}
 
       # update count
       assigns = Phoenix.Component.assign(%{assigns | __changed__: %{}}, :count, 1)
@@ -2513,7 +2515,7 @@ defmodule Phoenix.LiveView.DiffTest do
         render(keyed_comprehension_with_component_and_slots(assigns), fingerprints, components)
 
       # only the order changed
-      assert second_render == %{0 => %{k: %{0 => 1, 1 => 0, :kc => 2}}}
+      assert second_render == %{0 => %{k: %{0 => 1, 1 => 0, :kc => 2, :km => true}}}
 
       # update count
       assigns = Phoenix.Component.assign(%{assigns | __changed__: %{}}, :count, 1)

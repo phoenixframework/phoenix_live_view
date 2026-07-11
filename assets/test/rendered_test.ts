@@ -4,12 +4,13 @@ import {
   COMPONENTS,
   KEYED,
   KEYED_COUNT,
+  KEYED_MOVED,
   TEMPLATES,
 } from "phoenix_live_view/constants";
 
 describe("Rendered", () => {
   describe("mergeDiff", () => {
-    test("recursively merges two diffs", () => {
+    test("merges a diff into the rendered tree", () => {
       const simple = new Rendered("123", simpleDiff1);
       simple.mergeDiff(simpleDiff2);
       expect(simple.get()).toEqual({
@@ -17,10 +18,95 @@ describe("Rendered", () => {
         [COMPONENTS]: {},
         newRender: true,
       });
+    });
 
+    test("merges stable-position keyed updates without cloning", () => {
       const deep = new Rendered("123", deepDiff1);
+      const clone = jest.spyOn(deep, "clone");
       deep.mergeDiff(deepDiff2);
+      expect(clone).not.toHaveBeenCalled();
       expect(deep.get()).toEqual({ ...deepDiffResult, [COMPONENTS]: {} });
+    });
+
+    test("clones before moving entries so later moves use pre-merge positions", () => {
+      const rendered = new Rendered("123", {
+        [KEYED]: {
+          0: { 0: "first", 1: "unchanged" },
+          1: { 0: "second", 1: "old" },
+          [KEYED_COUNT]: 2,
+        },
+        [STATIC]: ["", "", ""],
+      });
+      const before = (rendered.get() as any)[KEYED];
+      const first = before[0];
+      const second = before[1];
+      const clone = jest.spyOn(rendered, "clone");
+
+      rendered.mergeDiff({
+        [KEYED]: {
+          0: [1, { 1: "updated" }],
+          1: 0,
+          [KEYED_COUNT]: 2,
+          [KEYED_MOVED]: true,
+        },
+      });
+
+      expect(clone).toHaveBeenCalledTimes(1);
+      expect((rendered.get() as any)[KEYED]).toEqual({
+        0: { 0: "second", 1: "updated" },
+        1: { 0: "first", 1: "unchanged" },
+        [KEYED_COUNT]: 2,
+      });
+      expect(first).toEqual({ 0: "first", 1: "unchanged" });
+      expect(second).toEqual({ 0: "second", 1: "old" });
+    });
+
+    test("clones only a moved nested keyed subtree", () => {
+      const rendered = new Rendered("123", {
+        [KEYED]: {
+          0: {
+            0: "outer",
+            1: {
+              [KEYED]: {
+                0: { 0: "first" },
+                1: { 0: "second" },
+                [KEYED_COUNT]: 2,
+              },
+              [STATIC]: ["", ""],
+            },
+          },
+          [KEYED_COUNT]: 1,
+        },
+        [STATIC]: ["", "", ""],
+      });
+      const outer = (rendered.get() as any)[KEYED][0];
+      const nested = outer[1];
+      const clone = jest.spyOn(rendered, "clone");
+
+      rendered.mergeDiff({
+        [KEYED]: {
+          0: {
+            1: {
+              [KEYED]: {
+                0: 1,
+                1: 0,
+                [KEYED_COUNT]: 2,
+                [KEYED_MOVED]: true,
+              },
+            },
+          },
+          [KEYED_COUNT]: 1,
+        },
+      });
+
+      expect(clone).toHaveBeenCalledTimes(1);
+      expect(clone.mock.calls[0][0]).toBe(nested);
+      expect((rendered.get() as any)[KEYED][0]).toBe(outer);
+      expect(nested[KEYED]).toEqual({
+        0: { 0: "second" },
+        1: { 0: "first" },
+        [KEYED_COUNT]: 2,
+      });
     });
 
     test("merges the latter diff if it contains a `static` key", () => {
