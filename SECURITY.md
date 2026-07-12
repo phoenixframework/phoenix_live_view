@@ -7,7 +7,8 @@ available for the last 4 minor branches (starting from 1.0):
 
 LV version | Support
 :-------------- | :-----------------------------
-1.1             | Bug fixes and security patches
+1.2             | Bug fixes and security patches
+1.1             | Security patches only
 1.0             | Security patches only
 
 ## Announcements
