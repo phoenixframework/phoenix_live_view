@@ -617,15 +617,15 @@ defmodule Phoenix.LiveView.Utils do
   # Returns the lowercased URI scheme of `to` if it begins with one, that is, a
   # ":" appears before any "/", "?" or "#"; otherwise returns nil. This avoids
   # treating a colon in a path segment, query, or fragment as a scheme.
-  defp uri_scheme(<<char, _::binary>> = to) when char in ?A..?Z or char in ?a..?z do
+  defp uri_scheme(to) do
     case :binary.match(to, [":", "/", "?", "#"]) do
-      {pos, 1} when binary_part(to, pos, 1) == ":" ->
-        String.downcase(binary_part(to, 0, pos), :ascii)
+      {pos, 1} ->
+        if binary_part(to, pos, 1) == ":",
+          do: String.downcase(binary_part(to, 0, pos), :ascii),
+          else: nil
 
-      _ ->
+      :nomatch ->
         nil
     end
   end
-
-  defp uri_scheme(_to), do: nil
 end
