@@ -115,6 +115,11 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.7 (2026-07-13)
+
+### Security fixes
+- [CVE-2026-58228](https://github.com/phoenixframework/phoenix_live_view/security/advisories/GHSA-5cgh-g58j-m9cq): Fix scheme validation bypass in `Phoenix.LiveView.Utils`
+
 ## v1.2.6 (2026-07-07)
 
 ### Bug fixes
