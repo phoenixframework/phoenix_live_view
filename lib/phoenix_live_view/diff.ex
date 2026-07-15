@@ -791,7 +791,7 @@ defmodule Phoenix.LiveView.Diff do
       Map.put(new_prints, key, %{index: index, vars: new_vars, child_prints: child_prints})
 
     # if the diff is empty, we need to check if the item moved
-    if child_diff == %{} or child_diff == nil do
+    if child_diff == %{} do
       # check if the entry moved, then annotate it with the previous index
       diff = if previous_index != index, do: Map.put(diff, index, previous_index), else: diff
       {diff, index + 1, new_prints, pending, components, template}
