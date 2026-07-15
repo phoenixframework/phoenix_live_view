@@ -33,6 +33,26 @@ var LiveView = (() => {
     return to;
   };
   var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+  var __async = (__this, __arguments, generator) => {
+    return new Promise((resolve, reject) => {
+      var fulfilled = (value) => {
+        try {
+          step(generator.next(value));
+        } catch (e) {
+          reject(e);
+        }
+      };
+      var rejected = (value) => {
+        try {
+          step(generator.throw(value));
+        } catch (e) {
+          reject(e);
+        }
+      };
+      var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
+      step((generator = generator.apply(__this, __arguments)).next());
+    });
+  };
 
   // js/phoenix_live_view/index.ts
   var phoenix_live_view_exports = {};
@@ -41,7 +61,8 @@ var LiveView = (() => {
     ViewHook: () => ViewHook,
     createHook: () => createHook,
     getFileURLForUpload: () => getFileURLForUpload,
-    isUsedInput: () => isUsedInput
+    isUsedInput: () => isUsedInput,
+    lazy: () => lazy
   });
 
   // js/phoenix_live_view/constants.ts
@@ -4026,7 +4047,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       this.__attachView(view);
       this.__listeners = /* @__PURE__ */ new Set();
       this.__isDisconnected = false;
-      dom_default.putPrivate(this.el, HOOK_ID, _ViewHook.makeID());
+      if (_ViewHook.elementID(this.el) == null) {
+        dom_default.putPrivate(this.el, HOOK_ID, _ViewHook.makeID());
+      }
       if (view && view.isDead) {
         dom_default.putPrivate(this.el, DEAD_HOOK, true);
       }
@@ -4228,6 +4251,67 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       this.__listeners.forEach(
         (callbackRef) => this.removeHandleEvent(callbackRef)
       );
+    }
+  };
+  var LAZY = Symbol("phx-lazy-hook");
+  function lazy(loader) {
+    return { [LAZY]: loader };
+  }
+  function isLazyHook(definition) {
+    return typeof definition === "object" && definition !== null && LAZY in definition;
+  }
+  function isViewHookClass(definition) {
+    return typeof definition === "function" && definition.prototype instanceof ViewHook;
+  }
+  function createHookFromDefinition(view, el, definition) {
+    if (isViewHookClass(definition)) {
+      return new definition(view, el);
+    }
+    return new ViewHook(view, el, definition);
+  }
+  function resolveLazyDefinition(hookName, loaded) {
+    if (isViewHookClass(loaded)) {
+      return loaded;
+    }
+    if (typeof loaded === "object" && loaded !== null && !Array.isArray(loaded)) {
+      const mod = loaded;
+      const isModuleShaped = Object.prototype.hasOwnProperty.call(mod, "default") || Object.prototype.toString.call(mod) === "[object Module]" || mod.__esModule === true;
+      if (!isModuleShaped) {
+        return loaded;
+      }
+      const defaultExport = mod.default;
+      if (isViewHookClass(defaultExport) || typeof defaultExport === "object" && defaultExport !== null && !isLazyHook(defaultExport)) {
+        return defaultExport;
+      }
+      throw new Error(
+        `the module loaded for lazy hook "${hookName}" must export the hook definition as its default export`
+      );
+    }
+    throw new Error(
+      `lazy hook "${hookName}" resolved to ${typeof loaded} instead of a hook definition`
+    );
+  }
+  function loadLazyHook(hookName, hook) {
+    return __async(this, null, function* () {
+      const loaded = yield hook[LAZY]();
+      return { definition: resolveLazyDefinition(hookName, loaded) };
+    });
+  }
+  var PendingHook = class extends ViewHook {
+    constructor(view, el, hookName) {
+      super(view, el);
+      this.cancelled = false;
+      this.wasDisconnected = false;
+      this.hookName = hookName;
+    }
+    disconnected() {
+      this.wasDisconnected = true;
+    }
+    reconnected() {
+      this.wasDisconnected = false;
+    }
+    destroyed() {
+      this.cancelled = true;
     }
   };
 
@@ -4924,15 +5008,23 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
             );
             return;
           }
+          if (hookDefinition instanceof Promise) {
+            const pending = new PendingHook(this, el, hookName);
+            this.viewHooks[ViewHook.elementID(pending.el)] = pending;
+            hookDefinition.then(
+              ({ definition }) => this.upgradePendingHook(pending, definition),
+              // load failures are logged by the LiveSocket; only unregister here
+              () => this.removePendingHook(pending)
+            );
+            return pending;
+          }
           let hookInstance;
           try {
-            if (typeof hookDefinition === "function" && hookDefinition.prototype instanceof ViewHook) {
-              hookInstance = new hookDefinition(this, el);
-            } else if (typeof hookDefinition === "object" && hookDefinition !== null) {
-              hookInstance = new ViewHook(this, el, hookDefinition);
+            if (isViewHookClass(hookDefinition) || typeof hookDefinition === "object" && hookDefinition !== null) {
+              hookInstance = createHookFromDefinition(this, el, hookDefinition);
             } else {
               logError(
-                `Invalid hook definition for "${hookName}". Expected a class extending ViewHook or an object definition.`,
+                `Invalid hook definition for "${hookName}". Expected a class extending ViewHook, an object definition, or a lazy hook created with lazy().`,
                 el
               );
               return;
@@ -4954,6 +5046,35 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       hook.__destroyed();
       hook.__cleanup__();
       delete this.viewHooks[hookId];
+    }
+    upgradePendingHook(pending, definition) {
+      const hookId = ViewHook.elementID(pending.el);
+      if (pending.cancelled || this.isDestroyed() || !hookId || this.viewHooks[hookId] !== pending) {
+        return;
+      }
+      let hook;
+      try {
+        hook = createHookFromDefinition(this, pending.el, definition);
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        logError(
+          `Failed to create hook "${pending.hookName}": ${errorMessage}`,
+          pending.el
+        );
+        this.destroyHook(pending);
+        return;
+      }
+      this.viewHooks[hookId] = hook;
+      hook.__mounted();
+      if (pending.wasDisconnected) {
+        hook.__disconnected();
+      }
+    }
+    removePendingHook(pending) {
+      const hookId = ViewHook.elementID(pending.el);
+      if (hookId && this.viewHooks[hookId] === pending) {
+        this.destroyHook(pending);
+      }
     }
     applyPendingUpdates() {
       this.pendingDiffs = this.pendingDiffs.filter(
@@ -6077,6 +6198,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       this.pendingLink = null;
       this.currentLocation = clone(window.location);
       this.hooks = opts.hooks || {};
+      this.lazyHookDefinitions = /* @__PURE__ */ new Map();
       this.uploaders = opts.uploaders || {};
       this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT;
       this.disconnectedTimeout = opts.disconnectedTimeout || DISCONNECTED_TIMEOUT;
@@ -6363,7 +6485,25 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       if (!name) {
         return;
       }
-      return this.maybeInternalHook(name) || this.hooks[name] || this.maybeRuntimeHook(name);
+      const definition = this.maybeInternalHook(name) || this.hooks[name] || this.maybeRuntimeHook(name);
+      if (isLazyHook(definition)) {
+        return this.loadLazyHookDefinition(name, definition);
+      }
+      return definition;
+    }
+    /** @internal */
+    loadLazyHookDefinition(name, lazyHook) {
+      const cached = this.lazyHookDefinitions.get(name);
+      if (cached) {
+        return cached;
+      }
+      const loading = loadLazyHook(name, lazyHook);
+      loading.catch((error) => {
+        this.lazyHookDefinitions.delete(name);
+        logError(`Failed to load lazy hook "${name}"`, error);
+      });
+      this.lazyHookDefinitions.set(name, loading);
+      return loading;
     }
     /** @internal */
     maybeInternalHook(name) {
