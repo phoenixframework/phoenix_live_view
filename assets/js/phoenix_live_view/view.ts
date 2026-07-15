@@ -62,7 +62,13 @@ import ElementRef from "./element_ref";
 import DOMPatch from "./dom_patch";
 import LiveUploader from "./live_uploader";
 import Rendered from "./rendered";
-import { ViewHook } from "./view_hook";
+import {
+  ViewHook,
+  PendingHook,
+  createHookFromDefinition,
+  isViewHookClass,
+  type HookOptionValue,
+} from "./view_hook";
 import JS from "./js";
 
 import morphdom from "morphdom";
@@ -996,23 +1002,29 @@ export default class View {
           return;
         }
 
+        if (hookDefinition instanceof Promise) {
+          // lazy hook: register a pending hook and upgrade it to the real
+          // hook once the definition has loaded
+          const pending = new PendingHook(this, el, hookName);
+          this.viewHooks[ViewHook.elementID(pending.el)] = pending;
+          hookDefinition.then(
+            ({ definition }) => this.upgradePendingHook(pending, definition),
+            // load failures are logged by the LiveSocket; only unregister here
+            () => this.removePendingHook(pending),
+          );
+          return pending;
+        }
+
         let hookInstance;
         try {
           if (
-            typeof hookDefinition === "function" &&
-            hookDefinition.prototype instanceof ViewHook
+            isViewHookClass(hookDefinition) ||
+            (typeof hookDefinition === "object" && hookDefinition !== null)
           ) {
-            // It's a class constructor (subclass of ViewHook)
-            hookInstance = new hookDefinition(this, el); // `this` is the View instance
-          } else if (
-            typeof hookDefinition === "object" &&
-            hookDefinition !== null
-          ) {
-            // It's an object literal, pass it to the ViewHook constructor for wrapping
-            hookInstance = new ViewHook(this, el, hookDefinition);
+            hookInstance = createHookFromDefinition(this, el, hookDefinition);
           } else {
             logError(
-              `Invalid hook definition for "${hookName}". Expected a class extending ViewHook or an object definition.`,
+              `Invalid hook definition for "${hookName}". Expected a class extending ViewHook, an object definition, or a lazy hook created with lazy().`,
               el,
             );
             return;
@@ -1038,6 +1050,46 @@ export default class View {
     hook.__destroyed();
     hook.__cleanup__();
     delete this.viewHooks[hookId];
+  }
+
+  upgradePendingHook(pending: PendingHook, definition: HookOptionValue) {
+    const hookId = ViewHook.elementID(pending.el);
+    if (
+      pending.cancelled ||
+      this.isDestroyed() ||
+      !hookId ||
+      this.viewHooks[hookId] !== pending
+    ) {
+      return;
+    }
+
+    let hook;
+    try {
+      hook = createHookFromDefinition(this, pending.el, definition);
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      logError(
+        `Failed to create hook "${pending.hookName}": ${errorMessage}`,
+        pending.el,
+      );
+      this.destroyHook(pending);
+      return;
+    }
+
+    this.viewHooks[hookId] = hook;
+    // an exception in mounted() intentionally propagates as an unhandled
+    // rejection, mirroring how a sync hook's mounted() exception surfaces
+    hook.__mounted();
+    if (pending.wasDisconnected) {
+      hook.__disconnected();
+    }
+  }
+
+  removePendingHook(pending: PendingHook) {
+    const hookId = ViewHook.elementID(pending.el);
+    if (hookId && this.viewHooks[hookId] === pending) {
+      this.destroyHook(pending);
+    }
   }
 
   applyPendingUpdates() {

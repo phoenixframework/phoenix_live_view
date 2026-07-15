@@ -115,6 +115,29 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.8 (Unreleased)
+
+### Enhancements
+
+#### Lazy-loading JavaScript hooks
+
+Hooks that pull in heavy dependencies can now be loaded on demand by wrapping a
+loader function with `lazy`. The hook's module is only fetched the first time an
+element using the hook is added to the page:
+
+```javascript
+import { lazy } from "phoenix_live_view"
+
+let liveSocket = new LiveSocket("/live", Socket, {
+  hooks: {
+    Chart: lazy(() => import("./hooks/chart"))
+  }
+})
+```
+
+The loader must resolve to the hook definition or to a module with the hook
+definition as its default export.
+
 ## v1.2.7 (2026-07-13)
 
 ### Security fixes
