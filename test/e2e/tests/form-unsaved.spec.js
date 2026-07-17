@@ -70,14 +70,13 @@ test("can prevent live navigation and beforeunload", async ({ page }) => {
   );
 
   const dialogPromise = page.waitForEvent("dialog");
-  const reloadPromise = page
-    .reload({ waitUntil: "domcontentloaded", timeout: 1000 })
-    .catch(() => null);
+  const closePromise = page.close({ runBeforeUnload: true });
   const dialog = await dialogPromise;
   expect(dialog.type()).toBe("beforeunload");
   await dialog.dismiss();
-  await reloadPromise;
+  await closePromise;
 
+  expect(page.isClosed()).toBe(false);
   await expect(page).toHaveURL("/form-unsaved");
   await expect(page.locator("#unsaved-note")).toHaveValue(
     "draft after live nav cancel",
