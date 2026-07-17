@@ -551,7 +551,7 @@ const DOM = {
       name === "click"
         ? new MouseEvent("click", eventOpts)
         : new CustomEvent(name, eventOpts);
-    target.dispatchEvent(event);
+    return target.dispatchEvent(event);
   },
 
   cloneNode(node, html) {
