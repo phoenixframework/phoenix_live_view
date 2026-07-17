@@ -154,6 +154,8 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
 
       live "/upload", E2E.UploadLive
       live "/form", E2E.FormLive
+      live "/form-unsaved", E2E.FormUnsavedLive
+      live "/form-unsaved/target", E2E.FormUnsavedLive.Target
       live "/form/dynamic-inputs", E2E.FormDynamicInputsLive
       live "/form/nested", E2E.NestedFormLive
       live "/form/stream", E2E.FormStreamLive
