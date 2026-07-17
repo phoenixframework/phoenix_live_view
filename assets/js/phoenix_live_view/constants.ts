@@ -115,6 +115,7 @@ export const ROOT = "r";
 export const COMPONENTS = "c";
 export const KEYED = "k";
 export const KEYED_COUNT = "kc";
+export const KEYED_MOVED = "km";
 export const EVENTS = "e";
 export const REPLY = "r";
 export const TITLE = "t";
