@@ -652,6 +652,13 @@ defmodule Phoenix.Component.Declarative do
         slot_names = for(slot <- slots, do: slot.name)
         known_keys = attr_names ++ slot_names ++ @reserved_assigns
 
+        assigns_with_defaults =
+          if defaults == [] do
+            quote(do: assigns)
+          else
+            quote(do: Map.merge(%{unquote_splicing(defaults)}, assigns))
+          end
+
         def_body =
           if global_name do
             quote do
@@ -663,20 +670,12 @@ defmodule Phoenix.Component.Declarative do
                   %{} -> Map.merge(unquote(global_default), caller_globals)
                 end
 
-              merged =
-                %{unquote_splicing(defaults)}
-                |> Map.merge(assigns)
-                |> Map.put(:__given__, assigns)
-
+              merged = Map.put(unquote(assigns_with_defaults), :__given__, assigns)
               super(Phoenix.Component.assign(merged, unquote(global_name), globals))
             end
           else
             quote do
-              merged =
-                %{unquote_splicing(defaults)}
-                |> Map.merge(assigns)
-                |> Map.put(:__given__, assigns)
-
+              merged = Map.put(unquote(assigns_with_defaults), :__given__, assigns)
               super(merged)
             end
           end
