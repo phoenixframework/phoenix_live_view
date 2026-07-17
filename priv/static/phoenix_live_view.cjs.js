@@ -142,6 +142,7 @@ var ROOT = "r";
 var COMPONENTS = "c";
 var KEYED = "k";
 var KEYED_COUNT = "kc";
+var KEYED_MOVED = "km";
 var EVENTS = "e";
 var REPLY = "r";
 var TITLE = "t";
@@ -3148,9 +3149,9 @@ var Rendered = class {
   }
   // keyed comprehensions
   mergeKeyed(target, source) {
-    const clonedTarget = this.clone(target);
+    const clonedTarget = source[KEYED][KEYED_MOVED] && this.clone(target);
     Object.entries(source[KEYED]).forEach(([i, entry]) => {
-      if (i === KEYED_COUNT) {
+      if (i === KEYED_COUNT || i === KEYED_MOVED) {
         return;
       }
       if (Array.isArray(entry)) {
