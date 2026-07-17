@@ -1,14 +1,14 @@
 # Bindings
 
-Phoenix supports DOM element bindings for client-server interaction. For
+Phoenix LiveView supports DOM element bindings for client-server interaction. For
 example, to react to a click on a button, you would render the element:
 
 ```heex
 <button phx-click="inc_temperature">+</button>
 ```
 
-Then on the server, all LiveView bindings are handled with the `handle_event`
-callback, for example:
+On any client interaction that triggers a binding, LiveView sends a message over the socket,
+which is then handled on the server with the `handle_event` callback, for example:
 
     def handle_event("inc_temperature", _value, socket) do
       {:ok, new_temp} = Thermostat.inc_temperature(socket.assigns.id)
@@ -33,7 +33,7 @@ If you need to trigger commands actions via JavaScript, see [JavaScript interope
 
 ## Click Events
 
-The `phx-click` binding is used to send click events to the server.
+As previously stated, the `phx-click` binding is used to send click events to the server.
 When any client event, such as a `phx-click` click is pushed, the value
 sent to the server will be chosen with the following priority:
 
@@ -351,6 +351,7 @@ If `phx-mounted` is used on the initial page render, it will run at the earliest
 opportunity. For elements outside of a LiveView, this is as soon as `liveSocket.connect()`
 is executed. For elements inside of a LiveView, this is only after the initial socket
 connection is established and the LiveView is mounted.
+See [Hooks and JS commands outside of a LiveView](js-interop.md#hooks-and-js-commands-outside-of-a-liveview).
 
 To react to elements being removed from the DOM, the `phx-remove` binding
 may be specified, which can contain a `Phoenix.LiveView.JS` command to execute.
@@ -376,6 +377,7 @@ recovers:
 
 `phx-connected` and `phx-disconnected` are only executed when operating
 inside a LiveView container. For static templates, they will have no effect.
+See [Hooks and JS commands outside of a LiveView](js-interop.md#hooks-and-js-commands-outside-of-a-liveview).
 
 ## LiveView events prefix
 

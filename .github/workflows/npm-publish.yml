@@ -18,19 +18,21 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
       # Ensure npm 11.5.1 or later is installed
       - name: Update npm
         run: npm install -g npm@latest
+      - run: npm ci
+      - run: npm run build
 
       - name: Determine npm tag
         id: npm-tag
         run: |
           TAG=${GITHUB_REF#refs/tags/}
           # Update this condition when bumping the major version!
-          if [[ $TAG == v1.0.* ]]; then
+          if [[ $TAG == v1.1.* ]]; then
             echo "tag=old-version" >> $GITHUB_OUTPUT
           elif [[ $TAG == *-rc* ]]; then
             echo "tag=rc" >> $GITHUB_OUTPUT

@@ -77,7 +77,8 @@ defmodule Phoenix.LiveView.UploadConfig do
              :errors,
              :auto_upload?,
              :progress_event,
-             :writer
+             :writer,
+             :validator
            ]}
 
   defstruct name: nil,
@@ -99,7 +100,8 @@ defmodule Phoenix.LiveView.UploadConfig do
             errors: [],
             auto_upload?: false,
             progress_event: nil,
-            writer: nil
+            writer: nil,
+            validator: nil
 
   @type t :: %__MODULE__{
           name: atom() | String.t(),
@@ -124,6 +126,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           auto_upload?: boolean(),
           writer: (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
                      {module(), term()}),
+          validator: (UploadEntry.t() -> :ok | {:error, atom()}) | nil,
           progress_event:
             (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
                {:noreply, Phoenix.LiveView.Socket.t()})
@@ -177,7 +180,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           raise ArgumentError, """
           invalid :external value provided to allow_upload.
 
-          Only an anymous function receiving the socket as an argument is supported. Got:
+          Only a 2-arity function receiving the upload entry and socket is supported. Got:
 
           #{inspect(other)}
           """
@@ -294,6 +297,24 @@ defmodule Phoenix.LiveView.UploadConfig do
           fn _name, _entry, _socket -> {Phoenix.LiveView.UploadTmpFileWriter, []} end
       end
 
+    validator =
+      case Keyword.fetch(opts, :validator) do
+        {:ok, func} when is_function(func, 1) ->
+          func
+
+        {:ok, other} ->
+          raise ArgumentError, """
+          invalid :validator value provided to allow_upload.
+
+          Only a 1-arity anonymous function is supported. Got:
+
+          #{inspect(other)}
+          """
+
+        :error ->
+          fn _entry -> :ok end
+      end
+
     %UploadConfig{
       ref: random_ref,
       name: name,
@@ -309,6 +330,7 @@ defmodule Phoenix.LiveView.UploadConfig do
       chunk_timeout: chunk_timeout,
       progress_event: progress_event,
       writer: writer,
+      validator: validator,
       auto_upload?: Keyword.get(opts, :auto_upload, false),
       allowed?: true
     }
@@ -459,7 +481,7 @@ defmodule Phoenix.LiveView.UploadConfig do
     new_entries =
       Enum.map(conf.entries, fn
         %UploadEntry{ref: ^entry_ref} = entry -> func.(entry)
-        %UploadEntry{ref: _ef} = entry -> entry
+        %UploadEntry{ref: _ref} = entry -> entry
       end)
 
     recalculate_computed_fields(%{conf | entries: new_entries})
@@ -558,6 +580,7 @@ defmodule Phoenix.LiveView.UploadConfig do
     {:ok, entry}
     |> validate_max_file_size(conf)
     |> validate_accepted(conf)
+    |> call_validator(conf)
     |> case do
       {:ok, entry} ->
         {:ok, put_valid_entry(conf, entry)}
@@ -631,6 +654,15 @@ defmodule Phoenix.LiveView.UploadConfig do
       true -> false
     end
   end
+
+  defp call_validator({:ok, entry}, %UploadConfig{validator: validator_fun}) do
+    case validator_fun.(entry) do
+      {:error, reason} -> {:error, reason}
+      _ -> {:ok, entry}
+    end
+  end
+
+  defp call_validator({:error, _} = error, _conf), do: error
 
   defp recalculate_computed_fields(%UploadConfig{} = conf) do
     recalculate_errors(conf)

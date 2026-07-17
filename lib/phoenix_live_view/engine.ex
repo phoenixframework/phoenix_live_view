@@ -131,7 +131,7 @@ defmodule Phoenix.LiveView.Rendered do
     end
 
     defp recur_iodata(%Phoenix.LiveView.Rendered{static: static, dynamic: dynamic}) do
-      recur_iodata(static, dynamic.(false), [])
+      recur_iodata(static, dynamic.(false))
     end
 
     defp recur_iodata(%_{} = struct) do
@@ -142,12 +142,12 @@ defmodule Phoenix.LiveView.Rendered do
       other
     end
 
-    defp recur_iodata([static_head | static_tail], [dynamic_head | dynamic_tail], acc) do
-      recur_iodata(static_tail, dynamic_tail, [recur_iodata(dynamic_head), static_head | acc])
+    defp recur_iodata([static_head | static_tail], [dynamic_head | dynamic_tail]) do
+      [static_head, recur_iodata(dynamic_head) | recur_iodata(static_tail, dynamic_tail)]
     end
 
-    defp recur_iodata([static_head], [], acc) do
-      Enum.reverse([static_head | acc])
+    defp recur_iodata([static_head], []) do
+      [static_head]
     end
   end
 end
@@ -335,7 +335,7 @@ defmodule Phoenix.LiveView.Engine do
     {:ok, rendered} =
       state
       |> handle_end(opts)
-      |> to_rendered_struct({:untainted, %{}}, %{}, state.caller, opts)
+      |> to_rendered_struct({:untainted, %{}}, %{}, state, opts)
 
     quote do
       require Phoenix.LiveView.Engine
@@ -353,11 +353,8 @@ defmodule Phoenix.LiveView.Engine do
   @impl true
   def handle_expr(state, "=", ast) do
     %{static: static, dynamic: dynamic, counter: counter} = state
-    i = :counters.get(counter, 1)
-    var = Macro.var(:"v#{i}", __MODULE__)
+    var = new_var(counter)
     ast = quote do: unquote(var) = unquote(__MODULE__).to_safe(unquote(ast))
-
-    :counters.add(counter, 1, 1)
     %{state | dynamic: [ast | dynamic], static: [var | static]}
   end
 
@@ -372,11 +369,17 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Entry point for rendered structs
 
-  defp to_rendered_struct(expr, vars, assigns, caller, opts) do
+  defp new_var(counter) do
+    i = :counters.get(counter, 1)
+    :counters.add(counter, 1, 1)
+    Macro.var(:"v#{i}", __MODULE__)
+  end
+
+  defp to_rendered_struct(expr, vars, assigns, state, opts) do
     with {:__block__, [live_rendered: true] ++ meta, entries} <- expr,
          {dynamic, [{:safe, static}]} <- Enum.split(entries, -1) do
       {block, static, dynamic, fingerprint} =
-        analyze_static_and_dynamic(static, dynamic, vars, assigns, caller)
+        analyze_static_and_dynamic(static, dynamic, vars, assigns, state)
 
       static =
         case Keyword.fetch(meta, :template_annotation) do
@@ -448,13 +451,15 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  defp analyze_static_and_dynamic(static, dynamic, initial_vars, assigns, caller) do
+  defp analyze_static_and_dynamic(static, dynamic, initial_vars, assigns, state) do
+    caller = state.caller
+
     {block, _} =
       Enum.map_reduce(dynamic, initial_vars, fn
         to_safe_match(var, ast), vars ->
           vars = set_vars(initial_vars, vars)
           {ast, keys, vars} = analyze_and_return_tainted_keys(ast, vars, assigns, caller)
-          live_struct = to_live_struct(ast, vars, assigns, caller)
+          live_struct = to_live_struct(ast, vars, assigns, state)
           {to_conditional_var(keys, var, live_struct), vars}
 
         ast, vars ->
@@ -469,12 +474,13 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Optimize possible expressions into live structs (rendered / comprehensions)
 
-  defp to_live_struct({:for, _, [_ | _]} = expr, vars, assigns, caller) do
+  defp to_live_struct({:for, _, [_ | _]} = expr, vars, assigns, state) do
     with {:for, meta, [gen | args]} <- expr,
          {:<-, gen_meta, [gen_pattern, gen_collection]} <- gen,
          {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
          {dynamic, [{:safe, static}]} <- Enum.split(block, -1) do
-      gen_var = Macro.unique_var(:for, __MODULE__)
+      gen_var = new_var(state.counter)
+      caller = state.caller
 
       gen_collection =
         quote do
@@ -486,7 +492,7 @@ defmodule Phoenix.LiveView.Engine do
       {gen_pattern, vars, _} = analyze(gen_pattern, vars, assigns, caller)
 
       {block, static, dynamic, fingerprint} =
-        analyze_static_and_dynamic(static, dynamic, vars, %{}, caller)
+        analyze_static_and_dynamic(static, dynamic, vars, %{}, state)
 
       key_expr =
         case Keyword.get(gen_meta, :key_expr) do
@@ -541,7 +547,8 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  defp to_live_struct({left, meta, [_ | _] = args}, vars, assigns, caller) do
+  defp to_live_struct({left, meta, [_ | _] = args}, vars, assigns, state) do
+    caller = state.caller
     call = extract_call(left)
 
     args =
@@ -575,7 +582,7 @@ defmodule Phoenix.LiveView.Engine do
 
         opts =
           for {key, value} <- opts do
-            {key, maybe_block_to_rendered(value, vars, caller)}
+            {key, maybe_block_to_rendered(value, vars, state)}
           end
 
         args ++ [opts]
@@ -587,7 +594,7 @@ defmodule Phoenix.LiveView.Engine do
       case {call, args} do
         # If we have a component, we provide change tracking to individual keys.
         {:component, [fun, expr, metadata]} ->
-          [fun, to_component_tracking(meta, fun, expr, [], vars, caller), metadata]
+          [fun, to_component_tracking(meta, fun, expr, [], vars, state), metadata]
 
         {_, _} ->
           args
@@ -596,7 +603,7 @@ defmodule Phoenix.LiveView.Engine do
     to_safe({left, meta, args}, true)
   end
 
-  defp to_live_struct(expr, _vars, _assigns, _caller) do
+  defp to_live_struct(expr, _vars, _assigns, _state) do
     to_safe(expr, true)
   end
 
@@ -648,19 +655,21 @@ defmodule Phoenix.LiveView.Engine do
   defp extract_call(call),
     do: call
 
-  defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, vars, caller) do
+  defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, vars, state) do
+    caller = state.caller
+
     for {:->, meta, [args, block]} <- blocks do
       {args, vars, assigns} = analyze_list(args, vars, %{}, caller, [])
 
-      case to_rendered_struct(block, untaint_vars(vars), assigns, caller, []) do
+      case to_rendered_struct(block, untaint_vars(vars), assigns, state, []) do
         {:ok, rendered} -> {:->, meta, [args, rendered]}
         :error -> {:->, meta, [args, block]}
       end
     end
   end
 
-  defp maybe_block_to_rendered(block, vars, caller) do
-    case to_rendered_struct(block, untaint_vars(vars), %{}, caller, []) do
+  defp maybe_block_to_rendered(block, vars, state) do
+    case to_rendered_struct(block, untaint_vars(vars), %{}, state, []) do
       {:ok, rendered} -> rendered
       :error -> block
     end
@@ -692,7 +701,8 @@ defmodule Phoenix.LiveView.Engine do
 
   defp changed_assigns(assigns) do
     checks =
-      for {{changed_var, key}, _} <- assigns, not nested_and_parent_is_checked?(key, assigns) do
+      for {{changed_var, key}, _} <- assigns,
+          not nested_and_parent_is_checked?(changed_var, key, assigns) do
         changed = Macro.var(changed_var, __MODULE__)
 
         case key do
@@ -736,23 +746,35 @@ defmodule Phoenix.LiveView.Engine do
   # @foo.bar or @foo, we don't need to check for @foo.bar.baz.
 
   # If there is no nesting, then we are not nesting.
-  defp nested_and_parent_is_checked?([_], _assigns),
+  defp nested_and_parent_is_checked?(_changed_var, [_], _assigns),
     do: false
 
   # Otherwise, we convert @foo.bar.baz into [:baz, :bar, :foo], discard :baz,
   # and then check if [:foo, :bar] and then [:foo] is in it.
-  defp nested_and_parent_is_checked?(keys, assigns),
-    do: parent_is_checked?(tl(Enum.reverse(keys)), assigns)
+  defp nested_and_parent_is_checked?(changed_var, keys, assigns),
+    do: parent_is_checked?(changed_var, tl(Enum.reverse(keys)), assigns)
 
-  defp parent_is_checked?([], _assigns),
+  defp parent_is_checked?(_changed_var, [], _assigns),
     do: false
 
-  defp parent_is_checked?(rest, assigns),
-    do: Map.has_key?(assigns, Enum.reverse(rest)) or parent_is_checked?(tl(rest), assigns)
+  defp parent_is_checked?(changed_var, rest, assigns),
+    do:
+      Map.has_key?(assigns, {changed_var, Enum.reverse(rest)}) or
+        parent_is_checked?(changed_var, tl(rest), assigns)
+
+  defp put_changed_assign(assigns, changed_var, key) do
+    if nested_and_parent_is_checked?(changed_var, key, assigns) do
+      assigns
+    else
+      Map.put(assigns, {changed_var, key}, true)
+    end
+  end
 
   ## Component keys change tracking
 
-  defp to_component_tracking(meta, fun, expr, extra, vars, caller) do
+  defp to_component_tracking(meta, fun, expr, extra, vars, state) do
+    caller = state.caller
+
     # Separate static and dynamic parts
     {static, dynamic} =
       case expr do
@@ -778,7 +800,7 @@ defmodule Phoenix.LiveView.Engine do
     static_extra = extra ++ static
 
     # Rewrite slots in static parts
-    static = slots_to_rendered(static, vars, caller, Keyword.get(meta, :slots, []))
+    static = slots_to_rendered(static, vars, state, Keyword.get(meta, :slots, []))
 
     static =
       cond do
@@ -839,8 +861,6 @@ defmodule Phoenix.LiveView.Engine do
 
   defp to_component_keys(:all), do: :all
   defp to_component_keys(map), do: Map.keys(map)
-
-  defp vars_changed_vars(:all), do: []
 
   defp vars_changed_vars(keys) do
     # when we calculate the changed map for components, we need to
@@ -904,11 +924,11 @@ defmodule Phoenix.LiveView.Engine do
     end)
   end
 
-  defp slots_to_rendered(static, vars, caller, slots) do
+  defp slots_to_rendered(static, vars, state, slots) do
     for {key, value} <- static do
       value =
         if key in slots do
-          slot_to_rendered(value, key, vars, caller)
+          slot_to_rendered(value, key, vars, state)
         else
           value
         end
@@ -921,7 +941,7 @@ defmodule Phoenix.LiveView.Engine do
          {:%{}, map_meta, [__slot__: key, inner_block: inner_block] ++ attrs} = maybe_slot,
          key,
          vars,
-         caller
+         state
        ) do
     with {call, meta, [^key, [do: block]]} <- inner_block,
          :inner_block <- extract_call(call) do
@@ -940,10 +960,10 @@ defmodule Phoenix.LiveView.Engine do
             # to prevent uncovered lines when rendering a component with only a named slot.
             # In that case, the component still has an inner_block, but it only consists of
             # whitespace.
-            maybe_block_to_rendered(static_block, vars, caller)
+            maybe_block_to_rendered(static_block, vars, state)
 
           _ ->
-            {call, meta, [key, [do: maybe_block_to_rendered(block, vars, caller)]]}
+            {call, meta, [key, [do: maybe_block_to_rendered(block, vars, state)]]}
         end
 
       {:%{}, map_meta, [__slot__: key, inner_block: inner_block] ++ attrs}
@@ -952,19 +972,19 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  defp slot_to_rendered({left, meta, args}, key, vars, caller) do
-    {left, meta, slot_to_rendered(args, key, vars, caller)}
+  defp slot_to_rendered({left, meta, args}, key, vars, state) do
+    {left, meta, slot_to_rendered(args, key, vars, state)}
   end
 
-  defp slot_to_rendered({left, right}, key, vars, caller) do
-    {slot_to_rendered(left, key, vars, caller), slot_to_rendered(right, key, vars, caller)}
+  defp slot_to_rendered({left, right}, key, vars, state) do
+    {slot_to_rendered(left, key, vars, state), slot_to_rendered(right, key, vars, state)}
   end
 
-  defp slot_to_rendered(list, key, vars, caller) when is_list(list) do
-    Enum.map(list, &slot_to_rendered(&1, key, vars, caller))
+  defp slot_to_rendered(list, key, vars, state) when is_list(list) do
+    Enum.map(list, &slot_to_rendered(&1, key, vars, state))
   end
 
-  defp slot_to_rendered(other, _key, _vars, _caller) do
+  defp slot_to_rendered(other, _key, _vars, _state) do
     other
   end
 
@@ -1025,7 +1045,7 @@ defmodule Phoenix.LiveView.Engine do
        )
        when is_atom(name) and is_atom(context) and is_map_key(map, name) and type != :tainted do
     if map[name] == :change_track do
-      {expr, vars, Map.put(assigns, {:vars_changed, [name | nest]}, true)}
+      {expr, vars, put_changed_assign(assigns, :vars_changed, [name | nest])}
     else
       analyze(expr, vars, assigns, caller)
     end
@@ -1035,7 +1055,7 @@ defmodule Phoenix.LiveView.Engine do
   defp analyze_assign({:@, meta, [{name, _, context}]}, vars, assigns, _caller, nest)
        when is_atom(name) and is_atom(context) do
     expr = {{:., meta, [@assigns_var, name]}, [no_parens: true] ++ meta, []}
-    {expr, vars, Map.put(assigns, {:changed, [name | nest]}, true)}
+    {expr, vars, put_changed_assign(assigns, :changed, [name | nest])}
   end
 
   # assigns.name
@@ -1047,7 +1067,7 @@ defmodule Phoenix.LiveView.Engine do
          nest
        )
        when is_atom(name) and args in [[], nil] do
-    {expr, vars, Map.put(assigns, {:changed, [name | nest]}, true)}
+    {expr, vars, put_changed_assign(assigns, :changed, [name | nest])}
   end
 
   # assigns[:name]
@@ -1059,7 +1079,7 @@ defmodule Phoenix.LiveView.Engine do
          nest
        )
        when is_atom(name) and is_access(access) do
-    {expr, vars, Map.put(assigns, {:changed, [name | nest]}, true)}
+    {expr, vars, put_changed_assign(assigns, :changed, [name | nest])}
   end
 
   # Maybe: assigns.foo[:bar]
@@ -1138,7 +1158,7 @@ defmodule Phoenix.LiveView.Engine do
         {expr, {:tainted, map}, assigns}
 
       %{^name => :change_track} ->
-        {expr, vars, Map.put(assigns, {:vars_changed, [name]}, true)}
+        {expr, vars, put_changed_assign(assigns, :vars_changed, [name])}
 
       _ ->
         {expr, {:restricted, map}, assigns}
@@ -1149,7 +1169,7 @@ defmodule Phoenix.LiveView.Engine do
        when is_atom(name) do
     cond do
       Map.get(map, name) == :change_track ->
-        {expr, {type, map}, Map.put(assigns, {:vars_changed, [name]}, true)}
+        {expr, {type, map}, put_changed_assign(assigns, :vars_changed, [name])}
 
       Keyword.get(meta, :change_track) ->
         # this is a variable inside the left-hand side of a keyed for expression;

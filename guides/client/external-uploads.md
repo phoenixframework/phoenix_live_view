@@ -113,20 +113,23 @@ uploads, consider using chunking as shown above.
 This guide assumes an existing S3 bucket is set up with the correct CORS configuration
 which allows uploading directly to the bucket.
 
-An example CORS config is:
+An example of CORS configuration for client-side uploads would be:
 
 ```json
 [
     {
         "AllowedHeaders": [ "*" ],
         "AllowedMethods": [ "PUT", "POST" ],
-        "AllowedOrigins": [ "*" ],
+        "AllowedOrigins": [ 
+          "https://web.myapp.com",
+          // Add any other domains desired, or * for wildcard.
+        ],
         "ExposeHeaders": []
     }
 ]
 ```
 
-You may put your domain in the "allowedOrigins" instead. More information on configuring CORS for
+You may put any other domain in the "allowedOrigins" instead. More information on configuring CORS for
 S3 buckets is [available on AWS](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ManageCorsUsing.html).
 
 In order to enforce all of your file constraints when uploading to S3,
@@ -189,8 +192,8 @@ Next, we add our JavaScript client-side uploader. The metadata *must* contain th
 `:uploader` key, specifying the name of the JavaScript client-side uploader.
 In this case, it's `"S3"`, as shown above.
 
-Add a new file `uploaders.js` in the following directory `assets/js/` next to `app.js`.
-The content for this `S3` client uploader:
+Add a new file `uploaders.js` in the following directory `assets/js/` next to `app.js`,
+and copy the content below for the `S3` client uploader:
 
 ```javascript
 let Uploaders = {}
@@ -220,14 +223,14 @@ Uploaders.S3 = function(entries, onViewError){
 export default Uploaders;
 ```
 
-We define an `Uploaders.S3` function, which receives our entries. It then
+We defined an `Uploaders.S3` function, which receives our entries. It then
 performs an AJAX request for each entry, using the `entry.progress()` and
 `entry.error()` functions to report upload events back to the LiveView.
 The name of the uploader must match the one we return on the `:uploader`
 metadata in LiveView.
 
 Finally, head over to `app.js` and add the `uploaders: Uploaders` key to
-the `LiveSocket` constructor to tell phoenix where to find the uploaders returned 
+the `LiveSocket` constructor to tell Phoenix where to find the uploaders returned 
 within the external metadata.
 
 ```javascript
@@ -248,13 +251,13 @@ browser and look at the console or networks tab to view the error logs.
 
 ### Direct to S3-Compatible
 
-> This section assumes that you installed and configured [ExAws](https://hexdocs.pm/ex_aws/readme.html)
-> and [ExAws.S3](https://hexdocs.pm/ex_aws_s3/ExAws.S3.html) correctly in your project and can execute
+> This section assumes that you installed and configured [ExAws](https://ex-aws.hexdocs.pm/readme.html)
+> and [ExAws.S3](https://ex-aws-s3.hexdocs.pm/ExAws.S3.html) correctly in your project and can execute
 > the examples in the page without errors.
 
 Most S3 compatible platforms like Cloudflare R2 don't support `POST` when
 uploading files so we need to use `PUT` with a signed URL instead of the
-signed `POST`and send the file straight to the service, to do so we need to
+signed `POST` and send the file straight to the service. In order to do so, we need to
 change the `presign_upload/2` function and the `Uploaders.S3` that does the upload.
 
 The new `presign_upload/2`:

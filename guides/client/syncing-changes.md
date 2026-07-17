@@ -82,7 +82,7 @@ The following events receive CSS loading classes:
   - `phx-window-keydown` - `phx-keydown-loading`
   - `phx-window-keyup` - `phx-keyup-loading`
 
-Events that happen inside a form have their state applied to both the element and the form. When an input changes, `phx-change-loading` applies to both input and form. On submit, both button and form get the `phx-submit-loading` classes. Buttons, in particular, also support a `phx-disabled-with` attribute, which allows you to customize the text of the button on click:
+Events that happen inside a form have their state applied to both the element and the form. When an input changes, `phx-change-loading` applies to both input and form. On submit, both button and form get the `phx-submit-loading` classes. Buttons, in particular, also support a `phx-disable-with` attribute, which allows you to customize the text of the button on click:
 
 ```heex
 <button phx-disable-with="Submitting...">Submit</button>
@@ -129,7 +129,7 @@ For example, imagine that you want to immediately remove an element from the pag
 If the element you want to delete is not the clicked button, but its parent (or other element), you can pass a selector to hide:
 
 ```heex
-<button phx-click={JS.push("delete") |> JS.hide("#post-row-13")}>Delete</button>
+<button phx-click={JS.push("delete") |> JS.hide(to: "#post-row-13")}>Delete</button>
 ```
 
 Or if you'd rather add a class instead:

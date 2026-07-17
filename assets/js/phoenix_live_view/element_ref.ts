@@ -29,13 +29,17 @@ export default class ElementRef {
     );
   }
 
-  constructor(el) {
+  private el: Element;
+  private loadingRef: number | null;
+  private lockRef: number | null;
+
+  constructor(el: Element) {
     this.el = el;
     this.loadingRef = el.hasAttribute(PHX_REF_LOADING)
-      ? parseInt(el.getAttribute(PHX_REF_LOADING), 10)
+      ? parseInt(el.getAttribute(PHX_REF_LOADING)!, 10)
       : null;
     this.lockRef = el.hasAttribute(PHX_REF_LOCK)
-      ? parseInt(el.getAttribute(PHX_REF_LOCK), 10)
+      ? parseInt(el.getAttribute(PHX_REF_LOCK)!, 10)
       : null;
   }
 
@@ -89,7 +93,7 @@ export default class ElementRef {
 
   // private
 
-  isWithin(ref) {
+  private isWithin(ref) {
     return !(
       this.loadingRef !== null &&
       this.loadingRef > ref &&
@@ -104,7 +108,7 @@ export default class ElementRef {
   //
   //   1. execute pending mounted hooks for nodes now in the DOM
   //   2. undo any ref inside the cloned tree that has since been ack'd
-  undoLocks(ref, phxEvent, eachCloneCallback) {
+  private undoLocks(ref, phxEvent, eachCloneCallback) {
     if (!this.isLockUndoneBy(ref)) {
       return;
     }
@@ -126,7 +130,7 @@ export default class ElementRef {
     );
   }
 
-  undoLoading(ref, phxEvent) {
+  private undoLoading(ref, phxEvent) {
     if (!this.isLoadingUndoneBy(ref)) {
       if (
         this.canUndoLoading(ref) &&
@@ -142,11 +146,11 @@ export default class ElementRef {
       const disabledVal = this.el.getAttribute(PHX_DISABLED);
       const readOnlyVal = this.el.getAttribute(PHX_READONLY);
       // restore inputs
-      if (readOnlyVal !== null) {
+      if (readOnlyVal !== null && "readOnly" in this.el) {
         this.el.readOnly = readOnlyVal === "true" ? true : false;
         this.el.removeAttribute(PHX_READONLY);
       }
-      if (disabledVal !== null) {
+      if (disabledVal !== null && "disabled" in this.el) {
         this.el.disabled = disabledVal === "true" ? true : false;
         this.el.removeAttribute(PHX_DISABLED);
       }
@@ -175,14 +179,16 @@ export default class ElementRef {
     });
   }
 
-  isLoadingUndoneBy(ref) {
+  private isLoadingUndoneBy(ref) {
     return this.loadingRef === null ? false : this.loadingRef <= ref;
   }
+
+  /** @internal */
   isLockUndoneBy(ref) {
     return this.lockRef === null ? false : this.lockRef <= ref;
   }
 
-  isFullyResolvedBy(ref) {
+  private isFullyResolvedBy(ref) {
     return (
       (this.loadingRef === null || this.loadingRef <= ref) &&
       (this.lockRef === null || this.lockRef <= ref)
@@ -190,7 +196,7 @@ export default class ElementRef {
   }
 
   // only remove the phx-submit-loading class if we are not locked
-  canUndoLoading(ref) {
+  private canUndoLoading(ref) {
     return this.lockRef === null || this.lockRef <= ref;
   }
 }

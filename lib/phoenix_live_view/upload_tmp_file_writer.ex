@@ -18,10 +18,8 @@ defmodule Phoenix.LiveView.UploadTmpFileWriter do
 
   @impl true
   def write_chunk(data, state) do
-    case IO.binwrite(state.file, data) do
-      :ok -> {:ok, state}
-      {:error, reason} -> {:error, reason, state}
-    end
+    IO.binwrite(state.file, data)
+    {:ok, state}
   end
 
   @impl true

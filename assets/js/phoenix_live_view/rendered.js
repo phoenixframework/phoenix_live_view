@@ -13,6 +13,7 @@ import {
   ROOT,
   KEYED,
   KEYED_COUNT,
+  KEYED_MOVED,
 } from "./constants";
 
 import { isObject, logError, isCid } from "./utils";
@@ -119,6 +120,7 @@ export const modifyRoot = (html, attrs, clearInnerHTML) => {
   return [newHTML, beforeTag, afterTag];
 };
 
+/** @internal */
 export default class Rendered {
   static extract(diff) {
     const { [REPLY]: reply, [EVENTS]: events, [TITLE]: title } = diff;
@@ -223,6 +225,8 @@ export default class Rendered {
       if (isCid(scid)) {
         let tdiff;
 
+        // @ts-expect-error: isCid also allows strings, but the diff always uses numbers
+        // TODO: revisit isCid and consider differentiating cid strings from DOM and cid numbers from diffs / internal usage
         if (scid > 0) {
           tdiff = this.cachedFindComponent(scid, newc[scid], oldc, newc, cache);
         } else {
@@ -284,12 +288,12 @@ export default class Rendered {
 
   // keyed comprehensions
   mergeKeyed(target, source) {
-    // we need to clone the target since elements can move and otherwise
-    // it could happen that we modify an element that we'll need to refer to
-    // later
-    const clonedTarget = this.clone(target);
+    // Moves read entries from their old positions. Clone before applying any
+    // entries so an earlier mutation cannot overwrite a position needed later.
+    // Stable-position updates never read from another position.
+    const clonedTarget = source[KEYED][KEYED_MOVED] && this.clone(target);
     Object.entries(source[KEYED]).forEach(([i, entry]) => {
-      if (i === KEYED_COUNT) {
+      if (i === KEYED_COUNT || i === KEYED_MOVED) {
         return;
       }
       if (Array.isArray(entry)) {

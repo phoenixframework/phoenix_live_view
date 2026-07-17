@@ -214,6 +214,11 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/4107", Issue4107Live
       live "/4121", Issue4121Live
       live "/4147", Issue4147Live
+      live "/4209", Issue4209Live
+      live "/4212", Issue4212Live
+      live "/4290/a", Issue4290.ALive
+      live "/4290/b", Issue4290.BLive
+      live "/4325", Issue4325Live
     end
   end
 
@@ -322,8 +327,8 @@ end
 
 IO.puts("Starting e2e server on port #{Phoenix.LiveViewTest.E2E.Endpoint.config(:http)[:port]}")
 
-# we need to manually compile the colocated hooks / js
-Phoenix.LiveView.ColocatedJS.compile()
+# we need to manually compile the colocated hooks / js and css
+Phoenix.LiveView.ColocatedAssets.compile()
 
 if not IEx.started?() do
   # when running the test server manually, we halt after

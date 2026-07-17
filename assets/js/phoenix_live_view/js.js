@@ -114,7 +114,8 @@ const JS = {
       if (eventType === "change") {
         let { newCid, _target } = args;
         _target =
-          _target || (DOM.isFormInput(sourceEl) ? sourceEl.name : undefined);
+          _target ||
+          (DOM.isFormAssociated(sourceEl) ? sourceEl.name : undefined);
         if (_target) {
           pushOpts._target = _target;
         }
@@ -599,6 +600,13 @@ const JS = {
     const newRemoves = prevRemoves
       .filter((attr) => !alteredAttrs.includes(attr))
       .concat(removes);
+
+    // If element ID is touched via JavaScript, mark it for cheap lookup during morphdom
+    if (
+      sets.some(([attr, val]) => attr === "id" && el.getAttribute("id") !== val)
+    ) {
+      DOM.putPrivate(el, "clientsideIdAttribute", true);
+    }
 
     DOM.putSticky(el, "attrs", (currentEl) => {
       newRemoves.forEach((attr) => currentEl.removeAttribute(attr));

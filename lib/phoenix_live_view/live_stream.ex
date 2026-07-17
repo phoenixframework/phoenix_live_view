@@ -44,7 +44,7 @@ defmodule Phoenix.LiveView.LiveStream do
     raise ArgumentError, """
     expected stream :#{dom_prefix} to be a struct or map with :id key, got: #{inspect(other)}
 
-    If you would like to generate custom DOM id's based on other keys, use `Phoenix.LiveView.stream_configure/3` with the :dom_id option beforehand.
+    If you would like to generate custom DOM IDs based on other keys, use `Phoenix.LiveView.stream_configure/3` with the :dom_id option beforehand.
     """
   end
 
@@ -101,17 +101,7 @@ defmodule Phoenix.LiveView.LiveStream do
         # the inserts are stored in reverse insert order, so we need to reverse them
         # before rendering; we also remove duplicates to only use the most recent
         # inserts, which, as the items are reversed, are first
-        {inserts, _} =
-          for {id, _, _, _, _} = insert <- stream.inserts, reduce: {[], MapSet.new()} do
-            {inserts, ids} ->
-              if MapSet.member?(ids, id) do
-                # skip duplicates
-                {inserts, ids}
-              else
-                {[insert | inserts], MapSet.put(ids, id)}
-              end
-          end
-
+        inserts = uniq_inserts(stream.inserts, [], %{})
         do_reduce(inserts, acc, fun)
       else
         raise ArgumentError, """
@@ -130,6 +120,14 @@ defmodule Phoenix.LiveView.LiveStream do
     defp do_reduce([{dom_id, _at, item, _limit, _update_only} | tail], {:cont, acc}, fun) do
       do_reduce(tail, fun.({dom_id, item}, acc), fun)
     end
+
+    defp uniq_inserts([{id, _, _, _, _} | rest], inserts, ids) when is_map_key(ids, id),
+      do: uniq_inserts(rest, inserts, ids)
+
+    defp uniq_inserts([{id, _, _, _, _} = insert | rest], inserts, ids),
+      do: uniq_inserts(rest, [insert | inserts], Map.put(ids, id, true))
+
+    defp uniq_inserts([], inserts, _ids), do: inserts
 
     # Returns a function that slices the data structure contiguously.
     def slice(%LiveStream{}), do: raise(RuntimeError, "not implemented")

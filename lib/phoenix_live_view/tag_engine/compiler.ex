@@ -27,6 +27,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
       caller: Keyword.fetch!(opts, :caller),
       source: Keyword.fetch!(opts, :source),
       tag_handler: tag_handler,
+      tag_attributes: Keyword.get_values(directives, :tag_attribute),
       root_tag_attribute: Application.get_env(:phoenix_live_view, :root_tag_attribute),
       root_tag_attributes: Keyword.get_values(directives, :root_tag_attribute),
       # The following keys are updated when traversing nodes
@@ -175,21 +176,21 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
     #
     # Afterwards, the placeholders are replaced with the compiled content.
     #
-    {quoted, combined_expr, _current_line} =
-      Enum.reduce(blocks, {[], expr, line}, fn
-        {children, clause_expr, clause_meta}, {quoted, acc_expr, prev_line} ->
+    {quoted, combined_expr, _current_line, _seen_clause?} =
+      Enum.reduce(blocks, {[], expr, line, false}, fn
+        {children, clause_expr, clause_meta}, {quoted, acc_expr, prev_line, seen_clause?} ->
           # Calculate newlines needed to reach this clause's line
           clause_line = clause_meta.line
           newlines = String.duplicate("\n", clause_line - prev_line)
 
-          if all_spaces?(children) do
+          if all_spaces?(children) and not seen_clause? and stab_clause?(clause_expr) do
             # This handles the case where the start expression is immediately followed
             # by a middle expression, since we don't want to generate
             # case @status do __EEX__(0); :connecting -> __EEX__(1) ...
-            # (we nened to skip adding the first placeholder)
+            # (we need to skip adding the first placeholder)
             # and instead generate
             # case @status do :connecting -> __EEX__(0); ...
-            {quoted, acc_expr <> newlines <> " " <> clause_expr, clause_line}
+            {quoted, acc_expr <> newlines <> " " <> clause_expr, clause_line, true}
           else
             inner_substate = state.engine.handle_begin(substate)
             {_state, inner_substate} = handle_node(children, inner_substate, state)
@@ -199,7 +200,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
             placeholder = "__EEX__(#{key});"
             quoted = [{key, clause_ast} | quoted]
             acc_expr = acc_expr <> " " <> placeholder <> newlines <> " " <> clause_expr
-            {quoted, acc_expr, clause_line}
+            {quoted, acc_expr, clause_line, true}
           end
       end)
 
@@ -457,6 +458,12 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
     end)
   end
 
+  defp stab_clause?(expr) do
+    expr
+    |> String.trim_trailing()
+    |> String.ends_with?("->")
+  end
+
   # Replace __EEX__(key) placeholders with actual compiled content
   # This is taken from EEx.Compiler
   defp insert_quoted({:__EEX__, _, [key]}, quoted) do
@@ -486,6 +493,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
     text =
       "<#{name}"
       |> maybe_add_phx_loc(state, meta)
+      |> maybe_add_tag_attributes(state, meta)
       |> maybe_add_root_tag_attributes(state, meta)
 
     substate = state.engine.handle_text(substate, meta, text)
@@ -498,6 +506,22 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
       "#{text} data-phx-loc=\"#{meta[:line]}\""
     else
       text
+    end
+  end
+
+  defp maybe_add_tag_attributes(text, state, _meta) do
+    case state do
+      %{tag_attributes: [_ | _] = attributes} ->
+        attrs =
+          attributes
+          |> Phoenix.HTML.attributes_escape()
+          |> Phoenix.HTML.safe_to_string()
+
+        # Phoenix.HTML.attributes_escape/1 adds a leading space automatically
+        "#{text}#{attrs}"
+
+      _ ->
+        text
     end
   end
 
@@ -772,7 +796,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
   defp decompose_remote_component_tag!(tag_name, tag_meta, state) do
     case String.split(tag_name, ".") |> Enum.reverse() do
       [<<first, _::binary>> = fun_name | rest] when first in ?a..?z ->
-        size = Enum.sum(Enum.map(rest, &byte_size/1)) + length(rest) + 1
+        size = byte_size(tag_name) - byte_size(fun_name) + 1
         aliases = rest |> Enum.reverse() |> Enum.map(&String.to_atom/1)
         fun = String.to_atom(fun_name)
         %{line: line, column: column} = tag_meta
@@ -796,7 +820,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
   #
   # _ -> ast
   #
-  # If a component is defined as as <.my_component :let={%{foo: foo, bar: bar}}, we get:
+  # If a component is defined as <.my_component :let={%{foo: foo, bar: bar}}, we get:
   #
   # %{foo: foo, bar: bar} -> ast
   # other -> Phoenix.LiveView.TagEngine.__unmatched_let__!("%{foo: foo, bar: bar}", other)

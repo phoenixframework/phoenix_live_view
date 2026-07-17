@@ -211,7 +211,7 @@ defmodule Phoenix.LiveView.JS do
 
   defstruct ops: []
 
-  @opaque internal :: []
+  @opaque internal :: list()
   @type t :: %__MODULE__{ops: internal}
 
   @default_transition_time 200
@@ -519,7 +519,8 @@ defmodule Phoenix.LiveView.JS do
     * `:time` - The time in milliseconds to apply the transition `:in` and `:out` classes.
       Defaults to #{@default_transition_time}.
     * `:display` - An optional display value to set when toggling in. Defaults
-      to `"block"`.
+      to `"block"`, except for table rows and cells, which default to `"table-row"`
+      and `"table-cell"`.
     * `:blocking` - A boolean flag to block the UI during the transition. Defaults `true`.
 
   When the toggle is complete on the client, a `phx:show-start` or `phx:hide-start`, and
@@ -577,7 +578,9 @@ defmodule Phoenix.LiveView.JS do
     * `:time` - The time in milliseconds to apply the transition from `:transition`.
       Defaults to #{@default_transition_time}.
     * `:blocking` - A boolean flag to block the UI during the transition. Defaults `true`.
-    * `:display` - An optional display value to set when showing. Defaults to `"block"`.
+    * `:display` - An optional display value to set when showing. Defaults to
+      `"block"`, except for table rows and cells, which default to `"table-row"`
+      and `"table-cell"`.
 
   During the process, the following events will be dispatched to the shown elements:
 
@@ -929,8 +932,8 @@ defmodule Phoenix.LiveView.JS do
   > <.button phx-click={JS.dispatch("input:clear", to: "#my_input")}>...</.button>
   > ```
   >
-  > Note: this uses `Phoenix.LiveView.ColocatedJS`, but you can also define the event listener directly inside
-  > your `app.js` instead.
+  > While the example above uses `Phoenix.LiveView.ColocatedJS`, you can also
+  > define the event listener directly inside your `app.js` instead.
   """
   def set_attribute({attr, val}), do: set_attribute(%JS{}, {attr, val}, [])
 
@@ -1057,7 +1060,7 @@ defmodule Phoenix.LiveView.JS do
   > The `phx-mounted` binding executes when the LiveView is mounted.
   > This means that you cannot use `ignore_attributes/1` to retain attributes
   > that are set on the client during the disconnected render.
-  > `JS.ignore_attributes/0` will only ever ignore future changes from the server.
+  > `JS.ignore_attributes/1` will only ever ignore future changes from the server.
 
   ## Options
 
@@ -1196,6 +1199,7 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `navigate/1`."
   def navigate(%JS{} = js, href, opts) when is_binary(href) and is_list(opts) do
+    Phoenix.LiveView.Utils.valid_live_navigation_destination!(href, "JS.navigate")
     opts = validate_keys(opts, :navigate, [:replace])
     put_op(js, "navigate", href: href, replace: !!opts[:replace])
   end
@@ -1226,6 +1230,7 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `patch/1`."
   def patch(%JS{} = js, href, opts) when is_binary(href) and is_list(opts) do
+    Phoenix.LiveView.Utils.valid_live_navigation_destination!(href, "JS.patch")
     opts = validate_keys(opts, :patch, [:replace])
     put_op(js, "patch", href: href, replace: !!opts[:replace])
   end
@@ -1244,7 +1249,7 @@ defmodule Phoenix.LiveView.JS do
   ## Examples
 
   ```heex
-  <div id="modal" phx-remove={JS.hide("#modal")}>...</div>
+  <div id="modal" phx-remove={JS.hide()}>...</div>
   <button phx-click={JS.exec("phx-remove", to: "#modal")}>close</button>
   ```
   """
@@ -1273,13 +1278,8 @@ defmodule Phoenix.LiveView.JS do
   def concat(%JS{ops: first}, %JS{ops: second}), do: %JS{ops: first ++ second}
 
   defp put_op(%JS{ops: ops} = js, kind, args) do
-    args = drop_nil_values(args)
-    struct!(js, ops: ops ++ [[kind, args]])
-  end
-
-  defp drop_nil_values(args) when is_list(args) do
-    Enum.reject(args, fn {_k, v} -> is_nil(v) end)
-    |> Map.new()
+    args = for {k, v} <- args, v != nil, into: %{}, do: {k, v}
+    %{js | ops: ops ++ [[kind, args]]}
   end
 
   defp class_names(names) do

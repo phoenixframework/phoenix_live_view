@@ -12,6 +12,11 @@ export type CallbackRef = { event: string; callback: (payload: any) => any };
 
 export type PhxTarget = string | number | HTMLElement;
 
+/**
+ * Defines the lifecycle callbacks and custom methods for a LiveView hook.
+ *
+ * @category JavaScript Hooks
+ */
 export interface HookInterface<E extends HTMLElement = HTMLElement> {
   /**
    * The DOM element that the hook is attached to.
@@ -41,14 +46,14 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
   /**
    * The updated callback.
    *
-   * Called when the element has been updated in the DOM by the server
+   * Called when the element has been updated in the DOM by the server.
    */
   updated?: () => void;
 
   /**
    * The destroyed callback.
    *
-   * Called when the element has been removed from the page, either by a parent update, or by the parent being removed entirely
+   * Called when the element has been removed from the page, either by a parent update, or by the parent being removed entirely.
    */
   destroyed?: () => void;
 
@@ -73,49 +78,85 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
   js(): HookJSCommands;
 
   /**
-   * Pushes an event to the server.
+   * Pushes an event to the server and invokes a callback with the server's reply.
+   *
+   * **Note:** this version silently ignores push errors.
+   * Use the {@link pushEvent | promise-returning version} to handle errors.
    *
    * @param event - The event name.
-   * @param [payload] - The payload to send to the server. Defaults to an empty object.
-   * @param [onReply] - A callback to handle the server's reply.
-   *
-   * When onReply is not provided, the method returns a Promise that
-   * When onReply is provided, the method returns void.
+   * @param payload - The payload to send to the server. Must be a serializable
+   * value (typically JSON-serializable, depends on the Socket configuration).
+   * Defaults to an empty object.
+   * @param onReply - A callback to handle the server's reply.
    */
-  pushEvent(event: string, payload: any, onReply: OnReply): void;
-  pushEvent(event: string, payload?: any): Promise<any>;
+  pushEvent(event: string, payload: unknown, onReply: OnReply): void;
+  /**
+   * Pushes an event to the server and returns a Promise that resolves with the server's reply.
+   *
+   * The promise will be rejected in case of errors
+   * such as a disconnected state, timeout, or the server rejecting the event.
+   *
+   * @param event - The event name.
+   * @param [payload] - The payload to send to the server. Must be a serializable
+   * value (typically JSON-serializable, depends on the Socket configuration).
+   * Defaults to an empty object.
+   * @returns A promise that fulfills or rejects with the server's reply.
+   */
+  pushEvent(event: string, payload?: unknown): Promise<any>;
 
   /**
-   * Pushed a targeted event to the server.
+   * Pushes a targeted event to the server and invokes a callback with the server's reply.
    *
    * It sends the event to the LiveComponent or LiveView the `selectorOrTarget` is defined in,
    * where its value can be either a query selector, an actual DOM element, or a CID (component id)
    * returned by the `@myself` assign.
    *
-   * If the query selector returns more than one element it will send the event to all of them,
-   * even if all the elements are in the same LiveComponent or LiveView. Because of this,
-   * if no callback is passed, a promise is returned that matches the return value of
-   * [`Promise.allSettled()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/allSettled#return_value).
-   * Individual fulfilled values are of the format `{ reply, ref }`, where `reply` is the server's reply.
+   * If the selector matches multiple elements, the event is sent to all of them,
+   * even if they belong to the same LiveComponent or LiveView.
+   *
+   * **Note:** this version silently ignores push errors.
+   * Use the {@link pushEventTo | promise-returning version} to handle errors.
    *
    * @param selectorOrTarget - The selector, element, or CID to target.
    * @param event - The event name.
-   * @param [payload] - The payload to send to the server. Defaults to an empty object.
-   * @param [onReply] - A callback to handle the server's reply.
-   *
-   * When onReply is not provided, the method returns a Promise.
-   * When onReply is provided, the method returns void.
+   * @param payload - The payload to send to the server. Must be a serializable
+   * value (typically JSON-serializable, depends on the Socket configuration).
+   * Defaults to an empty object.
+   * @param onReply - A callback to handle the server's reply.
    */
   pushEventTo(
     selectorOrTarget: PhxTarget,
     event: string,
-    payload: object,
+    payload: unknown,
     onReply: OnReply,
   ): void;
+  /**
+   * Pushes a targeted event to the server and returns a Promise that resolves with the server's reply.
+   *
+   * It sends the event to the LiveComponent or LiveView the `selectorOrTarget` is defined in,
+   * where its value can be either a query selector, an actual DOM element, or a CID (component id)
+   * returned by the `@myself` assign.
+   *
+   * If the selector matches multiple elements, the event is sent to all of them,
+   * even if they belong to the same LiveComponent or LiveView.
+   * Because of this, it returns a single promise that matches the return value of
+   * [`Promise.allSettled()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/allSettled#return_value).
+   * Individual fulfilled values are of the format `{ reply, ref }`, where `reply` is the server's reply.
+   *
+   * The individual promises will be rejected in case of errors
+   * such as a disconnected state, timeout, or the server rejecting the event.
+   *
+   * @param selectorOrTarget - The selector, element, or CID to target.
+   * @param event - The event name.
+   * @param [payload] - The payload to send to the server. Must be a serializable
+   * value (typically JSON-serializable, depends on the Socket configuration).
+   * Defaults to an empty object.
+   * @returns A promise that resolves when the event has been handled by all targets.
+   */
   pushEventTo(
     selectorOrTarget: PhxTarget,
     event: string,
-    payload?: object,
+    payload?: unknown,
   ): Promise<PromiseSettledResult<{ reply: any; ref: number }>[]>;
 
   /**
@@ -133,7 +174,7 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
   /**
    * Removes a callback registered with `handleEvent`.
    *
-   * @param callbackRef - The reference to the callback to remove.
+   * @param ref - The reference to the callback to remove.
    */
   removeHandleEvent(ref: CallbackRef): void;
 
@@ -160,6 +201,11 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
 
 // based on https://github.com/DefinitelyTyped/DefinitelyTyped/blob/fac1aa75acdddbf4f1a95e98ee2297b54ce4b4c9/types/phoenix_live_view/hooks.d.ts#L26
 // licensed under MIT
+/**
+ * Defines the lifecycle callbacks and custom methods for a LiveView hook.
+ *
+ * @category JavaScript Hooks
+ */
 export interface Hook<T = object, E extends HTMLElement = HTMLElement> {
   /**
    * The mounted callback.
@@ -179,14 +225,14 @@ export interface Hook<T = object, E extends HTMLElement = HTMLElement> {
   /**
    * The updated callback.
    *
-   * Called when the element has been updated in the DOM by the server
+   * Called when the element has been updated in the DOM by the server.
    */
   updated?: (this: T & HookInterface<E>) => void;
 
   /**
    * The destroyed callback.
    *
-   * Called when the element has been removed from the page, either by a parent update, or by the parent being removed entirely
+   * Called when the element has been removed from the page, either by a parent update, or by the parent being removed entirely.
    */
   destroyed?: (this: T & HookInterface<E>) => void;
 
@@ -236,6 +282,8 @@ export interface Hook<T = object, E extends HTMLElement = HTMLElement> {
  * The `this` context within the hook methods (mounted, updated, custom methods, etc.)
  * will refer to the hook instance, providing access to `this.el`, `this.liveSocket`,
  * `this.pushEvent()`, etc., as well as any properties or methods defined on the subclass.
+ *
+ * @category JavaScript Hooks
  */
 export class ViewHook<E extends HTMLElement = HTMLElement>
   implements HookInterface<E>
@@ -251,16 +299,20 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
     return this.__liveSocket();
   }
 
+  /** @internal */
   static makeID() {
     return viewHookID++;
   }
+  /** @internal */
   static elementID(el: HTMLElement) {
     return DOM.private(el, HOOK_ID);
   }
+  /** @internal */
   static deadHook(el: HTMLElement) {
     return DOM.private(el, DEAD_HOOK) === true;
   }
 
+  /** @internal */
   constructor(view: View | null, el: E, callbacks?: Hook) {
     this.el = el;
     this.__attachView(view);
@@ -401,11 +453,11 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
     };
   }
 
-  pushEvent(event: string, payload: any, onReply: OnReply): void;
-  pushEvent(event: string, payload?: any): Promise<any>;
+  pushEvent(event: string, payload: unknown, onReply: OnReply): void;
+  pushEvent(event: string, payload?: unknown): Promise<any>;
   pushEvent(
     event: string,
-    payload?: any,
+    payload?: unknown,
     onReply?: OnReply,
   ): Promise<any> | void {
     const promise = this.__view().pushHookEvent(
@@ -427,18 +479,18 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
   pushEventTo(
     selectorOrTarget: PhxTarget,
     event: string,
-    payload: object,
+    payload: unknown,
     onReply: OnReply,
   ): void;
   pushEventTo(
     selectorOrTarget: PhxTarget,
     event: string,
-    payload?: object,
+    payload?: unknown,
   ): Promise<PromiseSettledResult<{ reply: any; ref: number }>[]>;
   pushEventTo(
     selectorOrTarget: PhxTarget,
     event: string,
-    payload?: object,
+    payload?: unknown,
     onReply?: OnReply,
   ): Promise<PromiseSettledResult<{ reply: any; ref: number }>[]> | void {
     if (onReply === undefined) {
@@ -450,7 +502,12 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
         },
       );
       const promises = targetPair.map(({ view, targetCtx }) => {
-        return view.pushHookEvent(this.el, targetCtx, event, payload || {});
+        return view.pushHookEvent(
+          this.el,
+          targetCtx,
+          event,
+          payload || {},
+        ) as Promise<{ reply: any; ref: number }>;
       });
       return Promise.allSettled(promises);
     }
@@ -509,6 +566,9 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
   }
 }
 
+/**
+ * @category JavaScript Hooks
+ */
 export type HooksOptions = Record<string, typeof ViewHook | Hook<any, any>>;
 
 export default ViewHook;

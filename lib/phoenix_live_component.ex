@@ -47,8 +47,8 @@ defmodule Phoenix.LiveComponent do
 
   LiveComponents have a similar life-cycle to LiveViews:
 
-  * LiveViews: `mount/3` -> `handle_params/3` -> `render/1` 
-  * LiveComponents: `mount/1` -> `update/2` -> `render/1` 
+  * LiveViews: `mount/3` -> `handle_params/3` -> `render/1`
+  * LiveComponents: `mount/1` -> `update/2` -> `render/1`
 
   Similarly, both may define a `handle_event/3` callback for
   client events and use `handle_async/3` to deal with async
@@ -150,6 +150,13 @@ defmodule Phoenix.LiveComponent do
   "say_hello" event. When `c:handle_event/3` is called for a component,
   only the diff of the component is sent to the client, making them
   extremely efficient.
+
+  > #### Security Note {: .warning}
+  >
+  > The event `payload` contains untrusted data from the client. You must
+  > authorize and validate this data before using it to fetch or modify
+  > resources. See the ["Security considerations" guide](security-model.md#never-trust-user-input-params-and-payloads)
+  > for more information.
 
   Any valid query selector for `phx-target` is supported, provided that the
   matched nodes are children of a LiveView or LiveComponent, for example
@@ -546,7 +553,7 @@ defmodule Phoenix.LiveComponent do
   If the LiveComponent defines an `c:update/2`, be sure that the socket it returns
   includes the `:inner_block` assign it received.
 
-  See [the docs](Phoenix.Component.html#module-slots.md) for `Phoenix.Component` for more information.
+  See the [`Phoenix.Component` slots docs](`m:Phoenix.Component#module-slots`) for more information.
 
   ## Limitations
 
@@ -608,11 +615,7 @@ defmodule Phoenix.LiveComponent do
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
-  @callback handle_event(
-              event :: binary,
-              unsigned_params :: Phoenix.LiveView.unsigned_params(),
-              socket :: Socket.t()
-            ) ::
+  @callback handle_event(event :: binary, payload :: term(), socket :: Socket.t()) ::
               {:noreply, Socket.t()} | {:reply, map, Socket.t()}
 
   @callback handle_async(

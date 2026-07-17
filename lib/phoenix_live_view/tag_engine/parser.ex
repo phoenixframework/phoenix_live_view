@@ -113,6 +113,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
     indentation = Keyword.get(opts, :indentation, 0)
     trim_eex = Keyword.get(opts, :trim_eex, true)
     strip_eex_comments = Keyword.get(opts, :strip_eex_comments, false)
+    tag_handler = Keyword.fetch!(opts, :tag_handler)
     {:ok, eex_nodes} = EEx.tokenize(source, opts)
 
     {tokens, cont} =
@@ -123,7 +124,8 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
           file: file,
           indentation: indentation,
           trim_eex: trim_eex,
-          strip_eex_comments: strip_eex_comments
+          strip_eex_comments: strip_eex_comments,
+          tag_handler: tag_handler
         })
       )
 
@@ -132,11 +134,12 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
 
   defp do_tokenize({:text, text, meta}, {tokens, cont}, source, %{
          file: file,
-         indentation: indentation
+         indentation: indentation,
+         tag_handler: tag_handler
        }) do
     text = List.to_string(text)
     meta = [line: meta.line, column: meta.column]
-    state = Tokenizer.init(indentation, file, source, Phoenix.LiveView.HTMLEngine)
+    state = Tokenizer.init(indentation, file, source, tag_handler)
     Tokenizer.tokenize(text, meta, tokens, cont, state)
   end
 
@@ -223,7 +226,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
   #   end
   #   ```
   #
-  # Then, we start to populate the buffer again until a `{:close, :tag, ...} arrives:
+  # Then, we start to populate the buffer again until a `{:close, :tag, ...}` arrives:
   #
   #   ```
   #   defp to_tree([{:close, type, name, close_meta} | tokens], buffer, [{type, name, attrs, open_meta, upper_buffer} | stack], state) do
@@ -236,7 +239,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
   #
   # We apply the same logic for `eex` expressions but, instead of `tag_open` and
   # `tag_close`, eex expressions use `start_expr`, `middle_expr` and `end_expr`.
-  # The only real difference is that also need to handle `middle_buffer`.
+  # The only real difference is that we also need to handle `middle_buffer`.
   #
   # So given this eex input:
   #
@@ -378,7 +381,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
 
   # Matching close tag
   defp to_tree(
-         [{:close, _type, name, close_meta} | tokens],
+         [{:close, type, name, close_meta} | tokens],
          reversed_buffer,
          [{type, name, attrs, open_meta, upper_buffer} | stack],
          state
@@ -436,7 +439,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
          [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack],
          state
        ) do
-    middle_buffer = [{Enum.reverse(buffer), middle_expr, middle_meta} | middle_buffer]
+    middle_buffer = merge_middle_expr(middle_buffer, buffer, middle_expr, middle_meta)
 
     to_tree(
       tokens,
@@ -496,6 +499,49 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
   defp to_tree([{:eex, _type, expr, meta} | tokens], buffer, stack, state) do
     buffer = process_buffer([{:eex, expr, meta} | buffer], state)
     to_tree(tokens, buffer, stack, state)
+  end
+
+  defp merge_middle_expr(
+         [{prev_buffer, prev_expr, prev_meta} | middle_buffer],
+         buffer,
+         middle_expr,
+         middle_meta
+       ) do
+    if all_spaces?(buffer) and not stab_clause?(prev_expr) do
+      [
+        {prev_buffer, prev_expr <> rendered_spaces(buffer) <> middle_expr, prev_meta}
+        | middle_buffer
+      ]
+    else
+      [
+        {Enum.reverse(buffer), middle_expr, middle_meta},
+        {prev_buffer, prev_expr, prev_meta} | middle_buffer
+      ]
+    end
+  end
+
+  defp merge_middle_expr([], buffer, middle_expr, middle_meta) do
+    [{Enum.reverse(buffer), middle_expr, middle_meta}]
+  end
+
+  defp rendered_spaces(buffer) do
+    buffer
+    |> Enum.reverse()
+    |> Enum.map(fn {:text, text, _meta} -> text end)
+    |> IO.iodata_to_binary()
+  end
+
+  defp all_spaces?(nodes) do
+    Enum.all?(nodes, fn
+      {:text, text, _meta} -> String.trim_leading(text) == ""
+      _ -> false
+    end)
+  end
+
+  defp stab_clause?(expr) do
+    expr
+    |> String.trim_trailing()
+    |> String.ends_with?("->")
   end
 
   @special_attrs ~w(:if :for :key)
@@ -599,10 +645,11 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
         )
 
       {{:text, "", _}, directives} ->
-        {strip_text(tokens), buffer, %{state | directives: directives}}
+        {strip_text(tokens), buffer, %{state | directives: state.directives ++ directives}}
 
       {new_node, directives} ->
-        {strip_text(tokens), [new_node | buffer], %{state | directives: directives}}
+        {strip_text(tokens), [new_node | buffer],
+         %{state | directives: state.directives ++ directives}}
     end
   end
 
@@ -694,17 +741,20 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
     directives
   end
 
-  defp validate_directive!(_module, :root_tag_attribute, nil, _), do: :ok
+  defp validate_directive!(_module, type, nil, _)
+       when type in [:tag_attribute, :root_tag_attribute], do: :ok
 
-  defp validate_directive!(_module, :root_tag_attribute, {name, value}, _meta)
-       when is_binary(name) and (is_binary(value) or value == true) do
+  defp validate_directive!(_module, type, {name, value}, _meta)
+       when type in [:tag_attribute, :root_tag_attribute] and
+              is_binary(name) and (is_binary(value) or value == true) do
     :ok
   end
 
-  defp validate_directive!(module, :root_tag_attribute, other, meta) do
+  defp validate_directive!(module, type, other, meta)
+       when type in [:tag_attribute, :root_tag_attribute] do
     throw_syntax_error!(
       """
-      expected {name, value} for :root_tag_attribute directive from macro component #{inspect(module)}, got: #{inspect(other)}
+      expected {name, value} for :#{type} directive from macro component #{inspect(module)}, got: #{inspect(other)}
 
       name must be a compile-time string, and value must be a compile-time string or true
       """,

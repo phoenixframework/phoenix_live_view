@@ -44,7 +44,7 @@ defmodule Phoenix.Component.MacroComponent do
   #   This module provides some utilities to work with the AST, which uses
   #   standard Elixir data structures:
   #
-  #   1. A HTML tag is represented as `{tag, attributes, children, meta}`
+  #   1. An HTML tag is represented as `{tag, attributes, children, meta}`
   #   2. Text is represented as a plain binary
   #   3. Attributes are represented as a list of `{key, value}` tuples where
   #      the value is an Elixir AST (which can be a plain binary for simple attributes)
@@ -119,7 +119,7 @@ defmodule Phoenix.Component.MacroComponent do
   #   Another example for a macro component that transforms its content is available in
   #   LiveView's end to end tests: a macro component that performs
   #   [syntax highlighting at compile time](https://github.com/phoenixframework/phoenix_live_view/blob/38851d943f3280c5982d75679291dccb8c442534/test/e2e/support/colocated_live.ex#L4-L35)
-  #   using the [Makeup](https://hexdocs.pm/makeup/Makeup.html) library.
+  #   using the [Makeup](https://makeup.hexdocs.pm/Makeup.html) library.
   #
   #   ## Directives
   #
@@ -127,22 +127,52 @@ defmodule Phoenix.Component.MacroComponent do
   #   other elements in the template outside of the macro component at compile-time. For example:
   #
   #   ```elixir
-  #   defmodule MyAppWeb.TagRootSampleComponent do
+  #   defmodule MyAppWeb.TagAttributesSampleComponent do
   #     @behaviour Phoenix.Component.MacroComponent
   #
   #     @impl true
   #     def transform(_ast, _meta) do
-  #       {:ok, "", %{}, [root_tag_attribute: {"phx-sample-one", "test"}, root_tag_attribute: {"phx-sample-two", true}]}
+  #       {:ok, "", %{}, [root_tag_attribute: {"phx-sample-one", "test"}, tag_attribute: {"phx-sample-two", true}]}
   #     end
   #   end
   #   ```
   #
   #   The following directives are currently supported:
   #
-  #   * `:root_tag_attribute` - A `{name, value}` tuple to apply as an attribute to all root tags during template compilation.
-  #     Requires that a global `:root_tag_attribute` is configured for the application. The attribute name must be a string and the attribute value must be a string or `true`.
-  #     May be provided multiple times to apply multiple attributes.
+  #   * `root_tag_attribute`: A `{key, value}` tuple that will be added as
+  #      an attribute to all "root tags" of the template during template compilation.
+  #      See the section on root tags below for more information.
+  #   * `tag_attribute`: A `{key, value}` tuple that will be added as an attribute to
+  #      all HTML tags in the template during template compilation.
   #
+  #   ## Root tags
+  #
+  #   In a HEEx template, all outermost tags are considered "root tags" and are
+  #   affected by the `root_tag_attribute` directive. If a template uses components,
+  #   the slots of those components are considered as root tags as well.
+  #
+  #   Here's an example showing which elements would be considered root tags:
+  #
+  #   ```heex
+  #   <div>                              <---- root tag
+  #     <span>Hello</span>               <---- not a root tag
+  #
+  #     <.my_component>
+  #       <p>World</p>                   <---- root tag
+  #     </.my_component>
+  #   </div>
+  #
+  #   <.my_component>
+  #     <span>World</span>               <---- root tag
+  #
+  #     <:a_named_slot>
+  #       <div>                          <---- root tag
+  #         Foo
+  #         <p>Bar</p>                   <---- not a root tag
+  #       </div>
+  #     </:a_named_slot>
+  #   </.my_component>
+  #   ```
 
   @type tag :: binary()
   @type attribute :: {binary(), Macro.t()}
@@ -151,7 +181,9 @@ defmodule Phoenix.Component.MacroComponent do
   @type tag_meta :: %{closing: :self | :void}
   @type heex_ast :: {tag(), attributes(), children(), tag_meta()} | binary()
   @type transform_meta :: %{env: Macro.Env.t()}
-  @type directive :: {:root_tag_attribute, {name :: String.t(), value :: String.t() | true}}
+  @type directive ::
+          {:root_tag_attribute, {key :: term(), value :: term()}}
+          | {:tag_attribute, {key :: term(), value :: term()}}
   @type directives :: [directive]
 
   @callback transform(heex_ast :: heex_ast(), meta :: transform_meta()) ::
@@ -162,18 +194,19 @@ defmodule Phoenix.Component.MacroComponent do
   @doc """
   Returns the stored data from macro components that returned `{:ok, ast, data}`.
 
-  As one macro component can be used multiple times in one module, the result is a list of all data values.
+  As one macro component can be used multiple times in one module, the result is a map of format
 
-  If the component module does not have any macro components defined, an empty list is returned.
+      %{module => list(data)}
+
+  If the component module does not have any macro components defined, an empty map is returned.
   """
-  @spec get_data(module(), module()) :: [term()] | nil
-  def get_data(component_module, macro_component) do
+  @spec get_data(module()) :: map()
+  def get_data(component_module) do
     if Code.ensure_loaded?(component_module) and
          function_exported?(component_module, :__phoenix_macro_components__, 0) do
       component_module.__phoenix_macro_components__()
-      |> Map.get(macro_component, [])
     else
-      []
+      %{}
     end
   end
 

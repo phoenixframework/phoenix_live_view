@@ -23,7 +23,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             uri: nil,
             connect_params: %{},
             connect_info: %{},
-            on_error: :raise
+            on_error: nil
 
   alias Plug.Conn.Query
   alias Phoenix.LiveViewTest.{ClientProxy, DOM, Diff, Element, TreeDOM, Upload, View}
@@ -85,7 +85,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       session: session,
       url: url,
       test_supervisor: test_supervisor,
-      on_error: on_error
+      on_error: on_error,
+      start_location: start_location
     } = opts
 
     # We can assume there is at least one LiveView
@@ -96,10 +97,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     html =
       case response_html do
         {:document, html} ->
-          DOM.parse_document(html, fn msg -> send(self(), {:test_error, msg}) end)
+          DOM.parse_document(html, fn type, msg -> send(self(), {:test_error, type, msg}) end)
 
         {:fragment, html} ->
-          DOM.parse_fragment(html, fn msg -> send(self(), {:test_error, msg}) end)
+          DOM.parse_fragment(html, fn type, msg -> send(self(), {:test_error, type, msg}) end)
       end
 
     {lazy_html, html_tree} = html
@@ -166,7 +167,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       test_supervisor: test_supervisor,
       url: url,
       page_title: :unset,
-      on_error: on_error
+      on_error: on_error,
+      start_location: start_location
     }
 
     try do
@@ -225,20 +227,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             Process.demonitor(mon_ref, [:flush])
             {%{view | pid: pid}, Diff.merge_diff(%{}, rendered), resp}
 
-          {^ref, {:error, %{live_redirect: opts}}} ->
+          {^ref, {:error, %{live_redirect: opts} = resp}} ->
+            maybe_push_events(resp, state)
             throw(stop_redirect(state, view.topic, {:live_redirect, opts}))
 
-          {^ref, {:error, %{redirect: opts}}} ->
+          {^ref, {:error, %{redirect: opts} = resp}} ->
+            maybe_push_events(resp, state)
             throw(stop_redirect(state, view.topic, {:redirect, opts}))
 
           {^ref, {:error, %{reason: reason}}} when reason in ~w(stale unauthorized) ->
-            redir_to =
-              case redirect_url do
-                %URI{} = uri -> URI.to_string(uri)
-                nil -> url
-              end
-
-            throw(stop_redirect(state, view.topic, {:redirect, %{to: redir_to}}))
+            throw(stop_redirect(state, view.topic, {:redirect, %{to: redirect_url || url}}))
 
           {^ref, {:error, reason}} ->
             throw({:stop, reason, state})
@@ -528,22 +526,68 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  def handle_info({:test_error, error}, state) do
-    case state.on_error do
-      :raise ->
+  def handle_info({:test_error, type, message}, state) do
+    case {configured_test_warning(type, state.on_error), default_test_error(type)} do
+      {nil, :raise} ->
         raise """
-        #{String.trim(error)}
+        #{String.trim(message)}
 
-        You can prevent this from raising by passing `on_error: :warn` to
-        `Phoenix.LiveViewTest.live/3` or `Phoenix.LiveViewTest.live_isolated/3`.
+        You can change this error by setting
+
+            config :phoenix_live_view, :test_warnings,
+              #{to_string(type)}: :warn # can be one of :warn, :raise, or :ignore
+
+        See the `Phoenix.LiveViewTest` documentation for more details.
         """
 
-      :warn ->
-        IO.warn(error, [])
+      {nil, :warn} ->
+        IO.warn(
+          """
+          #{String.trim(message)}
+
+          You can change this warning by setting
+
+              config :phoenix_live_view, :test_warnings,
+                #{to_string(type)}: :raise # can be one of :warn, :raise, or :ignore
+
+          See the `Phoenix.LiveViewTest` documentation for more details.
+          """,
+          state.start_location
+        )
+
+      {:raise, _} ->
+        raise message
+
+      {:warn, _} ->
+        IO.warn(message, state.start_location)
+
+      {:ignore, _} ->
+        :noop
     end
 
     {:noreply, state}
   end
+
+  defp configured_test_warning(type, on_error) do
+    case on_error do
+      nil ->
+        Phoenix.LiveViewTest.configured_test_warning(type)
+
+      generic when is_atom(generic) ->
+        generic
+
+      config when is_list(config) ->
+        Keyword.get_lazy(config, type, fn ->
+          Phoenix.LiveViewTest.configured_test_warning(type)
+        end)
+    end
+  end
+
+  # We only warn for missing form IDs, because it is not necessarily an error
+  # Note: remember to add a clause handling :ignore if we default some checks
+  # to :ignore in the future.
+  defp default_test_error(:missing_form_id), do: :warn
+  defp default_test_error(_), do: :raise
 
   def handle_call({:upload_progress, from, %Element{} = el, entry_ref, progress, cid}, _, state) do
     payload = maybe_put_cid(%{"entry_ref" => entry_ref, "progress" => progress}, cid)
@@ -779,8 +823,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp patch_view(state, view, child_html, streams) do
     result =
-      TreeDOM.patch_id(view.id, state.html_tree, child_html, streams, fn msg ->
-        send(self(), {:test_error, msg})
+      TreeDOM.patch_id(view.id, state.html_tree, child_html, streams, fn type, msg ->
+        send(self(), {:test_error, type, msg})
       end)
 
     # IO.puts("PATCH VIEW #{view.id}")
@@ -1347,13 +1391,21 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp maybe_push_events(diff, state) do
     case diff do
+      %{events: events} ->
+        push_events(events, state)
+        Map.delete(diff, :events)
+
       %{@events => events} ->
-        for [name, payload] <- events, do: send_caller(state, {:push_event, name, payload})
+        push_events(events, state)
         Map.delete(diff, @events)
 
       %{} ->
         diff
     end
+  end
+
+  defp push_events(events, state) do
+    for [name, payload | _] <- events, do: send_caller(state, {:push_event, name, payload})
   end
 
   defp maybe_push_reply(diff, state) do

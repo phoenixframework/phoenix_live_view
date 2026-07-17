@@ -2,9 +2,33 @@ import { PHX_VIEW_SELECTOR } from "./constants";
 
 import EntryUploader from "./entry_uploader";
 
-export const logError = (msg, obj) => console.error && console.error(msg, obj);
+export const logError = (msg, obj?) => console.error && console.error(msg, obj);
 
-export const isCid = (cid) => {
+// Live navigation can only stay within the current origin, as it joins the
+// target over the existing socket. A full URL to a different origin (or a
+// non-http(s) scheme, which resolves to an opaque "null" origin) is a
+// programming error, so we fail loudly instead of attempting a broken join.
+export const ensureSameOrigin = (
+  href: string,
+  kind: "patch" | "navigate",
+): void => {
+  let url: URL;
+  try {
+    url = new URL(href, window.location.href);
+  } catch {
+    throw new Error(
+      `expected ${kind} destination to be a valid URL, got: ${href}`,
+    );
+  }
+  if (url.origin !== window.location.origin) {
+    throw new Error(
+      `cannot ${kind} to "${href}" because its origin does not match the ` +
+        `current origin "${window.location.origin}". Use window.location directly for cross-origin navigation.`,
+    );
+  }
+};
+
+export const isCid = (cid): cid is number | string => {
   const type = typeof cid;
   return type === "number" || (type === "string" && /^(0|[1-9]\d*)$/.test(cid));
 };
@@ -47,7 +71,7 @@ export const debug = (view, kind, msg, obj) => {
 };
 
 // wraps value in closure or returns closure
-export const closure = (val) =>
+export const closure = (val?) =>
   typeof val === "function"
     ? val
     : function () {
@@ -58,12 +82,17 @@ export const clone = (obj) => {
   return JSON.parse(JSON.stringify(obj));
 };
 
-export const closestPhxBinding = (el, binding, borderEl) => {
+export const closestPhxBinding = (
+  startEl: Element,
+  binding: string,
+  borderEl?: Element,
+) => {
+  let el: Element | null = startEl;
   do {
-    if (el.matches(`[${binding}]`) && !el.disabled) {
+    if (el.matches(`[${binding}]`) && !("disabled" in el && el.disabled)) {
       return el;
     }
-    el = el.parentElement || el.parentNode;
+    el = el.parentElement;
   } while (
     el !== null &&
     el.nodeType === 1 &&

@@ -23,7 +23,7 @@ defmodule Phoenix.LiveView.Async do
           do_something(my_assign)
         end)
 
-    For more information, see https://hexdocs.pm/elixir/1.16.1/process-anti-patterns.html#sending-unnecessary-data.
+    For more information, see https://elixir.hexdocs.pm/1.16.1/process-anti-patterns.html#sending-unnecessary-data.
     """)
   end
 
@@ -49,7 +49,7 @@ defmodule Phoenix.LiveView.Async do
           do_something(my_assign)
         end)
 
-    For more information, see https://hexdocs.pm/elixir/1.16.1/process-anti-patterns.html#sending-unnecessary-data.
+    For more information, see https://elixir.hexdocs.pm/1.16.1/process-anti-patterns.html#sending-unnecessary-data.
     """)
   end
 
@@ -207,8 +207,8 @@ defmodule Phoenix.LiveView.Async do
         :ok
       else
         raise ArgumentError, """
-        expected stream_async to return {:ok, Enumerable.t()}, {:ok, Enumerable.t(), options} or {:error, reason} but the result
-        is does not implement the Enumerable protocol
+        expected stream_async to return {:ok, Enumerable.t()}, {:ok, Enumerable.t(), opts} or {:error, reason} but the result
+        does not implement the Enumerable protocol
         """
       end
     end
@@ -229,7 +229,7 @@ defmodule Phoenix.LiveView.Async do
 
         other ->
           raise ArgumentError, """
-          expected stream_async to return {:ok, Enumerable.t()} or {:error, reason}, got: #{inspect(other)}
+          expected stream_async to return {:ok, Enumerable.t()}, {:ok, Enumerable.t(), opts} or {:error, reason}, got: #{inspect(other)}
           """
       end
     end
@@ -363,7 +363,7 @@ defmodule Phoenix.LiveView.Async do
 
   defp handle_kind(socket, _maybe_component, :assign, keys, result) do
     case result do
-      {:ok, {:ok, assigns}} when is_map(assigns) or is_list(assigns) ->
+      {:ok, {:ok, assigns}} when is_map(assigns) ->
         new_assigns =
           for {key, val} <- assigns do
             {key, AsyncResult.ok(get_current_async!(socket, key), val)}

@@ -160,7 +160,7 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   @doc """
-  Define a inner block, generally used by slots.
+  Define an inner block, generally used by slots.
 
   This macro is mostly used by custom HTML engines that provide
   a `slot` implementation and rarely called directly. The
@@ -239,21 +239,27 @@ defmodule Phoenix.LiveView.TagEngine do
 
   @impl true
   def init(opts) do
-    IO.warn("""
-    Using Phoenix.LiveView.TagEngine as an EEx.Engine is deprecated!
-
-    To compile HEEx, use Phoenix.LiveView.TagEngine.compile/2 instead.
-    """)
-
     {subengine, opts} = Keyword.pop(opts, :subengine, Phoenix.LiveView.Engine)
     tag_handler = Keyword.fetch!(opts, :tag_handler)
     caller = Keyword.fetch!(opts, :caller)
+    file = Keyword.get(opts, :file, caller.file || "nofile")
+    line = Keyword.get(opts, :line, caller.line)
+
+    IO.warn(
+      """
+      Using Phoenix.LiveView.TagEngine as an EEx.Engine is deprecated!
+
+      To compile HEEx, use Phoenix.LiveView.TagEngine.compile/2 instead.
+      """,
+      line: line,
+      file: file
+    )
 
     %{
       subengine: subengine,
       substate: subengine.init(opts),
-      file: Keyword.get(opts, :file, "nofile"),
-      line: Keyword.get(opts, :line, caller.line),
+      file: file,
+      line: line,
       indentation: Keyword.get(opts, :indentation, 0),
       caller: caller,
       source: Keyword.fetch!(opts, :source),
@@ -285,9 +291,7 @@ defmodule Phoenix.LiveView.TagEngine do
       line: line,
       caller: caller,
       indentation: indentation,
-      source: source,
       tag_handler: tag_handler,
-      trim_tokens: true,
       trim: trim
     ]
 

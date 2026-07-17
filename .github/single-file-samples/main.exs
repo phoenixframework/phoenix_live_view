@@ -1,4 +1,4 @@
-Application.put_env(:sample, Example.Endpoint,
+Application.put_env(:phoenix, Example.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 5001],
   adapter: Bandit.PhoenixAdapter,
   server: true,
@@ -6,17 +6,15 @@ Application.put_env(:sample, Example.Endpoint,
   secret_key_base: String.duplicate("a", 64)
 )
 
-Mix.install(
-  [
-    {:bandit, "~> 1.8"},
-    {:jason, "~> 1.0"},
-    {:phoenix, "~> 1.8"},
-    {:phoenix_html, "~> 4.0"},
-    # please test your issue using the latest version of LV from GitHub!
-    {:phoenix_live_view,
-     github: "phoenixframework/phoenix_live_view", branch: "main", override: true}
-  ]
-)
+Mix.install([
+  {:bandit, "~> 1.8"},
+  {:jason, "~> 1.2"},
+  {:phoenix, "~> 1.8"},
+  {:phoenix_html, "~> 4.1"},
+  # please test your issue using the latest version of LV from GitHub!
+  {:phoenix_live_view,
+   github: "phoenixframework/phoenix_live_view", branch: "main", override: true}
+])
 
 # if you're trying to test a specific LV commit, it may be necessary to manually build
 # the JS assets. To do this, uncomment the following lines:
@@ -24,7 +22,7 @@ Mix.install(
 #
 # path = Phoenix.LiveView.__info__(:compile)[:source] |> Path.dirname() |> Path.join("../")
 # System.cmd("mix", ["deps.get"], cd: path, into: IO.binstream())
-# System.cmd("npm", ["install"], cd: Path.join(path, "./assets"), into: IO.binstream())
+# System.cmd("npm", ["ci"], cd: Path.join(path, "./assets"), into: IO.binstream())
 # System.cmd("mix", ["assets.build"], cd: path, into: IO.binstream())
 
 defmodule Example.ErrorView do
@@ -46,11 +44,11 @@ defmodule Example.HomeLive do
     </script>
     <script src="/assets/phoenix_html/phoenix_html.js">
     </script>
-    <%!-- uncomment to use enable tailwind --%>
+    <%!-- uncomment to use Tailwind --%>
     <%!-- <script src="https://cdn.tailwindcss.com"></script> --%>
     <script>
-      let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket)
-      liveSocket.connect()
+      let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket);
+      liveSocket.connect();
     </script>
     <style>
       * { font-size: 1.1em; }
@@ -81,25 +79,26 @@ defmodule Example.Router do
   import Phoenix.LiveView.Router
 
   pipeline :browser do
-    plug(:accepts, ["html"])
+    plug :accepts, ["html"]
   end
 
   scope "/", Example do
-    pipe_through(:browser)
+    pipe_through :browser
 
-    live("/", HomeLive, :index)
+    live "/", HomeLive, :index
   end
 end
 
 defmodule Example.Endpoint do
-  use Phoenix.Endpoint, otp_app: :sample
-  socket("/live", Phoenix.LiveView.Socket)
+  use Phoenix.Endpoint, otp_app: :phoenix
+
+  socket "/live", Phoenix.LiveView.Socket
 
   plug Plug.Static, from: {:phoenix, "priv/static"}, at: "/assets/phoenix"
   plug Plug.Static, from: {:phoenix_live_view, "priv/static"}, at: "/assets/phoenix_live_view"
   plug Plug.Static, from: {:phoenix_html, "priv/static"}, at: "/assets/phoenix_html"
 
-  plug(Example.Router)
+  plug Example.Router
 end
 
 {:ok, _} = Supervisor.start_link([Example.Endpoint], strategy: :one_for_one)

@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "1.2.0-dev"
+  @version "1.2.7"
 
   def project do
     [
@@ -12,7 +12,7 @@ defmodule Phoenix.LiveView.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       test_options: [docs: true],
       test_coverage: [summary: [threshold: 85], ignore_modules: coverage_ignore_modules()],
-      xref: [exclude: [LazyHTML, LazyHTML.Tree]],
+      elixirc_options: [no_warn_undefined: [LazyHTML, LazyHTML.Tree]],
       package: package(),
       deps: deps(),
       aliases: aliases(),
@@ -63,7 +63,7 @@ defmodule Phoenix.LiveView.MixProject do
       {:phoenix_live_reload, "~> 1.4", only: :test},
       {:phoenix_html_helpers, "~> 1.0", only: :test},
       {:bandit, "~> 1.5", only: :e2e},
-      {:ecto, "~> 3.11", only: :e2e},
+      {:ecto, "~> 3.11", only: [:docs, :e2e]},
       {:phoenix_ecto, "~> 4.5", only: :e2e}
     ]
   end
@@ -118,7 +118,10 @@ defmodule Phoenix.LiveView.MixProject do
   defp before_closing_body_tag(_), do: ""
 
   defp extras do
-    ["CHANGELOG.md"] ++
+    [
+      "CHANGELOG.md",
+      "JS Documentation": [url: "js/index.html"]
+    ] ++
       Path.wildcard("guides/*/*.md") ++
       Path.wildcard("guides/cheatsheets/*.cheatmd")
   end
@@ -176,7 +179,7 @@ defmodule Phoenix.LiveView.MixProject do
       maintainers: ["Chris McCord", "José Valim", "Gary Rennie", "Alex Garibay", "Scott Newcomer"],
       licenses: ["MIT"],
       links: %{
-        Changelog: "https://hexdocs.pm/phoenix_live_view/changelog.html",
+        Changelog: "https://phoenix-live-view.hexdocs.pm/changelog.html",
         GitHub: "https://github.com/phoenixframework/phoenix_live_view"
       },
       files:
@@ -187,6 +190,7 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp aliases do
     [
+      docs: ["docs", &generate_js_docs/1],
       "assets.build": [
         "cmd npm run build",
         "esbuild module",
@@ -196,6 +200,12 @@ defmodule Phoenix.LiveView.MixProject do
       ],
       "assets.watch": ["cmd npm run build -- --watch", "esbuild module --watch"]
     ]
+  end
+
+  defp generate_js_docs(_) do
+    Mix.Task.run("app.start")
+    {_, 0} = System.cmd("npm", ["ci"], into: IO.stream())
+    {_, 0} = System.cmd("npm", ["run", "docs"], into: IO.stream())
   end
 
   defp coverage_ignore_modules do

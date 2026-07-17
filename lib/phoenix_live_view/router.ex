@@ -68,7 +68,7 @@ defmodule Phoenix.LiveView.Router do
       using a LiveView without actions or defaults to the LiveView name when using
       actions.
 
-    * `:metadata` - a map to optional feed metadata used on telemetry events and route info,
+    * `:metadata` - a map of optional metadata to feed telemetry events and route info,
       for example: `%{route_name: :foo, access: :user}`. This data can be retrieved by
       calling `Phoenix.Router.route_info/4` with the `uri` from the `handle_params`
       callback. This can be used to customize a LiveView which may be invoked from
@@ -77,6 +77,11 @@ defmodule Phoenix.LiveView.Router do
     * `:private` - an optional map of private data to put in the *plug connection*,
       for example: `%{route_name: :foo, access: :user}`. The data will be available
       inside `conn.private` in plug functions.
+
+    * `:warn_on_verify` - the boolean for whether matches to this route trigger
+      an unmatched route warning for `Phoenix.VerifiedRoutes`. It can be useful to
+      ignore an otherwise catch-all route definition from being matched when
+      verifying routes. Defaults to `false`.
 
   ## Examples
 
@@ -292,7 +297,7 @@ defmodule Phoenix.LiveView.Router do
         raise ArgumentError, """
         invalid live_session :layout
 
-        expected a tuple with the view module and template string or atom name, got #{inspect(bad_layout)}
+        expected a tuple with the view module and template atom name, got #{inspect(bad_layout)}
         """
 
       {:on_mount, on_mount}, acc ->
@@ -322,7 +327,7 @@ defmodule Phoenix.LiveView.Router do
   end
 
   @doc """
-  Fetches the LiveView and merges with the controller flash.
+  Fetches the LiveView flash and merges with the controller flash.
 
   Replaces the default `:fetch_flash` plug used by `Phoenix.Router`.
 
@@ -396,11 +401,15 @@ defmodule Phoenix.LiveView.Router do
   end
 
   defp validate_live_opts!(opts) do
-    {private, opts} = Keyword.pop(opts, :private, %{})
-    {metadata, opts} = Keyword.pop(opts, :metadata, %{})
-    {warn_on_verify, opts} = Keyword.pop(opts, :warn_on_verify, false)
-
     Enum.each(opts, fn
+      {:warn_on_verify, val} when is_boolean(val) ->
+        :ok
+
+      {:warn_on_verify, bad_val} ->
+        raise ArgumentError, """
+        expected live :warn_on_verify to be a boolean, got: #{inspect(bad_val)}
+        """
+
       {:container, {tag, attrs}} when is_atom(tag) and is_list(attrs) ->
         :ok
 
@@ -417,7 +426,7 @@ defmodule Phoenix.LiveView.Router do
         expected live :as to be an atom, got: #{inspect(bad_val)}
         """
 
-      {key, %{} = meta} when key in [:metadata, :private] and is_map(meta) ->
+      {key, val} when key in [:metadata, :private] and is_map(val) ->
         :ok
 
       {key, bad_val} when key in [:metadata, :private] ->
@@ -434,6 +443,10 @@ defmodule Phoenix.LiveView.Router do
         Got: #{inspect([{key, val}])}
         """
     end)
+
+    {private, opts} = Keyword.pop(opts, :private, %{})
+    {metadata, opts} = Keyword.pop(opts, :metadata, %{})
+    {warn_on_verify, opts} = Keyword.pop(opts, :warn_on_verify, false)
 
     {private, metadata, warn_on_verify, opts}
   end

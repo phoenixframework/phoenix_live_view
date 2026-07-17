@@ -40,7 +40,7 @@ export const tag = (tagName, attrs, innerHTML) => {
 };
 
 export const simulateJoinedView = (el, liveSocket) => {
-  const view = new View(el, liveSocket);
+  const view = new View(el, liveSocket, null, null, null);
   stubChannel(view);
   liveSocket.roots[view.id] = view;
   view.isConnected = () => true;
@@ -67,8 +67,8 @@ export const stubChannel = (view: View) => {
       return this;
     },
   };
-  view.channel.push = () => fakePush;
-  view.channel.leave = () => ({
+  (view["channel"] as any).push = () => fakePush;
+  (view["channel"] as any).leave = () => ({
     receive(kind, cb) {
       if (kind === "ok") {
         cb();

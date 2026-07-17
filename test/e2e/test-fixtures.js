@@ -17,7 +17,38 @@ const liveViewSourceMap = JSON.parse(
     .toString("utf-8"),
 );
 
+const pageChecks = async (page, ignoreJSErrors) => {
+  // this can be used to check for any console messages that are not expected;
+  // in a LV app, I'd add a unique ID warning check here
+  // const consoleMessages: Array<string> = [];
+  // page.on("console", async (msg) => { consoleMessages.push(msg.text()) });
+  const unhandledErrors = [];
+  page.on("pageerror", (exception) => {
+    unhandledErrors.push(exception);
+  });
+
+  const cleanup = async () => {
+    if (!ignoreJSErrors) {
+      testBase
+        .expect(unhandledErrors, "Detected an unhandled JavaScript Error!")
+        .toEqual([]);
+    }
+
+    await expect(page.locator("[data-phx-skip]")).toHaveCount(0);
+  };
+
+  return { cleanup };
+};
+
 const test = testBase.extend({
+  ignoreJSErrors: [false, { option: true }],
+
+  page: async ({ page, ignoreJSErrors }, use) => {
+    const { cleanup } = await pageChecks(page, ignoreJSErrors);
+    await use(page);
+    await cleanup();
+  },
+
   autoTestFixture: [
     async ({ page, browserName }, use) => {
       // NOTE: it depends on your project name

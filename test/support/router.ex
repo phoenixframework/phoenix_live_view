@@ -52,6 +52,7 @@ defmodule Phoenix.LiveViewTest.Support.Router do
 
     live "/duplicate-id", DuplicateIdLive
     live "/dynamic-duplicate-component", DynamicDuplicateComponentLive
+    live "/form-missing-id", FormMissingIdLive
 
     # controller test
     get "/controller/:type", Controller, :incoming

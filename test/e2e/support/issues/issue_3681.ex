@@ -29,7 +29,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3681Live do
 
   def render(assigns) do
     ~H"""
-    <h3>A LiveView that does nothing but render it's layout.</h3>
+    <h3>A LiveView that does nothing but render its layout.</h3>
     <.link navigate="/issues/3681/away">Go to a different LV with a (funcky) stream</.link>
     """
   end

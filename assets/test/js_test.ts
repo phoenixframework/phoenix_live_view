@@ -213,6 +213,34 @@ describe("JS", () => {
       view.liveSocket.pushHistoryPatch = originalPushHistoryPatch;
       done();
     });
+
+    test("navigate and patch throw for a different origin", () => {
+      const originalHistoryRedirect = view.liveSocket.historyRedirect;
+      const originalPushHistoryPatch = view.liveSocket.pushHistoryPatch;
+      view.liveSocket.historyRedirect = jest.fn();
+      view.liveSocket.pushHistoryPatch = jest.fn();
+
+      expect(() => js.navigate("https://other.example.com/foo")).toThrow(
+        /origin does not match/,
+      );
+      expect(() => js.patch("https://other.example.com/foo")).toThrow(
+        /origin does not match/,
+      );
+      expect(() => js.navigate("mailto:foo@example.com")).toThrow(
+        /origin does not match/,
+      );
+      expect(view.liveSocket.historyRedirect).not.toHaveBeenCalled();
+      expect(view.liveSocket.pushHistoryPatch).not.toHaveBeenCalled();
+
+      // relative and same-origin destinations are allowed
+      js.navigate("/same-origin");
+      js.patch(`${window.location.origin}/same-origin`);
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledTimes(1);
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledTimes(1);
+
+      view.liveSocket.historyRedirect = originalHistoryRedirect;
+      view.liveSocket.pushHistoryPatch = originalPushHistoryPatch;
+    });
   });
 
   describe("exec_toggle", () => {
@@ -514,7 +542,7 @@ describe("JS", () => {
           done: expect.any(Function),
           dispatcher: click,
         });
-        expect(view.liveSocket.transitions.size()).toBe(1);
+        expect(view.liveSocket["transitions"].size()).toBe(1);
         view.liveSocket.requestDOMUpdate(() => {
           expect(doneCalled).toBe(true);
           done();
@@ -721,7 +749,7 @@ describe("JS", () => {
           },
           uploads: {},
         });
-        return Promise.resolve({ resp: done() });
+        return Promise.resolve({ resp: done(), reply: null, ref: null });
       };
       const args = ["push", { _target: input.name, dispatcher: input }];
       JS.exec(
@@ -754,7 +782,7 @@ describe("JS", () => {
           },
           uploads: {},
         });
-        return Promise.resolve({ resp: done() });
+        return Promise.resolve({ resp: done(), reply: null, ref: null });
       };
       const args = ["push", { _target: input.name, dispatcher: input }];
       JS.exec(
@@ -787,7 +815,7 @@ describe("JS", () => {
           },
           uploads: {},
         });
-        return Promise.resolve({ resp: done() });
+        return Promise.resolve({ resp: done(), reply: null, ref: null });
       };
       const args = ["push", { _target: input.name, dispatcher: input }];
       JS.exec(
@@ -834,7 +862,7 @@ describe("JS", () => {
           value: "_unused_username=&username=&_unused_other=&other=",
           meta: { _target: "username" },
         });
-        return Promise.resolve({ resp: done() });
+        return Promise.resolve({ resp: done(), reply: null, ref: null });
       };
       const args = ["push", { _target: input.name, dispatcher: input }];
       JS.exec(
@@ -880,7 +908,7 @@ describe("JS", () => {
           value: "_unused_username=&username=",
           meta: { _target: "username" },
         });
-        return Promise.resolve({ resp: done() });
+        return Promise.resolve({ resp: done(), reply: null, ref: null });
       };
       const args = ["push", { _target: input.name, dispatcher: input }];
       JS.exec(
@@ -926,7 +954,7 @@ describe("JS", () => {
           value: "_unused_username=&username=",
           meta: { _target: "username" },
         });
-        return Promise.resolve({ resp: done() });
+        return Promise.resolve({ resp: done(), reply: null, ref: null });
       };
       const args = ["push", { _target: input.name, dispatcher: input }];
       JS.exec(
@@ -957,7 +985,7 @@ describe("JS", () => {
           value: "username=&desc=",
           meta: {},
         });
-        return Promise.resolve({ resp: done() });
+        return Promise.resolve({ resp: done(), reply: null, ref: null });
       };
       JS.exec(event, "submit", form.getAttribute("phx-submit"), view, form, [
         "push",
@@ -993,7 +1021,7 @@ describe("JS", () => {
             attribute_value: "attribute",
           },
         });
-        return Promise.resolve({ resp: done() });
+        return Promise.resolve({ resp: done(), reply: null, ref: null });
       };
       JS.exec(event, "submit", form.getAttribute("phx-submit"), view, form, [
         "push",
@@ -1038,7 +1066,7 @@ describe("JS", () => {
 
       view.pushWithReply = (refGenerator, event, payload) => {
         expect(payload.value).toEqual({ one: 1, two: 2, three: "3" });
-        return Promise.resolve({ resp: done() });
+        return Promise.resolve({ resp: done(), reply: null, ref: null });
       };
       JS.exec(event, "click", click.getAttribute("phx-click"), view, click);
     });

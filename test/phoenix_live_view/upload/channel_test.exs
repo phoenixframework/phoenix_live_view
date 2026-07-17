@@ -42,8 +42,33 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end
   end
 
+  defmodule CloseErrorWriter do
+    @behaviour Phoenix.LiveView.UploadWriter
+
+    @impl true
+    defdelegate init(test_name), to: TestWriter
+
+    @impl true
+    defdelegate meta(test_name), to: TestWriter
+
+    @impl true
+    defdelegate write_chunk(data, test_name), to: TestWriter
+
+    @impl true
+    def close(test_name, :done) do
+      send(test_name, {:close, :done})
+      {:error, :close_failed}
+    end
+
+    def close(test_name, reason), do: TestWriter.close(test_name, reason)
+  end
+
   def build_writer(_name, %Phoenix.LiveView.UploadEntry{}, %Phoenix.LiveView.Socket{}) do
     {TestWriter, :test_writer}
+  end
+
+  def build_close_error_writer(_name, %Phoenix.LiveView.UploadEntry{}, %Phoenix.LiveView.Socket{}) do
+    {CloseErrorWriter, :test_writer}
   end
 
   def valid_token(lv_pid, ref) do
@@ -179,14 +204,20 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   end
 
   defp opts_for_allow_upload(opts) do
-    case Keyword.fetch(opts, :progress) do
-      {:ok, progress} ->
-        Keyword.put(opts, :progress, fn _, entry, socket ->
-          apply(__MODULE__, progress, [entry, socket])
-        end)
+    opts =
+      case Keyword.fetch(opts, :progress) do
+        {:ok, progress} ->
+          Keyword.put(opts, :progress, fn _, entry, socket ->
+            apply(__MODULE__, progress, [entry, socket])
+          end)
 
-      :error ->
-        opts
+        :error ->
+          opts
+      end
+
+    case Keyword.fetch(opts, :validator_response) do
+      {:ok, response} -> Keyword.put(opts, :validator, fn _ -> response end)
+      :error -> opts
     end
   end
 
@@ -390,9 +421,9 @@ defmodule Phoenix.LiveView.UploadChannelTest do
             %{name: "foo.jpeg", content: String.duplicate("0", 100)}
           ])
 
-        assert UploadLive.exits_with(lv, avatar, RuntimeError, fn ->
-                 render_upload(avatar, "unknown.jpeg")
-               end) =~ "no file input with name \"unknown.jpeg\""
+        assert_raise ArgumentError, ~s(no such entry with name "unknown.jpeg"), fn ->
+          render_upload(avatar, "unknown.jpeg")
+        end
       end
 
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any, max_file_size: 1]
@@ -404,6 +435,25 @@ defmodule Phoenix.LiveView.UploadChannelTest do
                |> render_change(avatar) =~ "entry_error::too_large"
 
         assert {:error, [[_ref, :too_large]]} = render_upload(avatar, "foo.jpeg")
+      end
+
+      @tag allow: [
+             max_entries: 1,
+             chunk_size: 20,
+             accept: :any,
+             max_file_size: 100,
+             validator_response: {:error, :custom_validation_error}
+           ]
+      test "render_change error with validator failure upload", %{lv: lv} do
+        avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "ok"}])
+
+        assert lv
+               |> form("form", user: %{})
+               |> render_change(avatar) =~
+                 "entry_error::custom_validation_error"
+
+        assert {:error, [[_ref, :custom_validation_error]]} =
+                 render_upload(avatar, "foo.jpeg")
       end
 
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any, auto_upload: true]
@@ -833,24 +883,71 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
       @tag allow: [
              max_entries: 1,
-             chunk_size: 50,
+             chunk_size: 5,
              accept: :any,
              writer: &__MODULE__.build_writer/3
            ]
-      test "writer with error", %{lv: lv} do
+      test "writer write_chunk/2 error self-closes the upload channel without bringing down the LiveView",
+           %{lv: lv} do
         Process.register(self(), :test_writer)
 
-        content = "error"
+        # first chunk writes ok; second chunk ("error") fails write_chunk
+        avatar =
+          file_input(lv, "form", :avatar, [
+            %{name: "foo.jpeg", content: "00000error"}
+          ])
+
+        assert render_upload(avatar, "foo.jpeg", 50) =~ "#{@context}:foo.jpeg:50%"
+        assert %{"foo.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
+
+        unlink(channel_pid, lv, avatar)
+        Process.monitor(channel_pid)
+
+        render_upload(avatar, "foo.jpeg", 50)
+        assert_receive {:close, {:error, :custom_error}}
+
+        # the upload channel self-closes instead of being left {:shutdown, :left}
+        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
+
+        # the failed entry is dropped and the LiveView is still alive
+        assert get_uploaded_entries(lv, :avatar) == {[], []}
+      end
+
+      @tag allow: [
+             max_entries: 1,
+             chunk_size: 50,
+             accept: :any,
+             writer: &__MODULE__.build_close_error_writer/3
+           ]
+      test "writer close error self-closes the upload channel without bringing down the LiveView",
+           %{lv: lv} do
+        Process.register(self(), :test_writer)
+
+        content = String.duplicate("0", 100)
 
         avatar =
           file_input(lv, "form", :avatar, [
             %{name: "foo.jpeg", content: content}
           ])
 
-        assert render_upload(avatar, "foo.jpeg") =~
-                 ~s/entry_error:{:writer_failure, :custom_error}/
+        assert render_upload(avatar, "foo.jpeg", 50) =~ "#{@context}:foo.jpeg:50%"
+        assert %{"foo.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
 
-        assert_receive {:close, {:error, :custom_error}}
+        unlink(channel_pid, lv, avatar)
+        Process.monitor(channel_pid)
+
+        # uploading the final chunk completes the file and runs close(:done), which errors
+        render_upload(avatar, "foo.jpeg", 50)
+        assert_receive {:close, :done}
+
+        # close(:done) already closed the writer, so the error branch must not close it again
+        refute_receive {:close, {:error, :close_failed}}
+
+        # the upload channel self-closes instead of being left {:shutdown, :left}
+        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
+
+        # the failed entry is dropped and the LiveView is still alive
+        assert get_uploaded_entries(lv, :avatar) == {[], []}
       end
     end
   end

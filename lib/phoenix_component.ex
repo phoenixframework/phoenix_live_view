@@ -554,6 +554,15 @@ defmodule Phoenix.Component do
 
   Changing this configuration will require `mix clean` and a full recompile.
 
+  You can also configure debug annotations for a specific module by setting the options
+  as module attribute:
+
+      @debug_heex_annotations false
+      @debug_attributes false
+
+  This is mostly useful to opt out of annotations, for example if you want to show
+  the raw HTML to users.
+
   ## Dynamic Component Rendering
 
   Sometimes you might need to decide at runtime which component to render.
@@ -702,7 +711,7 @@ defmodule Phoenix.Component do
 
   * `false` or `nil` - if a value is `false` or `nil`, the attribute is omitted.
     Note the `class` and `style` attributes will be rendered as empty strings,
-    instead of ommitted, which has the same effect as not rendering them, but
+    instead of omitted, which has the same effect as not rendering them, but
     allows for rendering optimizations.
 
   * `list` (only for the `class` attribute) - each element of the list is processed
@@ -985,7 +994,7 @@ defmodule Phoenix.Component do
   * When rendering a LiveView inside a regular (non-live) controller/view.
 
   Most other cases for shared functionality, including state management and user interactions, can be
-  [achieved with function components or LiveComponents](welcome.html#compartmentalize-state-markup-and-events-in-liveview)
+  [achieved with function components or LiveComponents](welcome.md#compartmentalize-state-markup-and-events-in-liveview)
 
   ## Options
 
@@ -1216,6 +1225,7 @@ defmodule Phoenix.Component do
   * `:not_accepted` - The entry does not match the `:accept` MIME types
   * `:external_client_failure` - When external upload fails
   * `{:writer_failure, reason}` - When the custom writer fails with `reason`
+  * `reason` - When the custom validator fails with `reason`
 
   ## Examples
 
@@ -1223,6 +1233,7 @@ defmodule Phoenix.Component do
   defp upload_error_to_string(:too_large), do: "The file is too large"
   defp upload_error_to_string(:not_accepted), do: "You have selected an unacceptable file type"
   defp upload_error_to_string(:external_client_failure), do: "Something went terribly wrong"
+  defp upload_error_to_string(:custom_validator_error), do: "Custom validation error"
   ```
 
   ```heex
@@ -1898,7 +1909,7 @@ defmodule Phoenix.Component do
   A named slot may declare attributes by passing a block with calls to `attr/3`.
 
   Unlike attributes, slot attributes cannot accept the `:default` option. Passing one
-  will result in a compile warning being issued.
+  will result in a compilation error.
 
   ### The Default Slot
 
@@ -2007,7 +2018,7 @@ defmodule Phoenix.Component do
   end
 
   @doc ~S'''
-  Declares attributes for a HEEx function components.
+  Declares attributes for a HEEx function component.
 
   ## Arguments
 
@@ -2279,7 +2290,7 @@ defmodule Phoenix.Component do
 
   Inside LiveViews, this function component is typically called with
   as `for={@form}`, where `@form` is the result of the `to_form/1` function.
-  `to_form/1` expects either a map or an [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html)
+  `to_form/1` expects either a map or an [`Ecto.Changeset`](https://ecto.hexdocs.pm/Ecto.Changeset.html)
   as the source of data and normalizes it into `Phoenix.HTML.Form` structure.
 
   For example, you may use the parameters received in a
@@ -2357,7 +2368,7 @@ defmodule Phoenix.Component do
 
   Even if `changeset.errors` is non-empty, errors will not be displayed in a
   form if [the changeset
-  `:action`](https://hexdocs.pm/ecto/Ecto.Changeset.html#module-changeset-actions)
+  `:action`](https://ecto.hexdocs.pm/Ecto.Changeset.html#module-changeset-actions)
   is `nil` or `:ignore`.
 
   This is useful for things like validation hints on form fields, e.g. an empty
@@ -2606,8 +2617,9 @@ defmodule Phoenix.Component do
 
   Here we see the `:sort_param` and `:drop_param` options in action.
 
-  > Note: `on_replace: :delete` on the `has_many` and `embeds_many` is required
-  > when using these options.
+  > ### Note {: .info}
+  > When using these options, `on_replace: :delete` on the `has_many` and
+  > `embeds_many` is required.
 
   When Ecto sees the specified sort or drop parameter from the form, it will sort
   the children based on the order they appear in the form, add new children it hasn't
@@ -3052,7 +3064,7 @@ defmodule Phoenix.Component do
     default: false,
     doc: """
     When using `:patch` or `:navigate`,
-    should the browser's history be replaced with `pushState`?
+    should the browser's history be replaced with [`replaceState`](https://developer.mozilla.org/en-US/docs/Web/API/History/replaceState)?
     """
   )
 
@@ -3063,8 +3075,10 @@ defmodule Phoenix.Component do
     and therefore only works with the `href={...}` attribute. It has no effect on `patch`
     and `navigate` instructions.
 
-    In case the method is not `get`, the link is generated inside the form which sets the proper
-    information. In order to submit the form, JavaScript must be enabled in the browser.
+    In case the method is not `get`, the link is generated with the `data-method`
+    attribute that is intercepted by the `phoenix_html` JavaScript library to
+    trigger a form submission. In order to submit the form, JavaScript must
+    be enabled in the browser.
     """
   )
 
@@ -3090,6 +3104,8 @@ defmodule Phoenix.Component do
   )
 
   def link(%{navigate: to} = assigns) when is_binary(to) do
+    Phoenix.LiveView.Utils.valid_live_navigation_destination!(to, "<.link navigate>")
+
     ~H"""
     <a
       href={@navigate}
@@ -3102,6 +3118,8 @@ defmodule Phoenix.Component do
   end
 
   def link(%{patch: to} = assigns) when is_binary(to) do
+    Phoenix.LiveView.Utils.valid_live_navigation_destination!(to, "<.link patch>")
+
     ~H"""
     <a
       href={@patch}
@@ -3386,7 +3404,7 @@ defmodule Phoenix.Component do
       "the id of the img tag. Derived by default from the entry ref, but can be overridden as needed if you need to render a preview of the same entry multiple times on the same page"
   )
 
-  attr.(:rest, :global, [])
+  attr.(:rest, :global, include: ~w(alt width height))
 
   def live_img_preview(assigns) do
     ~H"""
@@ -3485,7 +3503,7 @@ defmodule Phoenix.Component do
   ```elixir
   {:noreply,
     socket
-    |> assign_async(:page, :data, &reload_data/0)
+    |> assign_async(:page, &reload_data/0)
     |> assign(:page, AsyncResult.loading())}
   ```
   """

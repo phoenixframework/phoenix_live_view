@@ -16,6 +16,7 @@ defmodule Phoenix.LiveView.Diff do
   @static :s
   @keyed :k
   @keyed_count :kc
+  @keyed_moved :km
   @events :e
   @reply :r
   @title :t
@@ -62,17 +63,12 @@ defmodule Phoenix.LiveView.Diff do
     if !keyed or keyed[@keyed_count] == 0 do
       {[], components}
     else
-      Enum.map_reduce(0..(keyed[@keyed_count] - 1), components, fn index, components ->
-        diff = Map.fetch!(keyed, index)
-
-        to_iodata(Map.put(diff, @static, static), components, template, mapper)
-      end)
+      keyed_to_iodata(keyed[@keyed_count] - 1, keyed, static, components, template, mapper, [])
     end
   end
 
   defp to_iodata(%{@static => static} = parts, components, template, mapper) do
-    static = template_static(static, template)
-    one_to_iodata(static, parts, 0, [], components, template, mapper)
+    to_iodata_parts(parts, static, components, template, mapper)
   end
 
   defp to_iodata(cid, components, _template, mapper) when is_integer(cid) do
@@ -86,13 +82,34 @@ defmodule Phoenix.LiveView.Diff do
     {binary, components}
   end
 
-  defp one_to_iodata([last], _parts, _counter, acc, components, _template, _mapper) do
-    {Enum.reverse([last | acc]), components}
+  defp to_iodata_parts(parts, static, components, template, mapper) do
+    [head | tail] = template_static(static, template)
+    one_to_iodata(tail, parts, 0, [head], components, template, mapper)
+  end
+
+  defp keyed_to_iodata(index, keyed, static, components, template, mapper, acc)
+       when index >= 0 do
+    diff = Map.fetch!(keyed, index)
+    {iodata, components} = to_iodata_parts(diff, static, components, template, mapper)
+    keyed_to_iodata(index - 1, keyed, static, components, template, mapper, [iodata | acc])
+  end
+
+  defp keyed_to_iodata(_index, _keyed, _static, components, _template, _mapper, acc) do
+    {acc, components}
+  end
+
+  defp one_to_iodata([], _parts, _counter, acc, components, _template, _mapper) do
+    {acc, components}
   end
 
   defp one_to_iodata([head | tail], parts, counter, acc, components, template, mapper) do
-    {iodata, components} = to_iodata(Map.fetch!(parts, counter), components, template, mapper)
-    one_to_iodata(tail, parts, counter + 1, [iodata, head | acc], components, template, mapper)
+    {iodata, components} =
+      case Map.fetch!(parts, counter) do
+        binary when is_binary(binary) -> {binary, components}
+        other -> to_iodata(other, components, template, mapper)
+      end
+
+    one_to_iodata(tail, parts, counter + 1, [acc, iodata | head], components, template, mapper)
   end
 
   defp template_static(static, template) when is_integer(static), do: Map.fetch!(template, static)
@@ -221,16 +238,37 @@ defmodule Phoenix.LiveView.Diff do
           |> configure_socket_for_component(assigns, private)
           |> fun.(component)
 
-        diff = render_private(csocket, %{})
+        changed? = Utils.changed?(csocket)
 
-        {pending, cdiffs, components} =
-          render_component(csocket, component, id, prints, cid, false, cids, %{}, components)
+        render = fn ->
+          diff = render_private(csocket, %{})
 
-        {cdiffs, components} =
-          render_pending_components(socket, pending, cids, cdiffs, components)
+          {pending, cdiffs, components} =
+            render_component(csocket, component, id, prints, cid, false, cids, %{}, components)
 
-        {diff, cdiffs} = extract_events({diff, cdiffs})
-        {maybe_put_cdiffs(diff, cdiffs), components, extra}
+          {cdiffs, components} =
+            render_pending_components(socket, pending, cids, cdiffs, components)
+
+          {diff, cdiffs} = extract_events({diff, cdiffs})
+          {maybe_put_cdiffs(diff, cdiffs), components, extra}
+        end
+
+        if changed? do
+          metadata = %{
+            socket: socket,
+            component: component,
+            id: id,
+            cid: cid,
+            force?: false,
+            changed?: changed?
+          }
+
+          :telemetry.span([:phoenix, :live_view, :render], metadata, fn ->
+            {render.(), metadata}
+          end)
+        else
+          render.()
+        end
 
       %{} ->
         :error
@@ -259,8 +297,8 @@ defmodule Phoenix.LiveView.Diff do
   @doc """
   Sends an update to a component.
 
-  Like `write_component/5`, it will store the result under the `cid
-   key in the `component_diffs` map.
+  Like `write_component/4`, it will store the result under the `cid`
+  key in the `component_diffs` map.
 
   If the component exists, a `{diff, new_components}` tuple
   is returned. Otherwise, `:noop` is returned.
@@ -601,32 +639,82 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp traverse_dynamic(dynamic, children, pending, components, template, changed?) do
-    Enum.reduce(dynamic, {0, %{}, children, pending, components, template}, fn
-      entry, {counter, diff, children, pending, components, template} ->
-        child = Map.get(children, counter)
+    traverse_dynamic(dynamic, 0, %{}, children, pending, components, template, changed?)
+  end
 
-        {serialized, child_fingerprint, pending, components, template} =
-          traverse(entry, child, pending, components, template, changed?)
+  defp traverse_dynamic(
+         [entry | entries],
+         counter,
+         diff,
+         children,
+         pending,
+         components,
+         template,
+         changed?
+       )
+       when is_nil(entry) or (is_binary(entry) and not is_map_key(children, counter)) do
+    traverse_dynamic(
+      entries,
+      counter + 1,
+      if(is_binary(entry), do: Map.put(diff, counter, entry), else: diff),
+      children,
+      pending,
+      components,
+      template,
+      changed?
+    )
+  end
 
-        # If serialized is nil, it means no changes.
-        # If it is an empty map, then it means it is a rendered struct
-        # that did not change, so we don't have to emit it either.
-        diff =
-          if serialized != nil and serialized != %{} do
-            Map.put(diff, counter, serialized)
-          else
-            diff
-          end
+  defp traverse_dynamic(
+         [entry | entries],
+         counter,
+         diff,
+         children,
+         pending,
+         components,
+         template,
+         changed?
+       ) do
+    child = Map.get(children, counter)
 
-        children =
-          if child_fingerprint do
-            Map.put(children, counter, child_fingerprint)
-          else
-            Map.delete(children, counter)
-          end
+    {serialized, child_fingerprint, pending, components, template} =
+      traverse(entry, child, pending, components, template, changed?)
 
-        {counter + 1, diff, children, pending, components, template}
-    end)
+    # If serialized is nil, it means no changes.
+    # If it is an empty map, then it means it is a rendered struct
+    # that did not change, so we don't have to emit it either.
+    diff =
+      if serialized != nil and serialized != %{} do
+        Map.put(diff, counter, serialized)
+      else
+        diff
+      end
+
+    children =
+      if child_fingerprint do
+        Map.put(children, counter, child_fingerprint)
+      else
+        if child do
+          Map.delete(children, counter)
+        else
+          children
+        end
+      end
+
+    traverse_dynamic(
+      entries,
+      counter + 1,
+      diff,
+      children,
+      pending,
+      components,
+      template,
+      changed?
+    )
+  end
+
+  defp traverse_dynamic([], counter, diff, children, pending, components, template, _changed?) do
+    {counter, diff, children, pending, components, template}
   end
 
   defp traverse_keyed(
@@ -645,7 +733,7 @@ defmodule Phoenix.LiveView.Diff do
     {{diff, count, new_prints, pending, components, template}, _seen_keys} =
       Enum.reduce(
         entries,
-        {{diff, 0, new_prints, pending, components, template}, MapSet.new()},
+        {{diff, 0, new_prints, pending, components, template}, %{}},
         fn
           {key, vars, render},
           {{_diff, index, _new_prints, _pending, _components, _template} = acc, seen_keys} ->
@@ -655,11 +743,11 @@ defmodule Phoenix.LiveView.Diff do
                   # no need to check for duplicates if we use the index
                   {index, seen_keys}
 
-                MapSet.member?(seen_keys, key) ->
+                Map.has_key?(seen_keys, key) ->
                   raise "found duplicate key #{inspect(key)} in comprehension"
 
                 true ->
-                  {key, MapSet.put(seen_keys, key)}
+                  {key, Map.put(seen_keys, key, true)}
               end
 
             {process_keyed({key, vars, render}, previous_prints, changed?, stream?, acc),
@@ -703,18 +791,15 @@ defmodule Phoenix.LiveView.Diff do
     new_prints =
       Map.put(new_prints, key, %{index: index, vars: new_vars, child_prints: child_prints})
 
-    # if the diff is empty, we need to check if the item moved
-    if child_diff == %{} or child_diff == nil do
-      # check if the entry moved, then annotate it with the previous index
-      diff = if previous_index != index, do: Map.put(diff, index, previous_index), else: diff
+    moved? = previous_index != index
+    diff = if moved?, do: Map.put(diff, @keyed_moved, true), else: diff
+
+    if child_diff == %{} do
+      diff = if moved?, do: Map.put(diff, index, previous_index), else: diff
+
       {diff, index + 1, new_prints, pending, components, template}
     else
-      child_diff =
-        if previous_index != index do
-          [previous_index, child_diff]
-        else
-          child_diff
-        end
+      child_diff = if moved?, do: [previous_index, child_diff], else: child_diff
 
       {Map.put(diff, index, child_diff), index + 1, new_prints, pending, components, template}
     end
@@ -1081,19 +1166,17 @@ defmodule Phoenix.LiveView.Diff do
     end
   end
 
-  defp mount_component(socket, component, assigns) do
-    private =
-      socket.private
-      |> Map.take([:conn_session, :root_view])
-      |> Map.put(:live_temp, %{})
-      |> Map.put(:children_cids, [])
-      |> Map.put(:lifecycle, %Phoenix.LiveView.Lifecycle{})
-
-    socket =
-      configure_socket_for_component(socket, assigns, private)
-      |> Utils.assign(:flash, %{})
-
-    Utils.maybe_call_live_component_mount!(socket, component)
+  defp mount_component(%{private: parent_private} = socket, component, assigns) do
+    socket
+    |> configure_socket_for_component(assigns, %{
+      conn_session: parent_private[:conn_session],
+      root_view: parent_private[:root_view],
+      live_temp: %{},
+      children_cids: [],
+      lifecycle: %Phoenix.LiveView.Lifecycle{}
+    })
+    |> Utils.assign(:flash, %{})
+    |> Utils.maybe_call_live_component_mount!(component)
   end
 
   defp configure_socket_for_component(socket, assigns, private) do

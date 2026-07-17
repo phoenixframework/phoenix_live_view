@@ -94,4 +94,48 @@ defmodule Phoenix.LiveView.LiveViewTestWarningsTest do
       refute_receive {:EXIT, _, _}
     end
   end
+
+  describe "missing form id" do
+    test "warns for form with missing id" do
+      orig = Application.get_env(:phoenix_live_view, :test_warnings)
+
+      Application.put_env(:phoenix_live_view, :test_warnings, missing_form_id: :warn)
+
+      on_exit(fn ->
+        Application.put_env(:phoenix_live_view, :test_warnings, orig)
+      end)
+
+      warning =
+        capture_io(:stderr, fn ->
+          {:ok, view, _html} = live(Phoenix.ConnTest.build_conn(), "/form-missing-id")
+          render(view)
+        end)
+
+      assert warning =~ "Detected a form with phx-change but missing id"
+      assert warning =~ "should-warn"
+    end
+
+    test "does not warn for forms that are not eligible for recovery" do
+      orig = Application.get_env(:phoenix_live_view, :test_warnings)
+
+      Application.put_env(:phoenix_live_view, :test_warnings, missing_form_id: :warn)
+
+      on_exit(fn ->
+        Application.put_env(:phoenix_live_view, :test_warnings, orig)
+      end)
+
+      warning =
+        capture_io(:stderr, fn ->
+          {:ok, view, _html} = live(Phoenix.ConnTest.build_conn(), "/form-missing-id")
+          render(view)
+        end)
+
+      # a form without phx-change is never recovered
+      refute warning =~ "no-change"
+      # a form that opted out with phx-auto-recover="ignore" is never recovered
+      refute warning =~ "opted-out"
+      # a form that explicitly opted out of the check with phx-ignore-missing-id
+      refute warning =~ "ignored"
+    end
+  end
 end

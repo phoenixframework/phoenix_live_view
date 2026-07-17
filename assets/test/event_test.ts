@@ -14,7 +14,7 @@ let simulateView = (liveSocket, events, innerHTML) => {
   el.innerHTML = innerHTML;
   document.body.appendChild(el);
 
-  let view = new View(el, liveSocket);
+  let view = new View(el, liveSocket, null, null, null);
   view.onJoin({ rendered: { e: events, s: [innerHTML] }, liveview_version });
   view.isConnected = () => true;
   return view;
@@ -328,17 +328,15 @@ describe("pushEvent replies", () => {
       },
     });
     view = simulateView(liveSocket, [], "");
-    liveSocket.main = view;
-    liveSocket.roots[view.id] = view;
+    liveSocket["main"] = view;
+    liveSocket["roots"][view.id] = view;
     view.update(
       {
         s: [
           `
-      <div id="${view.id}" data-phx-session="abc123" data-phx-root-id="${view.id}">
-        <div id="gateway" phx-hook="Gateway">
-          <div data-foo="bar"></div>
-          <div data-foo="baz"></div>
-        </div>
+      <div id="gateway" phx-hook="Gateway">
+        <div data-foo="bar"></div>
+        <div data-foo="baz"></div>
       </div>
     `,
         ],

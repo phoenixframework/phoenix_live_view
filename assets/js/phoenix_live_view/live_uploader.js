@@ -22,11 +22,12 @@ export default class LiveUploader {
     }
   }
 
-  static getEntryDataURL(inputEl, ref, callback) {
+  static getEntryDataURL(inputEl, ref) {
     const file = this.activeFiles(inputEl).find(
       (file) => this.genFileRef(file) === ref,
     );
-    callback(URL.createObjectURL(file));
+    if (!file) return null;
+    return URL.createObjectURL(file);
   }
 
   static hasUploadsInProgress(formEl) {
@@ -90,7 +91,7 @@ export default class LiveUploader {
       DOM.updatePrivate(inputEl, "files", [], (existing) =>
         existing.concat(newFiles),
       );
-      inputEl.value = null;
+      inputEl.value = "";
     } else {
       // Reset inputEl files to align output with programmatic changes (i.e. drag and drop)
       if (dataTransfer && dataTransfer.files.length > 0) {

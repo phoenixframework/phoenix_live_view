@@ -241,8 +241,8 @@ describe("DOM", () => {
     });
   });
 
-  describe("findComponentNodeList", () => {
-    test("returns nodes with cid ID (except indirect children)", () => {
+  describe("findComponent", () => {
+    test("returns node with cid ID (except indirect children)", () => {
       const view = tag("div", { id: "foo" }, "");
       let component1 = tag(
         "div",
@@ -250,11 +250,6 @@ describe("DOM", () => {
         "Hello",
       );
       let component2 = tag(
-        "div",
-        { "data-phx-component": 0, "data-phx-view": "foo" },
-        "World",
-      );
-      let component3 = tag(
         "div",
         { "data-phx-session": "123" },
         `
@@ -264,15 +259,11 @@ describe("DOM", () => {
       document.body.appendChild(view);
       view.appendChild(component1);
       view.appendChild(component2);
-      view.appendChild(component3);
 
-      expect(DOM.findComponentNodeList("foo", 0, document)).toEqual([
-        component1,
-        component2,
-      ]);
+      expect(DOM.findComponent("foo", 0, document)).toEqual(component1);
     });
 
-    test("returns empty list with no matching cid", () => {
+    test("returns null with no matching cid", () => {
       const view = tag("div", { id: "foo" }, "");
       let component1 = tag(
         "div",
@@ -281,7 +272,7 @@ describe("DOM", () => {
       );
       document.body.appendChild(view);
       view.appendChild(component1);
-      expect(DOM.findComponentNodeList("bar", 123)).toEqual([]);
+      expect(DOM.findComponent("bar", 123)).toEqual(null);
     });
   });
 
@@ -354,7 +345,7 @@ describe("DOM", () => {
     });
   });
 
-  describe("isFormInput", () => {
+  describe("isEditableInput", () => {
     test("identifies all inputs except for buttons as form inputs", () => {
       [
         "checkbox",
@@ -380,21 +371,21 @@ describe("DOM", () => {
         "week",
       ].forEach((inputType) => {
         const input = tag("input", { type: inputType }, "");
-        expect(DOM.isFormInput(input)).toBeTruthy();
+        expect(DOM.isEditableInput(input)).toBeTruthy();
       });
 
       const input = tag("input", { type: "button" }, "");
-      expect(DOM.isFormInput(input)).toBeFalsy();
+      expect(DOM.isEditableInput(input)).toBeFalsy();
     });
 
     test("identifies selects as form inputs", () => {
       const select = tag("select", {}, "");
-      expect(DOM.isFormInput(select)).toBeTruthy();
+      expect(DOM.isEditableInput(select)).toBeTruthy();
     });
 
     test("identifies textareas as form inputs", () => {
       const textarea = tag("textarea", {}, "");
-      expect(DOM.isFormInput(textarea)).toBeTruthy();
+      expect(DOM.isEditableInput(textarea)).toBeTruthy();
     });
 
     test("identifies form associated custom elements as form inputs", () => {
@@ -407,7 +398,7 @@ describe("DOM", () => {
       }
       customElements.define("custom-form-input", CustomFormInput);
       const customFormInput = tag("custom-form-input", {}, "");
-      expect(DOM.isFormInput(customFormInput)).toBeTruthy();
+      expect(DOM.isEditableInput(customFormInput)).toBeTruthy();
 
       class CustomNotFormInput extends HTMLElement {
         constructor() {
@@ -417,7 +408,44 @@ describe("DOM", () => {
 
       customElements.define("custom-not-form-input", CustomNotFormInput);
       const customNotFormInput = tag("custom-not-form-input", {}, "");
-      expect(DOM.isFormInput(customNotFormInput)).toBeFalsy();
+      expect(DOM.isEditableInput(customNotFormInput)).toBeFalsy();
+    });
+
+    test("does not identify buttons as editable inputs", () => {
+      const button = tag("button", {}, "click me");
+      expect(DOM.isEditableInput(button)).toBeFalsy();
+    });
+  });
+
+  describe("isFormAssociated", () => {
+    test("identifies inputs, selects, textareas", () => {
+      expect(DOM.isFormAssociated(tag("input", { type: "text" }, ""))).toBe(
+        true,
+      );
+      expect(DOM.isFormAssociated(tag("select", {}, ""))).toBe(true);
+      expect(DOM.isFormAssociated(tag("textarea", {}, ""))).toBe(true);
+    });
+
+    test("identifies buttons", () => {
+      expect(DOM.isFormAssociated(tag("button", {}, "click me"))).toBe(true);
+      expect(
+        DOM.isFormAssociated(tag("button", { type: "button" }, "click me")),
+      ).toBe(true);
+      expect(
+        DOM.isFormAssociated(tag("button", { type: "submit" }, "submit")),
+      ).toBe(true);
+    });
+
+    test("includes input type=button", () => {
+      expect(DOM.isFormAssociated(tag("input", { type: "button" }, ""))).toBe(
+        true,
+      );
+    });
+
+    test("rejects non-form elements", () => {
+      expect(DOM.isFormAssociated(tag("div", {}, ""))).toBe(false);
+      expect(DOM.isFormAssociated(tag("span", {}, ""))).toBe(false);
+      expect(DOM.isFormAssociated(null)).toBe(false);
     });
   });
 });

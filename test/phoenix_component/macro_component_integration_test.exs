@@ -53,6 +53,15 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
     end
   end
 
+  defmodule NoDirectiveMacroComponent do
+    @behaviour Phoenix.Component.MacroComponent
+
+    @impl true
+    def transform(_ast, _meta) do
+      {:ok, ""}
+    end
+  end
+
   test "receives ast" do
     defmodule TestComponentAst do
       use Phoenix.Component
@@ -340,7 +349,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
       end
     end
 
-    assert data = MacroComponent.get_data(TestComponentWithData1, MyMacroComponent)
+    assert %{MyMacroComponent => data} = MacroComponent.get_data(TestComponentWithData1)
     assert length(data) == 2
 
     assert Enum.find(data, fn %{opts: opts} -> opts == %{"baz" => nil, "foo" => "bar"} end)
@@ -468,6 +477,28 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
 
                  <p phx-r>Part of the component</p>
                </div>
+               """
+    end
+
+    test "are not dropped by a later macro component that emits no directives" do
+      defmodule TestComponentDirectivesPreserved do
+        use Phoenix.Component
+
+        def render(assigns) do
+          ~H"""
+          <div :type={DirectiveMacroComponent}></div>
+          <div id="hello">
+            <script :type={NoDirectiveMacroComponent}>
+            </script>
+          </div>
+          """
+        end
+      end
+
+      assert render_component(&TestComponentDirectivesPreserved.render/1)
+             |> TreeDOM.normalize_to_tree(sort_attributes: true) ==
+               ~X"""
+               <div id="hello" phx-sample-one="test" phx-sample-two="test" phx-r></div>
                """
     end
 

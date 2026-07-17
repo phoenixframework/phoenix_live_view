@@ -139,7 +139,7 @@ defmodule Phoenix.LiveViewTest do
       assert render_click(view, :inc, %{}) =~ "The temperature is: 31℉"
 
   The `element` style is preferred as much as possible, as it helps LiveView
-  perform validations and ensure the events in the HTML actually matches the
+  perform validations and ensure the events in the HTML actually match the
   event names on the server.
 
   ### Testing regular messages
@@ -175,6 +175,51 @@ defmodule Phoenix.LiveViewTest do
   ID=user-13 and retrieve its `phx-target`. If `phx-target` points
   to a component, that will be the component used, otherwise it will
   fallback to the view.
+
+  ### Optional test warnings
+
+  During LiveView tests (using `live/3` or `live_isolated/3`), LiveView performs
+  some additional checks by default. Those include detection of duplicate DOM IDs
+  and LiveComponents. When LiveViewTest detects such an issue, it is either raised
+  as an exception or as a warning.
+
+  You can configure this behavior in two ways:
+
+    1. Application environment config
+
+        You can configure specific issue types in your application config:
+
+        ```elixir
+        config :phoenix_live_view, :test_warnings,
+          duplicate_id: :warn, # one of :warn, :raise, :ignore
+          ...
+        ```
+
+        The supported keys are:
+
+          - `:duplicate_id` - when LiveViewTest detects a duplicate DOM ID
+          - `:duplicate_live_component` - when LiveViewTest detects a LiveComponent being rendered multiple times with the same ID
+          - `:missing_form_id` - when LiveViewTest detects a form without an ID attribute (this prevents [form recovery](form-bindings.md#recovery-following-crashes-or-disconnects))
+
+        The supported values are:
+
+          - `:raise` - crashes the test, default
+          - `:warn` - only emits a warning (will still fail tests if combined with `--warnings-as-errors`)
+          - `:ignore` - ignores the check
+
+    2. `on_error` option on `live/3` or `live_isolated/3`:
+
+        By writing `live(conn, "/path", on_error: :warn)`, the default for this specific test
+        can be changed. This example sets all detection types to `:warn`. You can also override
+        specific types only:
+
+        ```elixir
+        {:ok, view, html} = live(conn, "/path", on_error: [duplicate_id: :ignore])
+        ```
+
+        which will be merged with the global configuration.
+
+  Note that if a check is marked as `:ignore` in the config, it cannot be re-enabled in `on_error`.
   '''
 
   @flash_cookie "__phoenix_flash__"
@@ -335,6 +380,20 @@ defmodule Phoenix.LiveViewTest do
         KeyError -> nil
       end
 
+    start_location =
+      case Process.info(self(), :current_stacktrace) do
+        {:current_stacktrace,
+         [
+           {Process, :info, 2, _},
+           {Phoenix.LiveViewTest, :connect_from_static_token, _, _},
+           {_user_module, _test_name, 1, meta} | _
+         ]} ->
+          meta
+
+        _ ->
+          []
+      end
+
     start_proxy(path, %{
       response: {:document, Phoenix.ConnTest.response(conn, 200)},
       connect_params: conn.private[:live_view_connect_params] || %{},
@@ -344,7 +403,8 @@ defmodule Phoenix.LiveViewTest do
       endpoint: Phoenix.Controller.endpoint_module(conn),
       session: maybe_get_session(conn),
       url: Plug.Conn.request_url(conn),
-      on_error: opts[:on_error] || :raise
+      on_error: opts[:on_error],
+      start_location: start_location
     })
   end
 
@@ -990,7 +1050,7 @@ defmodule Phoenix.LiveViewTest do
   for a given LiveView or element.
 
   It renders the LiveView or Element once complete and returns the result.
-  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  The default `timeout` is [ExUnit](https://ex-unit.hexdocs.pm/ExUnit.html#configure/1)'s
   `assert_receive_timeout` (100 ms).
 
   ## Examples
@@ -1340,7 +1400,7 @@ defmodule Phoenix.LiveViewTest do
 
   @doc """
   Asserts a live patch will happen within `timeout` milliseconds.
-  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  The default `timeout` is [ExUnit](https://ex-unit.hexdocs.pm/ExUnit.html#configure/1)'s
   `assert_receive_timeout` (100 ms).
 
   It returns the new path.
@@ -1375,7 +1435,7 @@ defmodule Phoenix.LiveViewTest do
   Asserts a live patch will happen to a given path within `timeout`
   milliseconds.
 
-  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  The default `timeout` is [ExUnit](https://ex-unit.hexdocs.pm/ExUnit.html#configure/1)'s
   `assert_receive_timeout` (100 ms).
 
   It returns the new path.
@@ -1434,7 +1494,7 @@ defmodule Phoenix.LiveViewTest do
 
   @doc ~S"""
   Asserts a redirect will happen within `timeout` milliseconds.
-  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  The default `timeout` is [ExUnit](https://ex-unit.hexdocs.pm/ExUnit.html#configure/1)'s
   `assert_receive_timeout` (100 ms).
 
   It returns a tuple containing the new path and the flash messages from said
@@ -1463,7 +1523,7 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Asserts a redirect will happen to a given path within `timeout` milliseconds.
 
-  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  The default `timeout` is [ExUnit](https://ex-unit.hexdocs.pm/ExUnit.html#configure/1)'s
   `assert_receive_timeout` (100 ms).
 
   It returns the flash messages from said redirect, if any.
@@ -1680,7 +1740,7 @@ defmodule Phoenix.LiveViewTest do
 
   @doc """
   Asserts an event will be pushed within `timeout`.
-  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  The default `timeout` is [ExUnit](https://ex-unit.hexdocs.pm/ExUnit.html#configure/1)'s
   `assert_receive_timeout` (100 ms).
 
   ## Examples
@@ -1703,7 +1763,7 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Refutes an event will be pushed within timeout.
 
-  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  The default `timeout` is [ExUnit](https://ex-unit.hexdocs.pm/ExUnit.html#configure/1)'s
   `refute_receive_timeout` (100 ms).
 
   ## Examples
@@ -1738,7 +1798,7 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Asserts a hook reply was returned from a `handle_event` callback.
 
-  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  The default `timeout` is [ExUnit](https://ex-unit.hexdocs.pm/ExUnit.html#configure/1)'s
   `assert_receive_timeout` (100 ms).
 
   ## Examples
@@ -1771,7 +1831,7 @@ defmodule Phoenix.LiveViewTest do
 
   Or in the case of an error tuple:
 
-      assert {:error, {:redirect, %{to: "/somewhere"}}} = result = live(conn, "my-path")
+      assert {:error, {:live_redirect, %{to: "/somewhere"}}} = result = live(conn, "my-path")
       {:ok, view, html} = follow_redirect(result, conn)
 
   `follow_redirect/3` expects a connection as second argument.
@@ -1816,7 +1876,15 @@ defmodule Phoenix.LiveViewTest do
             "expected LiveView to redirect to #{inspect(expected_to)}, but got #{inspect(to)}"
     end
 
-    conn = Phoenix.ConnTest.ensure_recycled(conn)
+    conn =
+      case conn.private[:live_view_connect_params] do
+        nil ->
+          Phoenix.ConnTest.ensure_recycled(conn)
+
+        params ->
+          recycled_conn = Phoenix.ConnTest.ensure_recycled(conn)
+          Plug.Conn.put_private(recycled_conn, :live_view_connect_params, params)
+      end
 
     if flash = opts[:flash] do
       {Phoenix.ConnTest.put_req_cookie(conn, @flash_cookie, ensure_signed_flash(endpoint, flash)),
@@ -1836,7 +1904,7 @@ defmodule Phoenix.LiveViewTest do
   Performs a live redirect from one LiveView to another.
 
   When redirecting between two LiveViews of the same `live_session`,
-  mounts the new LiveView and shutsdown the previous one, which
+  mounts the new LiveView and shuts down the previous one, which
   mimics general browser live navigation behaviour.
 
   When attempting to navigate from a LiveView of a different
@@ -1860,7 +1928,7 @@ defmodule Phoenix.LiveViewTest do
 
     url =
       case Keyword.fetch!(opts, :to) do
-        "/" <> _ = path -> URI.merge(root.uri, path)
+        "/" <> _ = path -> root.uri |> URI.merge(path) |> URI.to_string()
         url -> url
       end
 
@@ -1880,6 +1948,20 @@ defmodule Phoenix.LiveViewTest do
     root_token = token_func.(root.session_token)
     static_token = token_func.(root.static_token)
 
+    start_location =
+      case Process.info(self(), :current_stacktrace) do
+        {:current_stacktrace,
+         [
+           {Process, :info, 2, _},
+           {Phoenix.LiveViewTest, :__live_redirect__, _, _},
+           {_user_module, _test_name, 1, meta} | _
+         ]} ->
+          meta
+
+        _ ->
+          []
+      end
+
     start_proxy(url, %{
       response: {:fragment, html},
       live_redirect: {root.id, root_token, static_token},
@@ -1890,7 +1972,8 @@ defmodule Phoenix.LiveViewTest do
       router: root.router,
       session: session,
       url: url,
-      on_error: root.on_error
+      on_error: root.on_error,
+      start_location: start_location
     })
   end
 
@@ -1936,7 +2019,7 @@ defmodule Phoenix.LiveViewTest do
   a controller via the normal form `action` attribute. This is especially useful
   in scenarios where the result of a form submit needs to write to the plug session.
 
-  You can follow submit the form with the `%Plug.Conn{}`, like this:
+  You can submit the form with the `%Plug.Conn{}`, like this:
 
       form = form(live_view, selector, %{"form" => "data"})
 
@@ -2030,7 +2113,7 @@ defmodule Phoenix.LiveViewTest do
       assert render_upload(avatar, "myfile.jpeg", 49) =~ "49%"
       assert render_upload(avatar, "myfile.jpeg", 51) =~ "100%"
 
-  Before making assertions about the how the upload is consumed server-side,
+  Before making assertions about how the upload is consumed server-side,
   you will need to call `render_submit/1`.
 
   In the case where an upload progress callback issues a navigate, patch, or
@@ -2051,7 +2134,7 @@ defmodule Phoenix.LiveViewTest do
         %{} -> nil
       end)
 
-    if !entry_name do
+    if !entry_ref do
       raise ArgumentError, "no such entry with name #{inspect(entry_name)}"
     end
 
@@ -2151,5 +2234,22 @@ defmodule Phoenix.LiveViewTest do
     pid = proxy_pid(view)
     proxy_topic = proxy_topic(view)
     GenServer.call(pid, {:sync_with_root, proxy_topic})
+  end
+
+  @doc false
+  def configured_test_warning(type) do
+    warnings = Application.get_env(:phoenix_live_view, :test_warnings, [])
+
+    case warnings do
+      atom when atom in [:warn, :raise, :ignore] ->
+        atom
+
+      keyword when is_list(keyword) ->
+        Keyword.get(keyword, type)
+
+      other ->
+        raise ArgumentError,
+              "Phoenix.LiveViewTest :warnings configuration must be one of :warn, :raise, :ignore, or a keyword list. Got: #{inspect(other)}"
+    end
   end
 end

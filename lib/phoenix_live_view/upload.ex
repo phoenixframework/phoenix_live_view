@@ -19,7 +19,8 @@ defmodule Phoenix.LiveView.Upload do
         raise ArgumentError, """
         cannot allow_upload on an existing upload with active entries.
 
-        Use cancel_upload and/or consume_upload to handle the active entries before allowing a new upload.
+        Consume or cancel the existing entries before allowing a new upload.
+        See cancel_upload, consume_uploaded_entry, or consume_uploaded_entries.
         """
     end
 
@@ -86,7 +87,7 @@ defmodule Phoenix.LiveView.Upload do
   @doc """
   Cancels all uploads that exist.
 
-  Returns the new socket with the cancelled upload configs.
+  Returns a tuple containing the new socket and a list of the cancelled upload configs.
 
   You can optionally pass the uploads name to only cancel uploads for that name
   """
@@ -127,7 +128,7 @@ defmodule Phoenix.LiveView.Upload do
   @doc """
   Updates the entry progress.
 
-  Progress is either an integer percently between 0 and 100, or a map
+  Progress is either an integer percentage between 0 and 100, or a map
   with an `"error"` key containing the information for a failed upload
   while in progress on the client.
   """
@@ -165,7 +166,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  Unregisters a completed entry from an `Phoenix.LiveView.UploadChannel` process.
+  Unregisters a completed entry from a `Phoenix.LiveView.UploadChannel` process.
   """
   def unregister_completed_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, entry_ref) do
     conf
@@ -174,7 +175,7 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
-  Registers a new entry upload for an `Phoenix.LiveView.UploadChannel` process.
+  Registers a new entry upload for a `Phoenix.LiveView.UploadChannel` process.
   """
   def register_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, pid, entry_ref)
       when is_pid(pid) do
@@ -338,10 +339,11 @@ defmodule Phoenix.LiveView.Upload do
 
       Enum.map(results, fn {_ref, result} -> result end)
     else
-      entries
-      |> Enum.map(fn entry -> {entry, UploadConfig.entry_pid(conf, entry)} end)
-      |> Enum.filter(fn {_entry, pid} -> is_pid(pid) end)
-      |> Enum.map(fn {entry, pid} -> Phoenix.LiveView.UploadChannel.consume(pid, entry, func) end)
+      for entry <- entries,
+          pid = UploadConfig.entry_pid(conf, entry),
+          is_pid(pid) do
+        Phoenix.LiveView.UploadChannel.consume(pid, entry, func)
+      end
     end
   end
 

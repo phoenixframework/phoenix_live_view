@@ -34,7 +34,7 @@ and encode data on every request.
 LiveView is included by default in Phoenix applications.
 Therefore, to use LiveView, you must have already installed Phoenix
 and created your first application. If you haven't done so,
-check [Phoenix' installation guide](https://hexdocs.pm/phoenix/installation.html)
+check [Phoenix' installation guide](https://phoenix.hexdocs.pm/installation.html)
 to get started.
 
 The behaviour of a LiveView is outlined by a module which implements

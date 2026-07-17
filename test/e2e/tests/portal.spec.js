@@ -99,20 +99,26 @@ test("streams work in teleported LiveComponent", async ({ page }) => {
   ).toEqual(4);
 });
 
-test("tooltip example", async ({ page }) => {
-  await page.goto("/portal?tick=false");
-  await syncLV(page);
+test.describe("tooltip", () => {
+  // The tooltip sometimes causes a
+  // ResizeObserver loop completed with undelivered notifications
+  // error, which is safe to ignore.
+  test.use({ ignoreJSErrors: true });
+  test("tooltip example", async ({ page }) => {
+    await page.goto("/portal?tick=false");
+    await syncLV(page);
 
-  await expect(page.locator("#tooltip-example-portal")).toBeHidden();
-  await expect(page.locator("#tooltip-example-no-portal")).toBeHidden();
+    await expect(page.locator("#tooltip-example-portal")).toBeHidden();
+    await expect(page.locator("#tooltip-example-no-portal")).toBeHidden();
 
-  await page.getByRole("button", { name: "Hover me", exact: true }).hover();
-  await expect(page.locator("#tooltip-example-portal")).toBeVisible();
-  await expect(page.locator("#tooltip-example-no-portal")).toBeHidden();
+    await page.getByRole("button", { name: "Hover me", exact: true }).hover();
+    await expect(page.locator("#tooltip-example-portal")).toBeVisible();
+    await expect(page.locator("#tooltip-example-no-portal")).toBeHidden();
 
-  await page.getByRole("button", { name: "Hover me (no portal)" }).hover();
-  await expect(page.locator("#tooltip-example-portal")).toBeHidden();
-  await expect(page.locator("#tooltip-example-no-portal")).toBeVisible();
+    await page.getByRole("button", { name: "Hover me (no portal)" }).hover();
+    await expect(page.locator("#tooltip-example-portal")).toBeHidden();
+    await expect(page.locator("#tooltip-example-no-portal")).toBeVisible();
+  });
 });
 
 test("teleported hook works correctly", async ({ page }) => {

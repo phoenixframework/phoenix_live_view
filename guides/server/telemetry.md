@@ -1,6 +1,6 @@
 # Telemetry
 
-LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/telemetry) events:
+LiveView currently exposes the following [`telemetry`](https://telemetry.hexdocs.pm) events:
 
   * `[:phoenix, :live_view, :mount, :start]` - Dispatched by a `Phoenix.LiveView`
     immediately before [`mount/3`](`c:Phoenix.LiveView.mount/3`) is invoked.
@@ -145,7 +145,9 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
           }
 
   * `[:phoenix, :live_view, :render, :start]` - Dispatched by a `Phoenix.LiveView`
-    immediately before [`render/1`](`c:Phoenix.LiveComponent.render/1`) is invoked.
+    immediately before a render starts. A render may invoke
+    [`Phoenix.LiveView.render/1`](`c:Phoenix.LiveView.render/1`) or
+    [`Phoenix.LiveComponent.render/1`](`c:Phoenix.LiveComponent.render/1`) callbacks.
 
     * Measurement:
 
@@ -159,8 +161,16 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
             changed?: boolean
           }
 
+      For component renders, the metadata also includes:
+
+          %{
+            component: module,
+            id: term,
+            cid: integer
+          }
+
   * `[:phoenix, :live_view, :render, :stop]` - Dispatched by a `Phoenix.LiveView`
-    when the [`render/1`](`c:Phoenix.LiveView.render/1`) callback completes successfully.
+    when a render completes successfully.
 
     * Measurement:
 
@@ -174,8 +184,16 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
             changed?: boolean
           }
 
+      For component renders, the metadata also includes:
+
+          %{
+            component: module,
+            id: term,
+            cid: integer
+          }
+
   * `[:phoenix, :live_view, :render, :exception]` - Dispatched by a `Phoenix.LiveView`
-    when an exception is raised in the [`render/1`](`c:Phoenix.LiveView.render/1`) callback.
+    when an exception is raised during a render.
 
     * Measurement:
 
@@ -189,6 +207,14 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
             reason: term,
             force?: boolean,
             changed?: boolean
+          }
+
+      For component renders, the metadata also includes:
+
+          %{
+            component: module,
+            id: term,
+            cid: integer
           }
 
   * `[:phoenix, :live_component, :update, :start]` - Dispatched by a `Phoenix.LiveComponent`

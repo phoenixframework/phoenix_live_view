@@ -19,8 +19,8 @@ defmodule Phoenix.LiveViewTest.E2E.ComponentsLive do
     ~H"""
     <div class="p-6">
       <h1 class="text-2xl font-bold mb-6">Phoenix Components Demo</h1>
-      
-    <!-- Tab Navigation -->
+
+      <!-- Tab Navigation -->
       <div class="border-b border-gray-200 mb-6">
         <nav class="-mb-px flex space-x-8">
           <.tab_link tab="focus_wrap" active_tab={@active_tab} patch="/components?tab=focus_wrap">
@@ -28,8 +28,8 @@ defmodule Phoenix.LiveViewTest.E2E.ComponentsLive do
           </.tab_link>
         </nav>
       </div>
-      
-    <!-- Tab Content -->
+
+      <!-- Tab Content -->
       <div class="mt-6">
         <div :if={@active_tab == "focus_wrap"}>
           <.focus_wrap_demo />

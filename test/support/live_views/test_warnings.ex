@@ -105,3 +105,16 @@ defmodule Phoenix.LiveViewTest.Support.DynamicDuplicateComponentLive do
     {:noreply, assign(socket, :render_second, !socket.assigns.render_second)}
   end
 end
+
+defmodule Phoenix.LiveViewTest.Support.FormMissingIdLive do
+  use Phoenix.LiveView
+
+  def render(assigns) do
+    ~H"""
+    <form phx-change="should-warn"></form>
+    <form phx-change="opted-out" phx-auto-recover="ignore"></form>
+    <form phx-change="ignored" phx-ignore-missing-id></form>
+    <form phx-submit="no-change"></form>
+    """
+  end
+end

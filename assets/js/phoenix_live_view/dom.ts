@@ -28,9 +28,29 @@ import {
 
 import { logError } from "./utils";
 
+export type FormInputLike = HTMLElement & {
+  readonly form?: HTMLFormElement | null;
+  readonly type?: string;
+  readonly validity?: ValidityState;
+  readonly name?: string;
+};
+
+export type QueryableNode = Element | Document | DocumentFragment;
+
 const DOM = {
   byId(id) {
     return document.getElementById(id) || logError(`no id found for ${id}`);
+  },
+
+  elementFromTarget(target: EventTarget): Element | null {
+    if (!(target instanceof Node)) {
+      return null;
+    }
+    if (target.nodeType === Node.ELEMENT_NODE) {
+      return target as Element;
+    } else {
+      return target.parentElement;
+    }
   },
 
   removeClass(el, className) {
@@ -40,7 +60,11 @@ const DOM = {
     }
   },
 
-  all(node, query, callback) {
+  all(
+    node: QueryableNode | null,
+    query: string,
+    callback?: (el: Element) => void,
+  ): Element[] {
     if (!node) {
       return [];
     }
@@ -57,7 +81,7 @@ const DOM = {
     return template.content.childElementCount;
   },
 
-  isUploadInput(el) {
+  isUploadInput(el): el is HTMLInputElement {
     return el.type === "file" && el.getAttribute(PHX_UPLOAD_REF) !== null;
   },
 
@@ -65,7 +89,7 @@ const DOM = {
     return inputEl.hasAttribute("data-phx-auto-upload");
   },
 
-  findUploadInputs(node) {
+  findUploadInputs(node): HTMLInputElement[] {
     const formId = node.id;
     const inputsOutsideForm = this.all(
       document,
@@ -73,14 +97,31 @@ const DOM = {
     );
     return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`).concat(
       inputsOutsideForm,
+    ) as HTMLInputElement[];
+  },
+
+  findComponent(
+    viewId: string,
+    cid: string | number,
+    doc: QueryableNode = document,
+  ): Element | null {
+    return doc.querySelector(
+      `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}="${cid}"]`,
     );
   },
 
-  findComponentNodeList(viewId, cid, doc = document) {
-    return this.all(
-      doc,
-      `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}="${cid}"]`,
-    );
+  getComponent(
+    viewId: string,
+    cid: number,
+    doc: QueryableNode = document,
+  ): Element {
+    const el = this.findComponent(viewId, cid, doc);
+    if (!el) {
+      throw new Error(
+        `no component found matching viewId ${viewId} and cid ${cid}`,
+      );
+    }
+    return el;
   },
 
   isPhxDestroyed(node) {
@@ -208,7 +249,7 @@ const DOM = {
       ).forEach((parent) => {
         parentCids.add(cid);
         this.all(parent, `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}]`)
-          .map((el) => parseInt(el.getAttribute(PHX_COMPONENT)))
+          .map((el) => parseInt(el.getAttribute(PHX_COMPONENT)!))
           .forEach((childCID) => childrenCids.add(childCID));
       });
     });
@@ -370,13 +411,15 @@ const DOM = {
             // we also clear the throttle timeout to prevent the callback
             // from being called again after the timeout fires
             clearTimeout(this.private(el, THROTTLED));
-            this.triggerCycle(el, DEBOUNCE_TRIGGER);
+            if (asyncFilter()) {
+              this.triggerCycle(el, DEBOUNCE_TRIGGER);
+            }
           });
         }
     }
   },
 
-  triggerCycle(el, key, currentCycle) {
+  triggerCycle(el, key, currentCycle?) {
     const [cycle, trigger] = this.private(el, key);
     if (!currentCycle) {
       currentCycle = cycle;
@@ -470,7 +513,7 @@ const DOM = {
     return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0];
   },
 
-  isPortalTemplate(el) {
+  isPortalTemplate(el): el is HTMLTemplateElement {
     return el.tagName === "TEMPLATE" && el.hasAttribute(PHX_PORTAL);
   },
 
@@ -491,7 +534,7 @@ const DOM = {
     return null;
   },
 
-  dispatchEvent(target, name, opts = {}) {
+  dispatchEvent(target, name, opts: { bubbles?: boolean; detail?: any } = {}) {
     let defaultBubble = true;
     const isUploadTarget =
       target.nodeName === "INPUT" && target.type === "file";
@@ -524,7 +567,11 @@ const DOM = {
   // merge attributes from source to target
   // if an element is ignored, we only merge data attributes
   // including removing data attributes that are no longer in the source
-  mergeAttrs(target, source, opts = {}) {
+  mergeAttrs(
+    target,
+    source,
+    opts: { exclude?: string[]; isIgnored?: boolean } = {},
+  ) {
     const exclude = new Set(opts.exclude || []);
     const isIgnored = opts.isIgnored;
     const sourceAttrs = source.attributes;
@@ -588,7 +635,7 @@ const DOM = {
     }
   },
 
-  hasSelectionRange(el) {
+  hasSelectionRange(el): el is HTMLInputElement | HTMLTextAreaElement {
     return (
       el.setSelectionRange && (el.type === "text" || el.type === "textarea")
     );
@@ -611,21 +658,41 @@ const DOM = {
     }
   },
 
-  isFormInput(el) {
-    if (el.localName && customElements.get(el.localName)) {
-      // Custom Elements may be form associated. This allows them
-      // to participate within a form's lifecycle, including form
-      // validity and form submissions.
-      // The spec for Form Associated custom elements requires the
-      // custom element's class to contain a static boolean value of `formAssociated`
-      // which identifies this class as allowed to associate to a form.
-      // See https://html.spec.whatwg.org/dev/custom-elements.html#custom-elements-face-example
-      // for details.
-      return customElements.get(el.localName)[`formAssociated`];
-    }
-
+  /**
+   * Returns true if the element is an input that can be focused and edited by the user,
+   * so we can skip patching it if it has focus.
+   */
+  isEditableInput(el: Element | EventTarget | null): el is FormInputLike {
     return (
-      /^(?:input|select|textarea)$/i.test(el.tagName) && el.type !== "button"
+      this.isFormAssociated(el) &&
+      !(el instanceof HTMLButtonElement) &&
+      !(el instanceof HTMLInputElement && el.type === "button")
+    );
+  },
+
+  isFormAssociated(el: Element | EventTarget | null): el is FormInputLike {
+    if (!(el instanceof HTMLElement)) return false;
+    if (el.localName) {
+      const customEl = customElements.get(el.localName);
+      if (customEl) {
+        // Custom Elements may be form associated. This allows them
+        // to participate within a form's lifecycle, including form
+        // validity and form submissions.
+        // The spec for Form Associated custom elements requires the
+        // custom element's class to contain a static boolean value of `formAssociated`
+        // which identifies this class as allowed to associate to a form.
+        // See https://html.spec.whatwg.org/dev/custom-elements.html#custom-elements-face-example
+        // for details.
+        return (
+          (customEl as { formAssociated?: boolean }).formAssociated === true
+        );
+      }
+    }
+    return (
+      el instanceof HTMLInputElement ||
+      el instanceof HTMLSelectElement ||
+      el instanceof HTMLTextAreaElement ||
+      el instanceof HTMLButtonElement
     );
   },
 
@@ -650,21 +717,22 @@ const DOM = {
     );
   },
 
-  cleanChildNodes(container, phxUpdate) {
+  cleanChildNodes(container: Element, phxUpdate: string) {
     if (
       DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend", PHX_STREAM])
     ) {
-      const toRemove = [];
+      const toRemove: Array<ChildNode> = [];
       container.childNodes.forEach((childNode) => {
-        if (!childNode.id) {
+        if (!("id" in childNode) || !childNode.id) {
           // Skip warning if it's an empty text node (e.g. a new-line)
           const isEmptyTextNode =
             childNode.nodeType === Node.TEXT_NODE &&
+            childNode.nodeValue &&
             childNode.nodeValue.trim() === "";
           if (!isEmptyTextNode && childNode.nodeType !== Node.COMMENT_NODE) {
             logError(
               "only HTML element tags with an id are allowed inside containers with phx-update.\n\n" +
-                `removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"\n\n`,
+                `removing illegal node: "${(("outerHTML" in childNode && (childNode.outerHTML as string)) || childNode.nodeValue || "").trim()}"\n\n`,
             );
           }
           toRemove.push(childNode);
@@ -674,7 +742,11 @@ const DOM = {
     }
   },
 
-  replaceRootContainer(container, tagName, attrs) {
+  replaceRootContainer(
+    container: Element,
+    tagName: string,
+    attrs: Record<string, string>,
+  ) {
     const retainedAttrs = new Set([
       "id",
       PHX_SESSION,
@@ -697,9 +769,12 @@ const DOM = {
       Object.keys(attrs).forEach((attr) =>
         newContainer.setAttribute(attr, attrs[attr]),
       );
-      retainedAttrs.forEach((attr) =>
-        newContainer.setAttribute(attr, container.getAttribute(attr)),
-      );
+      retainedAttrs.forEach((attr) => {
+        const value = container.getAttribute(attr);
+        if (value !== null) {
+          newContainer.setAttribute(attr, value);
+        }
+      });
       newContainer.innerHTML = container.innerHTML;
       container.replaceWith(newContainer);
       return newContainer;
