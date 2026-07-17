@@ -193,6 +193,60 @@ describe("View + DOM", function () {
     expect(view.el.querySelector("form")).toBeTruthy();
   });
 
+  test("dispatchBytesUpload exposes rejected preflight", async () => {
+    liveSocket = new LiveSocket("/live", Socket);
+    const view = simulateJoinedView(liveViewDOM(), liveSocket);
+    const failure = new Error("preflight disconnected");
+    const logSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    jest.spyOn(view, "pushWithReply").mockRejectedValue(failure);
+
+    const upload = view.dispatchBytesUpload(
+      "octet",
+      new Uint8Array([1, 2, 3]),
+      { id: "octet-1" },
+    );
+
+    expect(upload.entryRefs).toHaveLength(1);
+    await expect(upload.completed).rejects.toBe(failure);
+    logSpy.mockRestore();
+  });
+
+  test("dispatchBytesUpload exposes adapter entry failure", async () => {
+    const failingUploader = jest.fn((entries) =>
+      entries[0].error("chunk failed"),
+    );
+    liveSocket = new LiveSocket("/live", Socket, {
+      uploaders: { failing: failingUploader },
+    });
+    const view = simulateJoinedView(liveViewDOM(), liveSocket);
+    jest.spyOn(view, "pushFileProgress").mockImplementation(() => {});
+    jest
+      .spyOn(view, "pushWithReply")
+      .mockImplementation((_target, _event, payload) => {
+        const entryRef = payload.entries[0].ref;
+        return Promise.resolve({
+          resp: {
+            ref: "phx-octet",
+            entries: { [entryRef]: { uploader: "failing" } },
+            config: {},
+          },
+          reply: null,
+          ref: null,
+        });
+      });
+
+    const upload = view.dispatchBytesUpload(
+      "octet",
+      new Uint8Array([1]),
+      undefined,
+    );
+
+    await expect(upload.completed).rejects.toThrow(
+      "programmatic upload failed: chunk failed",
+    );
+    expect(failingUploader).toHaveBeenCalled();
+  });
+
   test("pushEvent", function () {
     expect.assertions(3);
 

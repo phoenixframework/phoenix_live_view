@@ -696,8 +696,14 @@ defmodule Phoenix.LiveView.UploadConfig do
   def cancel_entry(%UploadConfig{} = conf, %UploadEntry{} = entry) do
     case entry_pid(conf, entry) do
       channel_pid when is_pid(channel_pid) ->
-        Phoenix.LiveView.UploadChannel.cancel(channel_pid)
-        update_entry(conf, entry.ref, fn entry -> %{entry | cancelled?: true} end)
+        try do
+          Phoenix.LiveView.UploadChannel.cancel(channel_pid)
+          update_entry(conf, entry.ref, fn entry -> %{entry | cancelled?: true} end)
+        catch
+          :exit, {reason, {GenServer, :call, [^channel_pid, :cancel, _timeout]}}
+          when reason in [:noproc, :normal, {:shutdown, :closed}, {:shutdown, :left}] ->
+            update_entry(conf, entry.ref, fn entry -> %{entry | cancelled?: true} end)
+        end
 
       _ ->
         drop_entry(conf, entry)

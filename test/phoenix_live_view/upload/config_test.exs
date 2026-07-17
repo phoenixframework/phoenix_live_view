@@ -421,6 +421,92 @@ defmodule Phoenix.LiveView.UploadConfigTest do
     assert LiveView.allow_upload(build_socket(), "avatar", accept: ~w(image/png .jpeg))
   end
 
+  describe "cancel_entry/2" do
+    test "marks a normally cancelled registered entry as cancelled" do
+      parent = self()
+
+      channel_pid =
+        spawn(fn ->
+          receive do
+            {:"$gen_call", from, :cancel} ->
+              send(parent, :cancel_called)
+              GenServer.reply(from, :ok)
+          end
+        end)
+
+      monitor_ref = Process.monitor(channel_pid)
+      {config, entry} = registered_entry(channel_pid)
+
+      assert %UploadConfig{} = config = UploadConfig.cancel_entry(config, entry)
+      assert_receive :cancel_called
+      assert_receive {:DOWN, ^monitor_ref, :process, ^channel_pid, :normal}
+      assert %UploadEntry{cancelled?: true} = UploadConfig.get_entry_by_ref(config, entry.ref)
+      assert UploadConfig.entry_pid(config, entry) == channel_pid
+
+      assert %UploadConfig{} = config = UploadConfig.cancel_entry(config, entry)
+      assert %UploadEntry{cancelled?: true} = UploadConfig.get_entry_by_ref(config, entry.ref)
+    end
+
+    test "drops an entry whose registered upload channel is already dead" do
+      channel_pid =
+        spawn(fn ->
+          receive do
+            :stop -> :ok
+          end
+        end)
+
+      monitor_ref = Process.monitor(channel_pid)
+      send(channel_pid, :stop)
+      assert_receive {:DOWN, ^monitor_ref, :process, ^channel_pid, :normal}
+
+      {config, entry} = registered_entry(channel_pid)
+
+      assert %UploadConfig{} = config = UploadConfig.cancel_entry(config, entry)
+      assert %UploadEntry{cancelled?: true} = UploadConfig.get_entry_by_ref(config, entry.ref)
+      assert UploadConfig.entry_pid(config, entry) == channel_pid
+
+      assert %UploadConfig{entries: []} =
+               UploadConfig.unregister_completed_entry(config, entry.ref)
+    end
+
+    test "drops an entry when its upload channel exits while cancellation is in flight" do
+      channel_pid =
+        spawn(fn ->
+          receive do
+            {:"$gen_call", _from, :cancel} -> exit({:shutdown, :closed})
+          end
+        end)
+
+      {config, entry} = registered_entry(channel_pid)
+
+      assert %UploadConfig{} = config = UploadConfig.cancel_entry(config, entry)
+      assert %UploadEntry{cancelled?: true} = UploadConfig.get_entry_by_ref(config, entry.ref)
+    end
+
+    test "marks an entry cancelled when its upload channel leaves during cancellation" do
+      channel_pid =
+        spawn(fn ->
+          receive do
+            {:"$gen_call", _from, :cancel} -> exit({:shutdown, :left})
+          end
+        end)
+
+      {config, entry} = registered_entry(channel_pid)
+
+      assert %UploadConfig{} = config = UploadConfig.cancel_entry(config, entry)
+      assert %UploadEntry{cancelled?: true} = UploadConfig.get_entry_by_ref(config, entry.ref)
+    end
+  end
+
+  defp registered_entry(channel_pid) do
+    config = LiveView.allow_upload(build_socket(), :avatar, accept: :any).assigns.uploads.avatar
+    client_entry = build_client_entry(:avatar)
+    assert {:ok, config} = UploadConfig.put_entries(config, [client_entry])
+    entry = UploadConfig.get_entry_by_ref(config, client_entry["ref"])
+    assert {:ok, config} = UploadConfig.register_entry_upload(config, channel_pid, entry.ref)
+    {config, entry}
+  end
+
   defp build_client_entry(name, attrs \\ %{}) do
     name = "#{name}_#{System.unique_integer([:positive, :monotonic])}"
 

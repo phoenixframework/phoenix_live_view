@@ -12,6 +12,11 @@ export type CallbackRef = { event: string; callback: (payload: any) => any };
 
 export type PhxTarget = string | number | HTMLElement;
 
+export type UploadBytesResult = {
+  entryRefs: string[];
+  completed: Promise<void>;
+};
+
 /**
  * Defines the lifecycle callbacks and custom methods for a LiveView hook.
  *
@@ -194,6 +199,18 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
    * @param files - The files to upload.
    */
   uploadTo(selectorOrTarget: PhxTarget, name: any, files: any): any;
+
+  /**
+   * Uploads raw bytes, Blobs, or Files to an upload allowed with
+   * `Phoenix.LiveView.allow_upload/3`, addressed by name — no
+   * `live_file_input` in the DOM is required.
+   *
+   * @param name - The upload name corresponding to the `Phoenix.LiveView.allow_upload/3` call.
+   * @param filesOrBytes - A TypedArray/ArrayBuffer, Blob, File, or an array of them.
+   * @param meta - Optional client metadata made available server-side as the entry's `client_meta`.
+   * @returns Entry refs for cancellation and a promise that rejects on upload failure.
+   */
+  uploadBytes(name: any, filesOrBytes: any, meta?: any): UploadBytesResult;
 
   // allow unknown methods, as people can define them in their hooks
   [key: PropertyKey]: any;
@@ -556,6 +573,10 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
         view.dispatchUploads(targetCtx, name, files);
       },
     );
+  }
+
+  uploadBytes(name: string, filesOrBytes: any, meta?: any): UploadBytesResult {
+    return this.__view().dispatchBytesUpload(name, filesOrBytes, meta);
   }
 
   /** @internal */

@@ -61,6 +61,7 @@ import DOM, { FormInputLike, QueryableNode } from "./dom";
 import ElementRef from "./element_ref";
 import DOMPatch from "./dom_patch";
 import LiveUploader from "./live_uploader";
+import VirtualUploadInput from "./virtual_upload_input";
 import Rendered from "./rendered";
 import { ViewHook } from "./view_hook";
 import JS from "./js";
@@ -2163,6 +2164,100 @@ export default class View {
         detail: { files: filesOrBlobs },
       });
     }
+  }
+
+  dispatchBytesUpload(name, filesOrBytes, meta) {
+    let resolveUpload!: () => void;
+    let rejectUpload!: (reason: unknown) => void;
+    let settled = false;
+    const completed = new Promise<void>((resolve, reject) => {
+      resolveUpload = () => {
+        if (!settled) {
+          settled = true;
+          resolve();
+        }
+      };
+      rejectUpload = (reason) => {
+        if (!settled) {
+          settled = true;
+          reject(
+            reason instanceof Error
+              ? reason
+              : new Error(`programmatic upload failed: ${String(reason)}`),
+          );
+        }
+      };
+    });
+    const files = (
+      Array.isArray(filesOrBytes) ? filesOrBytes : [filesOrBytes]
+    ).map((f) => {
+      if (f instanceof File) {
+        return f;
+      }
+      const parts = f instanceof Blob ? [f] : [f];
+      return new File(parts, `${name}-${VirtualUploadInput.nextEntryName()}`, {
+        type: "application/octet-stream",
+      });
+    });
+    if (meta !== undefined) {
+      files.forEach((file) => {
+        (file as any).meta = () => meta;
+      });
+    }
+
+    const input = new VirtualUploadInput(this, name, files);
+    LiveUploader.trackFiles(input as any, files);
+    const uploader = new LiveUploader(input as any, this, resolveUpload);
+    uploader.entries().forEach((entry) => entry.onError(rejectUpload));
+    const entries = uploader
+      .entries()
+      .map((entry) => entry.toPreflightPayload());
+    const result = {
+      entryRefs: uploader.entries().map((entry) => entry.ref),
+      completed: completed,
+    };
+    if (entries.length === 0) {
+      resolveUpload();
+      return result;
+    }
+
+    const payload = { name: name, entries: entries, cid: null };
+    this.log("upload", () => [
+      "sending programmatic preflight request",
+      payload,
+    ]);
+
+    this.pushWithReply(null, "allow_upload", payload)
+      .then(({ resp }) => {
+        this.log("upload", () => ["got programmatic preflight response", resp]);
+        input.adoptUploadRef(resp.ref);
+        uploader.entries().forEach((entry) => {
+          if (resp.entries && !resp.entries[entry.ref]) {
+            rejectUpload("failed preflight");
+            this.handleFailedEntryPreflight(
+              entry.ref,
+              "failed preflight",
+              uploader,
+            );
+          }
+        });
+        if (resp.error || Object.keys(resp.entries).length === 0) {
+          const errors = resp.error || [];
+          rejectUpload(errors[0]?.[1] || "failed preflight");
+          errors.map(([entry_ref, reason]) => {
+            this.handleFailedEntryPreflight(entry_ref, reason, uploader);
+          });
+        } else {
+          const onError = (callback) => this.channel.onError(callback);
+          uploader.initAdapterUpload(resp, onError, this.liveSocket);
+        }
+      })
+      .catch((error) => {
+        logError("Failed to push programmatic upload preflight", error);
+        rejectUpload(error);
+      });
+
+    return result;
   }
 
   targetCtxElement(targetCtx) {

@@ -270,6 +270,22 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         refute render(lv) =~ "channel:"
       end
 
+      @tag allow: [accept: :any]
+      test "client channel leave is cleaned up without stopping LiveView", %{lv: lv} do
+        avatar = file_input(lv, "form", :avatar, build_entries(1))
+        assert render_upload(avatar, "myfile1.jpeg", 1) =~ "#{@context}:myfile1.jpeg:1%"
+        assert %{"myfile1.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
+
+        lv_pid = lv.pid
+        unlink(channel_pid, lv)
+        Process.monitor(lv_pid)
+
+        assert render(lv) =~ "channel:#{UploadLive.inspect_html_safe(channel_pid)}"
+        GenServer.stop(channel_pid, {:shutdown, :left})
+        refute_receive {:DOWN, _ref, :process, ^lv_pid, _}
+        refute render(lv) =~ "channel:"
+      end
+
       @tag allow: [accept: :any, max_file_size: 100]
       test "upload channel exits when client sends more bytes than allowed", %{lv: lv} do
         avatar =

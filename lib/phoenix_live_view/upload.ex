@@ -198,6 +198,27 @@ defmodule Phoenix.LiveView.Upload do
     Map.fetch!(uploads, name)
   end
 
+  @doc """
+  Retrieves the `%UploadConfig{}` for the provided upload name or raises.
+
+  Used by the name-addressed `allow_upload` preflight pushed by the client
+  `uploadBytes` API, where no file input in the DOM carries the config ref.
+  """
+  def get_upload_by_name!(%Socket{} = socket, name) when is_binary(name) do
+    uploads = socket.assigns[:uploads] || raise(ArgumentError, no_upload_allowed_message(socket))
+
+    conf =
+      uploads
+      |> Map.delete(@refs_to_names)
+      |> Map.values()
+      |> Enum.find(fn %UploadConfig{} = conf -> to_string(conf.name) == name end)
+
+    case conf do
+      %UploadConfig{} = conf -> conf
+      nil -> raise ArgumentError, "no upload allowed under name #{inspect(name)}"
+    end
+  end
+
   defp no_upload_allowed_message(socket) do
     "no uploads have been allowed on " <>
       if(socket.assigns[:myself], do: "component running inside ", else: "") <>

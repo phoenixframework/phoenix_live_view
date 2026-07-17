@@ -30,7 +30,8 @@ export default class EntryUploader {
     this.uploadChannel
       .join()
       .receive("ok", (_data) => this.readNextChunk())
-      .receive("error", ({ reason }) => this.error(reason));
+      .receive("error", ({ reason }) => this.error(reason))
+      .receive("timeout", () => this.error("timeout"));
   }
 
   isDone() {
@@ -48,7 +49,9 @@ export default class EntryUploader {
         this.offset += /** @type {ArrayBuffer} */ (e.target.result).byteLength;
         this.pushChunk(/** @type {ArrayBuffer} */ (e.target.result));
       } else {
-        return logError("Read error: " + e.target?.error);
+        const reason = "Read error: " + e.target?.error;
+        logError(reason);
+        return this.error(reason);
       }
     };
     reader.readAsArrayBuffer(blob);
@@ -69,6 +72,7 @@ export default class EntryUploader {
           );
         }
       })
-      .receive("error", ({ reason }) => this.error(reason));
+      .receive("error", ({ reason }) => this.error(reason))
+      .receive("timeout", () => this.error("timeout"));
   }
 }

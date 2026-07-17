@@ -44,6 +44,7 @@ export default class UploadEntry {
     this._progress = 0;
     this._lastProgressSent = -1;
     this._onDone = function () {};
+    this._onError = function (_reason) {};
     this._onElUpdated = this.onElUpdated.bind(this);
     this.fileEl.addEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
     this.autoUpload = autoUpload;
@@ -88,6 +89,7 @@ export default class UploadEntry {
 
   error(reason = "failed") {
     this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
+    this._onError(reason);
     this.view.pushFileProgress(this.fileEl, this.ref, { error: reason });
     if (!this.isAutoUpload()) {
       LiveUploader.clearFiles(this.fileEl);
@@ -105,6 +107,10 @@ export default class UploadEntry {
       this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
       callback();
     };
+  }
+
+  onError(callback) {
+    this._onError = callback;
   }
 
   onElUpdated() {

@@ -106,7 +106,7 @@ defmodule Phoenix.LiveView.Channel do
   def handle_info({:DOWN, _, :process, pid, reason} = msg, %{socket: socket} = state) do
     case Map.fetch(state.upload_pids, pid) do
       {:ok, {ref, entry_ref, cid}} ->
-        if reason in [:normal, {:shutdown, :closed}] do
+        if reason in [:normal, {:shutdown, :closed}, {:shutdown, :left}] do
           new_state =
             state
             |> drop_upload_pid(pid)
@@ -207,13 +207,19 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info(%Message{topic: topic, event: "allow_upload"} = msg, %{topic: topic} = state) do
-    %{"ref" => upload_ref, "entries" => entries} = payload = msg.payload
+    %{"entries" => entries} = payload = msg.payload
     cid = payload["cid"]
 
     new_state =
       write_socket(state, cid, msg.ref, fn socket, _ ->
-        socket = Upload.register_cid(socket, upload_ref, cid)
-        conf = Upload.get_upload_by_ref!(socket, upload_ref)
+        conf =
+          case payload do
+            %{"ref" => upload_ref} -> Upload.get_upload_by_ref!(socket, upload_ref)
+            %{"name" => name} -> Upload.get_upload_by_name!(socket, name)
+          end
+
+        socket = Upload.register_cid(socket, conf.ref, cid)
+        conf = Upload.get_upload_by_ref!(socket, conf.ref)
         ensure_unique_upload_name!(state, conf)
 
         {ok_or_error, reply, %Socket{} = new_socket} =
@@ -224,7 +230,7 @@ defmodule Phoenix.LiveView.Channel do
 
         new_upload_names =
           case ok_or_error do
-            :ok -> Map.put(state.upload_names, conf.name, {upload_ref, cid})
+            :ok -> Map.put(state.upload_names, conf.name, {conf.ref, cid})
             _ -> state.upload_names
           end
 
