@@ -1,0 +1,83 @@
+name: Phoenix Integration
+
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  phoenix-integration:
+    name: Phoenix Integration (OTP ${{matrix.otp}} | Elixir ${{matrix.elixir}})
+    runs-on: ubuntu-24.04
+
+    strategy:
+      matrix:
+        include:
+          # look for correct alpine image here: https://hub.docker.com/r/hexpm/elixir/tags
+          - elixir: 1.15.8
+            otp: 25.3.2.9
+            suffix: "alpine-3.20.3"
+
+          - elixir: 1.17.3
+            otp: 27.1.2
+            suffix: "alpine-3.20.3"
+
+    container:
+      image: hexpm/elixir:${{ matrix.elixir }}-erlang-${{ matrix.otp }}-${{ matrix.suffix }}
+      env:
+        ELIXIR_ASSERT_TIMEOUT: 10000
+        PHX_CI: true
+
+    services:
+      postgres:
+        image: postgres
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: postgres
+      mysql:
+        image: mysql
+        ports:
+          - 3306:3306
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2019-latest
+        env:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: some!Password
+        ports:
+          - 1433:1433
+
+    steps:
+      - name: Checkout LiveView
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          path: phoenix_live_view
+
+      - name: Checkout Phoenix
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          repository: phoenixframework/phoenix
+          path: phoenix
+
+      - name: Modify Phoenix integration_test mix.exs to use local LiveView
+        run: |
+          cd phoenix/integration_test
+          # Get absolute path to phoenix_live_view
+          LIVE_VIEW_PATH=$(realpath ../../phoenix_live_view)
+          # Replace the phoenix_live_view dependency with a path dependency
+          sed -i "s|{:phoenix_live_view[^}]*}|{:phoenix_live_view,\n       path: \"$LIVE_VIEW_PATH\", override: true}|g" mix.exs
+          sed -i "s|{:phoenix_live_view[^}]*}|{:phoenix_live_view,\n       path: \"$LIVE_VIEW_PATH\", override: true}|g" ../installer/templates/phx_single/mix.exs
+          sed -i "s|{:phoenix_live_view[^}]*}|{:phoenix_live_view,\n       path: \"$LIVE_VIEW_PATH\", override: true}|g" ../installer/templates/phx_umbrella/apps/app_name_web/mix.exs
+          sed -i "s|{:phoenix_live_view[^}]*}|\# {:phoenix_live_view, \">= 0.0.0\"}\n      {:phoenix_live_view,\n       path: \"$LIVE_VIEW_PATH\", override: true}|g" ../installer/templates/phx_umbrella/mix.exs
+          cat mix.exs | grep phoenix_live_view
+
+      - name: Run integration tests
+        run: |
+          cd phoenix
+          ./integration_test/test.sh
