@@ -351,6 +351,22 @@ defmodule Phoenix.LiveView.Channel do
 
     assigns = Map.delete(socket.assigns, :__changed__)
 
+    {components, _, _} = state.components
+
+    state =
+      Enum.reduce(components, state, fn component, state ->
+        {_, {mod, cid, assigns, _, _}} = component
+        assigns = %{id: assigns.id, __changed__: %{id: assigns.id}}
+
+        case Diff.update_component(state.socket, state.components, {{mod, cid}, assigns}) do
+          {diff, new_components} ->
+            push_diff(%{state | components: new_components}, diff, nil)
+
+          :noop ->
+            state
+        end
+      end)
+
     new_socket =
       Enum.reduce(assigns, socket, fn {key, val}, socket ->
         Utils.force_assign(socket, key, val)
