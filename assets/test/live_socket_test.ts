@@ -92,6 +92,7 @@ describe("LiveSocket", () => {
 
     liveSocket.disconnect();
     liveSocket.connect();
+    // onClose registers a handler, so reconnecting must replace the registration removed by disconnect()
     expect(onClose).toHaveBeenCalledTimes(2);
 
     const serverCloseHandler = onClose.mock.calls[1][0] as (event: {
