@@ -41,7 +41,7 @@ const DOM = {
   byId(id) {
     return (
       document.getElementById(id) ||
-      logError("dom.missing-id", `no id found for ${id}`, { id })
+      logError("dom.element-not-found", `no id found for ${id}`, { id })
     );
   },
 
