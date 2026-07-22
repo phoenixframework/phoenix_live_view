@@ -983,18 +983,21 @@ export default class LiveSocket {
 
   /** @internal */
   bindTopLevelEvents({ dead }: { dead?: boolean } = {}) {
+    if (!this.serverCloseRef) {
+      // enter failsafe reload if server has gone away intentionally, such as "disconnect" broadcast
+      this.serverCloseRef = this.socket.onClose((event) => {
+        // failsafe reload if normal closure and we still have a main LV
+        if (event && event.code === 1000 && this.main) {
+          return this.reloadWithJitter(this.main);
+        }
+      });
+    }
+
     if (this.boundTopLevelEvents) {
       return;
     }
 
     this.boundTopLevelEvents = true;
-    // enter failsafe reload if server has gone away intentionally, such as "disconnect" broadcast
-    this.serverCloseRef = this.socket.onClose((event) => {
-      // failsafe reload if normal closure and we still have a main LV
-      if (event && event.code === 1000 && this.main) {
-        return this.reloadWithJitter(this.main);
-      }
-    });
     document.body.addEventListener("click", function () {}); // ensure all click events bubble for mobile Safari
     window.addEventListener(
       "pageshow",
