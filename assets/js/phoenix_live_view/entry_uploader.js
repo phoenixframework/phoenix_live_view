@@ -1,4 +1,4 @@
-import { logError } from "./utils";
+import { logError } from "./diagnostics";
 
 export default class EntryUploader {
   constructor(entry, config, liveSocket) {
@@ -48,7 +48,11 @@ export default class EntryUploader {
         this.offset += /** @type {ArrayBuffer} */ (e.target.result).byteLength;
         this.pushChunk(/** @type {ArrayBuffer} */ (e.target.result));
       } else {
-        return logError("Read error: " + e.target?.error);
+        return logError(
+          "upload.read-failed",
+          "Read error: " + e.target?.error,
+          { entry: this.entry, offset: this.offset },
+        );
       }
     };
     reader.readAsArrayBuffer(blob);

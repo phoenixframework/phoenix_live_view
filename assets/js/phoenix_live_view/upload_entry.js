@@ -4,7 +4,8 @@ import {
   PHX_PREFLIGHTED_REFS,
 } from "./constants";
 
-import { channelUploader, logError } from "./utils";
+import { channelUploader } from "./utils";
+import { logError } from "./diagnostics";
 
 import LiveUploader from "./live_uploader";
 
@@ -133,7 +134,11 @@ export default class UploadEntry {
     if (this.meta.uploader) {
       const callback =
         uploaders[this.meta.uploader] ||
-        logError(`no uploader configured for ${this.meta.uploader}`);
+        logError(
+          "upload.missing-uploader",
+          `no uploader configured for ${this.meta.uploader}`,
+          { uploader: this.meta.uploader, uploaders },
+        );
       return { name: this.meta.uploader, callback: callback };
     } else {
       return { name: "channel", callback: channelUploader };
@@ -143,10 +148,15 @@ export default class UploadEntry {
   zipPostFlight(resp) {
     this.meta = resp.entries[this.ref];
     if (!this.meta) {
-      logError(`no preflight upload response returned with ref ${this.ref}`, {
-        input: this.fileEl,
-        response: resp,
-      });
+      logError(
+        "upload.missing-preflight-response",
+        `no preflight upload response returned with ref ${this.ref}`,
+        {
+          ref: this.ref,
+          input: this.fileEl,
+          response: resp,
+        },
+      );
     }
   }
 }

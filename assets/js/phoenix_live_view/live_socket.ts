@@ -40,9 +40,14 @@ import {
   closure,
   debug,
   maybe,
-  logError,
   eventContainsFiles,
 } from "./utils";
+import {
+  dispatchDiagnostic,
+  logError,
+  type LiveViewDiagnosticLevel,
+  type LiveViewDiagnosticMetadata,
+} from "./diagnostics";
 
 import Browser from "./browser";
 import DOM from "./dom";
@@ -495,7 +500,11 @@ export default class LiveSocket {
    */
   connect(): void {
     // enable debug by default if on localhost and not explicitly disabled
-    if (window.location.hostname === "localhost" && !this.isDebugDisabled()) {
+    const host = window.location.hostname.toLowerCase();
+    if (
+      (host === "localhost" || host.endsWith(".localhost")) &&
+      !this.isDebugDisabled()
+    ) {
       this.enableDebug();
     }
     const doConnect = () => {
@@ -576,7 +585,9 @@ export default class LiveSocket {
       return;
     }
     if (this.main && this.isConnected()) {
-      this.log(this.main, "socket", () => ["disconnect for page nav"]);
+      this.log(this.main, "socket", () => ["disconnect for page nav"], {
+        code: "socket.page-navigation-disconnect",
+      });
     }
     this.unloaded = true;
     this.destroyAllViews();
@@ -600,13 +611,40 @@ export default class LiveSocket {
   }
 
   /** @internal */
-  log(view, kind, msgCallback) {
+  log(
+    view,
+    kind,
+    msgCallback,
+    diagnostic?: {
+      code: string;
+      level?: LiveViewDiagnosticLevel;
+      metadata?: () => LiveViewDiagnosticMetadata;
+    },
+  ) {
+    const debugEnabled = this.isDebugEnabled();
+    const level = diagnostic?.level ?? "debug";
+    // debug-level diagnostics are only emitted when debugging is enabled,
+    // while other levels are always emitted; console output stays gated on
+    // debugging (or the viewLogger) either way
+    const emitDiagnostic = !!diagnostic && (level !== "debug" || debugEnabled);
+    if (!this.viewLogger && !debugEnabled && !emitDiagnostic) {
+      return;
+    }
+
+    const [message, obj] = msgCallback();
     if (this.viewLogger) {
-      const [msg, obj] = msgCallback();
-      this.viewLogger(view, kind, msg, obj);
-    } else if (this.isDebugEnabled()) {
-      const [msg, obj] = msgCallback();
-      debug(view, kind, msg, obj);
+      this.viewLogger(view, kind, message, obj);
+    } else if (debugEnabled) {
+      debug(view, kind, message, obj);
+    }
+    if (emitDiagnostic && diagnostic) {
+      dispatchDiagnostic({
+        level,
+        code: diagnostic.code,
+        message,
+        viewId: view.id,
+        metadata: diagnostic.metadata?.(),
+      });
     }
   }
 
@@ -663,13 +701,28 @@ export default class LiveSocket {
       view.destroy();
       log
         ? log()
-        : this.log(view, "join", () => [
-            `encountered ${tries} consecutive reloads`,
-          ]);
+        : this.log(
+            view,
+            "join",
+            () => [`encountered ${tries} consecutive reloads`],
+            {
+              code: "view.reload-attempts",
+              metadata: () => ({ tries }),
+            },
+          );
       if (tries >= this.maxReloads) {
-        this.log(view, "join", () => [
-          `exceeded ${this.maxReloads} consecutive reloads. Entering failsafe mode`,
-        ]);
+        this.log(
+          view,
+          "join",
+          () => [
+            `exceeded ${this.maxReloads} consecutive reloads. Entering failsafe mode`,
+          ],
+          {
+            code: "view.reload-failsafe",
+            level: "error",
+            metadata: () => ({ tries, maxReloads: this.maxReloads }),
+          },
+        );
       }
       if (this.pendingLink !== null) {
         window.location.href = this.pendingLink;
@@ -706,7 +759,14 @@ export default class LiveSocket {
     }
     let callbacks = window[`phx_hook_${name}`];
     if (!callbacks || typeof callbacks !== "function") {
-      logError("a runtime hook must be a function", runtimeHook);
+      logError(
+        "hook.runtime-not-function",
+        "a runtime hook must be a function",
+        {
+          runtimeHook,
+          name,
+        },
+      );
       return;
     }
     const hookDefiniton = callbacks();
@@ -717,8 +777,9 @@ export default class LiveSocket {
       return hookDefiniton;
     }
     logError(
+      "hook.runtime-invalid-return",
       "runtime hook must return an object with hook callbacks or an instance of ViewHook",
-      runtimeHook,
+      { runtimeHook, name },
     );
   }
 

@@ -136,6 +136,8 @@ export default class DOMPatch {
 
   perform(isJoinPatch) {
     const { view, liveSocket, html, container } = this;
+    const reportError = (code, message, metadata?) =>
+      view.logError(code, message, metadata);
     let targetContainer = this.targetContainer;
 
     if (this.targetCID) {
@@ -378,7 +380,7 @@ export default class DOMPatch {
             phxViewportTop,
             phxViewportBottom,
           );
-          DOM.cleanChildNodes(toEl, phxUpdate);
+          DOM.cleanChildNodes(toEl, phxUpdate, reportError);
           const isFocusedFormEl =
             focused &&
             fromEl.isSameNode(focused) &&
@@ -574,15 +576,16 @@ export default class DOMPatch {
     });
 
     if (liveSocket.isDebugEnabled()) {
-      detectDuplicateIds();
-      detectInvalidStreamInserts(this.streamInserts);
+      detectDuplicateIds(reportError);
+      detectInvalidStreamInserts(this.streamInserts, reportError);
       // warn if there are any inputs named "id"
       Array.from(document.querySelectorAll("input[name=id]")).forEach(
         (node) => {
           if (node instanceof HTMLInputElement && node.form) {
-            console.error(
+            reportError(
+              "dom.form-input-name-id",
               'Detected an input with name="id" inside a form! This will cause problems when patching the DOM.\n',
-              node,
+              { el: node },
             );
           }
         },
