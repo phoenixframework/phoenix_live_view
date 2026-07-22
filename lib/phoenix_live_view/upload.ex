@@ -383,7 +383,7 @@ defmodule Phoenix.LiveView.Upload do
     reply_entries =
       for entry <- entries, entry.valid?, into: %{} do
         token =
-          Phoenix.LiveView.Static.sign_token(socket.endpoint, %{
+          Phoenix.LiveView.Static.encrypt_token(socket.endpoint, %{
             pid: self(),
             ref: {conf.ref, entry.ref},
             cid: cid

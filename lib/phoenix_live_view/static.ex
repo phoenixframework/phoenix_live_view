@@ -37,6 +37,18 @@ defmodule Phoenix.LiveView.Static do
     end
   end
 
+  @doc """
+  Verifies and decrypts a LiveView token previously produced by `encrypt_token/2`.
+  """
+  def decrypt_token(endpoint, token) do
+    case Phoenix.Token.decrypt(endpoint, Utils.salt!(endpoint), token, max_age: @max_session_age) do
+      {:ok, {@token_vsn, term}} -> {:ok, term}
+      {:ok, _} -> {:error, :outdated}
+      {:error, :missing} -> {:error, :invalid}
+      {:error, reason} when reason in [:expired, :invalid] -> {:error, reason}
+    end
+  end
+
   defp live_session(%Plug.Conn{} = conn) do
     case conn.private[:phoenix_live_view] do
       {_view, _opts, %{name: _name, extra: _extra} = lv_session} -> lv_session
@@ -404,6 +416,20 @@ defmodule Phoenix.LiveView.Static do
   """
   def sign_token(endpoint, data) do
     Phoenix.Token.sign(endpoint, Utils.salt!(endpoint), {@token_vsn, data})
+  end
+
+  @doc """
+  Encrypts a LiveView token.
+
+  Unlike `sign_token/2`, the payload is encrypted rather than merely signed,
+  so its contents cannot be inspected by the client. Use this whenever the
+  payload embeds Erlang terms whose external binary format may reveal internal
+  infrastructure details — e.g. PIDs, whose ETF representation encodes the
+  originating node name and can leak internal hostnames or IPs when the
+  release node follows patterns like `app@<pod-ip>.<ns>.pod.cluster.local`.
+  """
+  def encrypt_token(endpoint, data) do
+    Phoenix.Token.encrypt(endpoint, Utils.salt!(endpoint), {@token_vsn, data})
   end
 
   defp container(%{container: {tag, attrs}}, opts) do
