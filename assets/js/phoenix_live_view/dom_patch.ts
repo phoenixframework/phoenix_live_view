@@ -369,7 +369,20 @@ export default class DOMPatch {
           ) {
             morphCallbacks.onNodeDiscarded!(fromEl);
             fromEl.replaceWith(toEl);
-            return morphCallbacks.onNodeAdded!(toEl);
+
+            const handleNodeAdded = (node: Node) => {
+              morphCallbacks.onNodeAdded!(node);
+
+              let child = node.firstChild;
+              while (child) {
+                const nextSibling = child.nextSibling;
+                handleNodeAdded(child);
+                child = nextSibling;
+              }
+            };
+
+            handleNodeAdded(toEl);
+            return false;
           }
           DOM.syncPendingAttrs(fromEl, toEl);
           DOM.maintainPrivateHooks(
