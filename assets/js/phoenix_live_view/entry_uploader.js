@@ -1,5 +1,3 @@
-import { logError } from "./diagnostics";
-
 export default class EntryUploader {
   constructor(entry, config, liveSocket) {
     const { chunk_size, chunk_timeout } = config;
@@ -48,7 +46,7 @@ export default class EntryUploader {
         this.offset += /** @type {ArrayBuffer} */ (e.target.result).byteLength;
         this.pushChunk(/** @type {ArrayBuffer} */ (e.target.result));
       } else {
-        return logError(
+        return this.entry.view.logError(
           "upload.read-failed",
           "Read error: " + e.target?.error,
           { entry: this.entry, offset: this.offset },

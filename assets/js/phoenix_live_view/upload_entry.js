@@ -5,7 +5,6 @@ import {
 } from "./constants";
 
 import { channelUploader } from "./utils";
-import { logError } from "./diagnostics";
 
 import LiveUploader from "./live_uploader";
 
@@ -134,7 +133,7 @@ export default class UploadEntry {
     if (this.meta.uploader) {
       const callback =
         uploaders[this.meta.uploader] ||
-        logError(
+        this.view.logError(
           "upload.missing-uploader",
           `no uploader configured for ${this.meta.uploader}`,
           { uploader: this.meta.uploader, uploaders },
@@ -148,7 +147,7 @@ export default class UploadEntry {
   zipPostFlight(resp) {
     this.meta = resp.entries[this.ref];
     if (!this.meta) {
-      logError(
+      this.view.logError(
         "upload.missing-preflight-response",
         `no preflight upload response returned with ref ${this.ref}`,
         {

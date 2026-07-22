@@ -1889,7 +1889,12 @@ export default class View {
     )
       .then(({ reply }) => onReply && onReply(reply))
       .catch((error) =>
-        this.logError("event.push-failed", "Failed to push event", { error }),
+        this.logError("event.push-failed", "Failed to push event", {
+          error,
+          type,
+          phxEvent,
+          el,
+        }),
       );
   }
 
@@ -1908,7 +1913,7 @@ export default class View {
           view.logError(
             "upload.progress-push-failed",
             "Failed to push file progress",
-            { error },
+            { error, fileEl, entryRef, progress },
           ),
         );
     });
@@ -2002,6 +2007,8 @@ export default class View {
       .catch((error) =>
         this.logError("event.input-push-failed", "Failed to push input event", {
           error,
+          inputEl,
+          phxEvent,
         }),
       );
   }
@@ -2143,6 +2150,8 @@ export default class View {
               "Failed to push form submit",
               {
                 error,
+                phxEvent,
+                formEl,
               },
             ),
           );
@@ -2169,6 +2178,8 @@ export default class View {
             "Failed to push form submit",
             {
               error,
+              phxEvent,
+              formEl,
             },
           ),
         );
@@ -2248,6 +2259,8 @@ export default class View {
         .catch((error) =>
           this.logError("upload.push-failed", "Failed to push upload", {
             error,
+            phxEvent,
+            formEl,
           }),
         );
     });
@@ -2494,12 +2507,12 @@ export default class View {
       return DOM.findComponent(this.id, cid) === null;
     });
 
-    const onError = (error) => {
+    const onError = (error, cids) => {
       if (!this.isDestroyed()) {
         this.logError(
           "component.destroy-push-failed",
           "Failed to push components destroyed",
-          { error },
+          { error, cids },
         );
       }
     };
@@ -2527,11 +2540,11 @@ export default class View {
                 .then(({ resp }) => {
                   this.rendered!.pruneCIDs(resp.cids);
                 })
-                .catch(onError);
+                .catch((err) => onError(err, completelyDestroyCIDs));
             }
           });
         })
-        .catch(onError);
+        .catch((err) => onError(err, willDestroyCIDs));
     }
   }
 
