@@ -265,6 +265,27 @@ describe("LiveSocket", () => {
     expect(liveSocket.getViewByEl(container(1)).destroy).toBeDefined();
   });
 
+  test("rebinds the server close failsafe after reconnecting", () => {
+    liveSocket = new LiveSocket("/live", Socket);
+    const onClose = jest.spyOn(liveSocket.socket, "onClose");
+    const reloadWithJitter = jest.spyOn(liveSocket, "reloadWithJitter");
+
+    liveSocket.connect();
+    liveSocket.main = liveSocket.getViewByEl(container(1));
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    liveSocket.disconnect();
+    liveSocket.connect();
+    // onClose should be called during each connect(), hence two calls after reconnecting
+    expect(onClose).toHaveBeenCalledTimes(2);
+
+    const serverCloseHandler = onClose.mock.calls[1][0] as (event: {
+      code: number;
+    }) => void;
+    serverCloseHandler({ code: 1000 });
+    expect(reloadWithJitter).toHaveBeenCalledWith(liveSocket.main);
+  });
+
   test("channel", async () => {
     liveSocket = new LiveSocket("/live", Socket);
 
