@@ -2266,15 +2266,11 @@ export default class View {
           }
         })
         .catch((error) =>
-          this.logError(
-            "upload.network.push-failed",
-            "Failed to push upload",
-            {
-              error,
-              phxEvent,
-              formEl,
-            },
-          ),
+          this.logError("upload.network.push-failed", "Failed to push upload", {
+            error,
+            phxEvent,
+            formEl,
+          }),
         );
     });
   }
