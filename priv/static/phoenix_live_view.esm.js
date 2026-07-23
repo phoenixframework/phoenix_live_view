@@ -6799,15 +6799,17 @@ var LiveSocket = class {
   }
   /** @internal */
   bindTopLevelEvents({ dead } = {}) {
+    if (this.serverCloseRef === null) {
+      this.serverCloseRef = this.socket.onClose((event) => {
+        if (event && event.code === 1e3 && this.main) {
+          return this.reloadWithJitter(this.main);
+        }
+      });
+    }
     if (this.boundTopLevelEvents) {
       return;
     }
     this.boundTopLevelEvents = true;
-    this.serverCloseRef = this.socket.onClose((event) => {
-      if (event && event.code === 1e3 && this.main) {
-        return this.reloadWithJitter(this.main);
-      }
-    });
     document.body.addEventListener("click", function() {
     });
     window.addEventListener(
