@@ -299,6 +299,8 @@ For any given input with focus, LiveView will never overwrite the input's curren
 value, even if it deviates from the server's rendered updates. This works well
 for updates where major side effects are not expected, such as form validation
 errors, or additive UX around the user's input values as they fill out a form.
+An input can explicitly opt into normal DOM patching while focused with
+[`phx-patch-focused`](bindings.md#dom-patching).
 
 For these use cases, the `phx-change` input does not concern itself with disabling
 input editing while an event to the server is in flight. When a `phx-change` event

@@ -8,6 +8,7 @@ import {
   PHX_STATIC,
   PHX_TRIGGER_ACTION,
   PHX_UPDATE,
+  PHX_PATCH_FOCUSED,
   PHX_REF_SRC,
   PHX_REF_LOCK,
   PHX_STREAM,
@@ -168,6 +169,7 @@ export default class DOMPatch {
     const phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP);
     const phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM);
     const phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION);
+    const phxPatchFocused = liveSocket.binding(PHX_PATCH_FOCUSED);
     const added: Array<Node> = [];
     const updates: Array<Element> = [];
     const appendPrependUpdates: Array<DOMPostMorphRestorer> = [];
@@ -468,11 +470,13 @@ export default class DOMPatch {
             return false;
           }
 
-          // skip patching focused inputs unless focus is a select that has changed options
+          // skip patching focused inputs unless explicitly opted in or focus is
+          // a select that has changed options
           if (
             isFocusedFormEl &&
             fromEl.type !== "hidden" &&
-            !focusedSelectChanged
+            !focusedSelectChanged &&
+            !toEl.hasAttribute(phxPatchFocused)
           ) {
             this.trackBeforeUpdated(fromEl, toEl);
             DOM.mergeFocusedInput(fromEl, toEl);
