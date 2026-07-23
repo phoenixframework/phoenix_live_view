@@ -252,7 +252,6 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     end
   end
 
-
   # Reproduces a race where:
   # 1. LiveView starts slow async DB work (holds a sandbox checkout)
   # 2. Test clicks a button that does a `push_navigate`
@@ -266,6 +265,9 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     owner_ref = Process.monitor(owner)
 
     Process.register(self(), :async_sandbox_race_test)
+
+    Application.put_env(:phoenix_live_view, :unlink_asyncs_on_navigate, true)
+    on_exit(fn -> Application.put_env(:phoenix_live_view, :unlink_asyncs_on_navigate, false) end)
 
     {:ok, lv, _html} = live(conn, "/async_sandbox_race")
 

@@ -951,8 +951,28 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp stop_shutdown_redirect(state, kind, opts) do
+    maybe_unlink_asyncs(state)
+
     send(state.socket.transport_pid, {:socket_close, self(), {kind, opts}})
     {:stop, {:shutdown, {kind, opts}}, state}
+  end
+
+  # When the LiveView shuts down because of an intentional redirect (not a crash!), we *may* want
+  # to unlink in-flight async tasks first so our shutdown reason doesn't propagate through the
+  # link and kill them mid-flight.
+  #
+  # Killing an async task while it holds a reference to a test process's Ecto sandbox kills
+  # the connection shared with the test process. By unlinking, we let the abandoned async work
+  # wind down (successfully or not!) on its own and discard the result.
+  defp maybe_unlink_asyncs(state) do
+    if Application.get_env(:phoenix_live_view, :unlink_asyncs_on_navigate, false) do
+      state
+      |> all_asyncs()
+      |> Map.keys()
+      |> Enum.each(&Process.unlink/1)
+    end
+
+    :ok
   end
 
   defp drop_redirect(state) do
