@@ -115,11 +115,6 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
-## Unreleased
-
-### Security fixes
-- GHSA-p8fj-694c-pvhc: Encrypt LiveView upload tokens to prevent disclosure of Erlang node metadata (e.g. internal hostnames and pod IPs) via the tokens' embedded PIDs
-
 ## v1.2.7 (2026-07-13)
 
 ### Security fixes

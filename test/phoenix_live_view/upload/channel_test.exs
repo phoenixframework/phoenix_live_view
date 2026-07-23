@@ -182,7 +182,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     # and the Erlang external term format encodes the source node name into the
     # PID's binary representation, tokens leaked the BEAM node — which in
     # container releases (e.g. `app@<pod-ip>.<ns>.pod.cluster.local`) exposes
-    # internal hostnames and pod IPs. Tokens must now be encrypted.
+    # internal hostnames and pod IPs.
     token = LiveView.Static.encrypt_token(@endpoint, %{pid: self(), ref: {"foo", "bar"}})
 
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)

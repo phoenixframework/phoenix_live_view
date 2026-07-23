@@ -420,13 +420,6 @@ defmodule Phoenix.LiveView.Static do
 
   @doc """
   Encrypts a LiveView token.
-
-  Unlike `sign_token/2`, the payload is encrypted rather than merely signed,
-  so its contents cannot be inspected by the client. Use this whenever the
-  payload embeds Erlang terms whose external binary format may reveal internal
-  infrastructure details — e.g. PIDs, whose ETF representation encodes the
-  originating node name and can leak internal hostnames or IPs when the
-  release node follows patterns like `app@<pod-ip>.<ns>.pod.cluster.local`.
   """
   def encrypt_token(endpoint, data) do
     Phoenix.Token.encrypt(endpoint, Utils.salt!(endpoint), {@token_vsn, data})
