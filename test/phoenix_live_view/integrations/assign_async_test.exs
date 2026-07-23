@@ -5,6 +5,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
   import Phoenix.LiveViewTest
   import Phoenix.LiveViewTest.Support.AsyncSync
   alias Phoenix.LiveViewTest.Support.Endpoint
+  alias Phoenix.LiveViewTest.Support.Repo
 
   @endpoint Endpoint
 
@@ -249,5 +250,52 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       assert render_async(lv) =~ "{:exit, :boom}"
       assert render(lv)
     end
+  end
+
+
+  # Reproduces a race where:
+  # 1. LiveView starts slow async DB work (holds a sandbox checkout)
+  # 2. Test clicks a button that does a `push_navigate`
+  # 3. LiveView exits and kills the linked async while it still holds the DB client
+  # 4. Cleaning up that crashed client removes the test's sandbox allowance
+  #    (the owner process can still be alive)
+  # 5. The test process then fails on its next DB use with OwnershipError
+  test "sandbox ownership survives push_navigate during async DB work", %{conn: conn} do
+    owner = Ecto.Adapters.SQL.Sandbox.start_owner!(Repo, shared: false)
+    on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(owner) end)
+    owner_ref = Process.monitor(owner)
+
+    Process.register(self(), :async_sandbox_race_test)
+
+    {:ok, lv, _html} = live(conn, "/async_sandbox_race")
+
+    assert_receive {:async_holding_connection, async_pid}, 1_000
+    async_ref = Process.monitor(async_pid)
+
+    # Navigate away while the async still holds the sandbox connection.
+    assert {:error, {:live_redirect, %{to: "/async_sandbox_race/done"}}} =
+             lv |> element("#navigate") |> render_click()
+
+    # Wait until the async is gone so any ownership fallout has settled.
+    assert_receive {:DOWN, ^async_ref, :process, ^async_pid, async_reason}, 1_000
+
+    owner_status =
+      receive do
+        {:DOWN, ^owner_ref, :process, ^owner, reason} -> {:down, reason}
+      after
+        50 -> if Process.alive?(owner), do: :alive, else: :dead
+      end
+
+    # This is what fails when the race hits: the test process itself can no longer use the DB
+    # even though it started the sandbox owner.
+    result = Repo.query("SELECT 1")
+
+    assert match?({:ok, %{rows: [[1]]}}, result), """
+    test process lost sandbox access
+
+    async exit reason: #{inspect(async_reason)}
+    sandbox owner status: #{inspect(owner_status)}
+    Repo.query/1 result: #{inspect(result)}
+    """
   end
 end
