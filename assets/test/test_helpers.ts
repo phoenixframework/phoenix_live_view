@@ -1,4 +1,6 @@
 import View from "phoenix_live_view/view";
+import { type LiveViewDiagnostic } from "phoenix_live_view/diagnostics";
+import { PHX_LV_DIAGNOSTIC_EVENT } from "phoenix_live_view/constants";
 import { version as liveview_version } from "../../package.json";
 
 export const appendTitle = (opts, innerHTML?: string) => {
@@ -108,3 +110,15 @@ export function liveViewDOM(content?: string) {
   document.body.appendChild(div);
   return div;
 }
+
+export const captureDiagnostics = () => {
+  const diagnostics: LiveViewDiagnostic[] = [];
+  const listener = (event: Event) => {
+    diagnostics.push((event as CustomEvent<LiveViewDiagnostic>).detail);
+  };
+  window.addEventListener(PHX_LV_DIAGNOSTIC_EVENT, listener);
+  return {
+    diagnostics,
+    stop: () => window.removeEventListener(PHX_LV_DIAGNOSTIC_EVENT, listener),
+  };
+};

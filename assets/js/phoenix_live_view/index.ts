@@ -12,7 +12,7 @@ import LiveSocket, { type LiveSocketOptions, isUsedInput } from "./live_socket";
 import DOM from "./dom";
 import { ViewHook } from "./view_hook";
 import View from "./view";
-import { logError } from "./utils";
+import { logError } from "./diagnostics";
 
 import type { EncodedJS } from "./js_commands";
 import type { Hook, HooksOptions, HookInterface } from "./view_hook";
@@ -55,8 +55,9 @@ function createHook(el: HTMLElement, callbacks: Hook): ViewHook {
 
   if (!el.hasAttribute("id")) {
     logError(
+      "hook.missing-id",
       "Elements passed to createHook need to have a unique id attribute",
-      el,
+      { el },
     );
   }
 

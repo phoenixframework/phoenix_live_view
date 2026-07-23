@@ -1,8 +1,7 @@
 import { PHX_VIEW_SELECTOR } from "./constants";
 
 import EntryUploader from "./entry_uploader";
-
-export const logError = (msg, obj?) => console.error && console.error(msg, obj);
+import { logError, type LogError } from "./diagnostics";
 
 // Live navigation can only stay within the current origin, as it joins the
 // target over the existing socket. A full URL to a different origin (or a
@@ -33,22 +32,29 @@ export const isCid = (cid): cid is number | string => {
   return type === "number" || (type === "string" && /^(0|[1-9]\d*)$/.test(cid));
 };
 
-export function detectDuplicateIds() {
-  const ids = new Set();
+export function detectDuplicateIds(reportError: LogError = logError) {
+  const ids = new Map<string, Element>();
   const elems = document.querySelectorAll("*[id]");
   for (let i = 0, len = elems.length; i < len; i++) {
-    if (ids.has(elems[i].id)) {
-      console.error(
-        `Multiple IDs detected: ${elems[i].id}. Ensure unique element ids.`,
+    const id = elems[i].id;
+    const existing = ids.get(id);
+    if (existing) {
+      reportError(
+        "dom.duplicate-id",
+        `Multiple IDs detected: ${id}. Ensure unique element ids.`,
+        { id, elements: [existing, elems[i]] },
       );
     } else {
-      ids.add(elems[i].id);
+      ids.set(id, elems[i]);
     }
   }
 }
 
-export function detectInvalidStreamInserts(inserts) {
-  const errors = new Set();
+export function detectInvalidStreamInserts(
+  inserts,
+  reportError: LogError = logError,
+) {
+  const invalidContainers = new Set<Element>();
   Object.keys(inserts).forEach((id) => {
     const streamEl = document.getElementById(id);
     if (
@@ -56,12 +62,17 @@ export function detectInvalidStreamInserts(inserts) {
       streamEl.parentElement &&
       streamEl.parentElement.getAttribute("phx-update") !== "stream"
     ) {
-      errors.add(
-        `The stream container with id "${streamEl.parentElement.id}" is missing the phx-update="stream" attribute. Ensure it is set for streams to work properly.`,
-      );
+      invalidContainers.add(streamEl.parentElement);
     }
   });
-  errors.forEach((error) => console.error(error));
+  invalidContainers.forEach((container) => {
+    const id = container.id;
+    reportError(
+      "dom.invalid-stream-container",
+      `The stream container with id "${id}" is missing the phx-update="stream" attribute. Ensure it is set for streams to work properly.`,
+      { id, container },
+    );
+  });
 }
 
 export const debug = (view, kind, msg, obj) => {
