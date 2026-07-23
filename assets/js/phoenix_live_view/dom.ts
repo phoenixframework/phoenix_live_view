@@ -366,7 +366,7 @@ const DOM = {
         const currentCycle = this.incCycle(el, DEBOUNCE_TRIGGER, trigger);
         if (isNaN(timeout)) {
           return logError(
-            "binding.invalid-debounce",
+            "dom.invalid-debounce",
             `invalid throttle/debounce value: ${value}`,
             { el, value },
           );

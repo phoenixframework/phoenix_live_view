@@ -389,7 +389,7 @@ export default class View {
   applyDiff(type: "mount" | "update", rawDiff, callback) {
     const clonedDiff = clone(rawDiff);
     this.log(type, () => ["received diff", clonedDiff], {
-      code: `view.diff.${type}`,
+      code: `view.diff-${type}`,
       metadata: () => ({ diff: clonedDiff }),
     });
     const { diff, reply, events, title } = Rendered.extract(rawDiff);
@@ -1189,7 +1189,7 @@ export default class View {
     this.wrapPush(() => this.channel.join(), {
       ok: (resp) => this.liveSocket.requestDOMUpdate(() => this.onJoin(resp)),
       error: (error) => this.onJoinError(error),
-      timeout: () => this.onJoinError({ reason: "timeout" }),
+      timeout: () => this.onJoinError(new Error("timeout")),
     });
   }
 
@@ -1242,11 +1242,16 @@ export default class View {
     if (resp.live_redirect) {
       return this.onLiveRedirect(resp.live_redirect);
     }
-    this.log("error", () => ["unable to join", resp], {
-      code: "view.join-failed",
-      level: "error",
-      metadata: () => ({ response: resp }),
-    });
+    const timedOut = resp instanceof Error && resp.message === "timeout";
+    this.log(
+      "error",
+      () => [timedOut ? "join timed out" : "unable to join", resp],
+      {
+        code: timedOut ? "view.network.join-timeout" : "view.join-failed",
+        level: "error",
+        metadata: () => (timedOut ? { error: resp } : { response: resp }),
+      },
+    );
     if (this.isMain()) {
       this.displayError(
         [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS],
@@ -1269,7 +1274,7 @@ export default class View {
             resp,
           ],
           {
-            code: "view.mount-give-up",
+            code: "view.mount-attempts-exhausted",
             level: "error",
             metadata: () => ({
               attempts: MAX_CHILD_JOIN_ATTEMPTS,
@@ -1444,7 +1449,7 @@ export default class View {
                 () => [
                   "received timeout while communicating with server. Falling back to hard refresh for recovery",
                 ],
-                { code: "view.push-timeout", level: "error" },
+                { code: "view.network.push-timeout", level: "error" },
               );
             });
           }
@@ -1693,7 +1698,7 @@ export default class View {
           { event, payload },
         ],
         {
-          code: "hook.push-disconnected",
+          code: "hook.network.push-disconnected",
           metadata: () => ({ event, payload }),
         },
       );
@@ -1889,7 +1894,7 @@ export default class View {
     )
       .then(({ reply }) => onReply && onReply(reply))
       .catch((error) =>
-        this.logError("event.push-failed", "Failed to push event", {
+        this.logError("event.network.push-failed", "Failed to push event", {
           error,
           type,
           phxEvent,
@@ -1911,7 +1916,7 @@ export default class View {
         .then(() => onReply())
         .catch((error) =>
           view.logError(
-            "upload.progress-push-failed",
+            "upload.network.progress-push-failed",
             "Failed to push file progress",
             { error, fileEl, entryRef, progress },
           ),
@@ -2005,11 +2010,15 @@ export default class View {
         }
       })
       .catch((error) =>
-        this.logError("event.input-push-failed", "Failed to push input event", {
-          error,
-          inputEl,
-          phxEvent,
-        }),
+        this.logError(
+          "event.network.input-push-failed",
+          "Failed to push input event",
+          {
+            error,
+            inputEl,
+            phxEvent,
+          },
+        ),
       );
   }
 
@@ -2146,7 +2155,7 @@ export default class View {
           .then(({ resp }) => onReply(resp))
           .catch((error) =>
             this.logError(
-              "event.submit-push-failed",
+              "event.network.submit-push-failed",
               "Failed to push form submit",
               {
                 error,
@@ -2174,7 +2183,7 @@ export default class View {
         .then(({ resp }) => onReply(resp))
         .catch((error) =>
           this.logError(
-            "event.submit-push-failed",
+            "event.network.submit-push-failed",
             "Failed to push form submit",
             {
               error,
@@ -2257,11 +2266,15 @@ export default class View {
           }
         })
         .catch((error) =>
-          this.logError("upload.push-failed", "Failed to push upload", {
-            error,
-            phxEvent,
-            formEl,
-          }),
+          this.logError(
+            "upload.network.push-failed",
+            "Failed to push upload",
+            {
+              error,
+              phxEvent,
+              formEl,
+            },
+          ),
         );
     });
   }
@@ -2279,7 +2292,7 @@ export default class View {
       uploader.entries().map((entry) => entry.cancel());
     }
     this.log("upload", () => [`error for entry ${uploadRef}`, reason], {
-      code: "upload.entry-error",
+      code: "upload.preflight-rejected",
       metadata: () => ({ uploadRef, reason }),
     });
   }
@@ -2510,7 +2523,7 @@ export default class View {
     const onError = (error, cids) => {
       if (!this.isDestroyed()) {
         this.logError(
-          "component.destroy-push-failed",
+          "component.network.destroy-push-failed",
           "Failed to push components destroyed",
           { error, cids },
         );
