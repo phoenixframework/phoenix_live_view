@@ -72,7 +72,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   end
 
   def valid_token(lv_pid, ref) do
-    LiveView.Static.sign_token(@endpoint, %{pid: lv_pid, ref: ref})
+    LiveView.Static.encrypt_token(@endpoint, %{pid: lv_pid, ref: ref})
   end
 
   def mount_lv(setup) when is_function(setup, 1) do
@@ -174,6 +174,25 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
     assert {:error, %{reason: :invalid_token}} =
              Phoenix.ChannelTest.subscribe_and_join(socket, "lvu:123", %{"token" => "bad"})
+  end
+
+  test "upload token is encrypted, not merely signed (GHSA-p8fj-694c-pvhc)" do
+    # Regression: upload tokens used to be produced by Phoenix.Token.sign, so the
+    # base64 payload was readable client-side. Because the payload embeds a PID
+    # and the Erlang external term format encodes the source node name into the
+    # PID's binary representation, tokens leaked the BEAM node — which in
+    # container releases (e.g. `app@<pod-ip>.<ns>.pod.cluster.local`) exposes
+    # internal hostnames and pod IPs.
+    token = LiveView.Static.encrypt_token(@endpoint, %{pid: self(), ref: {"foo", "bar"}})
+
+    salt = Phoenix.LiveView.Utils.salt!(@endpoint)
+
+    # An encrypted token must NOT verify as a signed token.
+    assert {:error, :invalid} =
+             Phoenix.Token.verify(@endpoint, salt, token, max_age: :infinity)
+
+    # And the raw token body must not contain the local node name in the clear.
+    refute String.contains?(token, Atom.to_string(node()))
   end
 
   defp setup_lv(%{allow: opts}) do

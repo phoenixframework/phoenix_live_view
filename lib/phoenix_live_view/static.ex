@@ -26,16 +26,27 @@ defmodule Phoenix.LiveView.Static do
   end
 
   @doc """
-  Verifies a LiveView token.
+  Verifies a signed LiveView token.
   """
   def verify_token(endpoint, token) do
-    case Phoenix.Token.verify(endpoint, Utils.salt!(endpoint), token, max_age: @max_session_age) do
-      {:ok, {@token_vsn, term}} -> {:ok, term}
-      {:ok, _} -> {:error, :outdated}
-      {:error, :missing} -> {:error, :invalid}
-      {:error, reason} when reason in [:expired, :invalid] -> {:error, reason}
-    end
+    endpoint
+    |> Phoenix.Token.verify(Utils.salt!(endpoint), token, max_age: @max_session_age)
+    |> token_payload()
   end
+
+  @doc """
+  Verifies an encrypted LiveView token.
+  """
+  def decrypt_token(endpoint, token) do
+    endpoint
+    |> Phoenix.Token.decrypt(Utils.salt!(endpoint), token, max_age: @max_session_age)
+    |> token_payload()
+  end
+
+  defp token_payload({:ok, {@token_vsn, term}}), do: {:ok, term}
+  defp token_payload({:ok, _}), do: {:error, :outdated}
+  defp token_payload({:error, :missing}), do: {:error, :invalid}
+  defp token_payload({:error, reason}) when reason in [:expired, :invalid], do: {:error, reason}
 
   defp live_session(%Plug.Conn{} = conn) do
     case conn.private[:phoenix_live_view] do
@@ -404,6 +415,13 @@ defmodule Phoenix.LiveView.Static do
   """
   def sign_token(endpoint, data) do
     Phoenix.Token.sign(endpoint, Utils.salt!(endpoint), {@token_vsn, data})
+  end
+
+  @doc """
+  Encrypts a LiveView token.
+  """
+  def encrypt_token(endpoint, data) do
+    Phoenix.Token.encrypt(endpoint, Utils.salt!(endpoint), {@token_vsn, data})
   end
 
   defp container(%{container: {tag, attrs}}, opts) do
