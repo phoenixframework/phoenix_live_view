@@ -165,6 +165,8 @@ var LiveView = (() => {
   var TITLE = "t";
   var TEMPLATES = "p";
   var STREAM = "stream";
+  var PHX_LV_DIAGNOSTIC_EVENT = "phx:live-view:diagnostic";
+  var PHX_LV_DIAGNOSTIC_VERSION = 1;
 
   // js/phoenix_live_view/entry_uploader.js
   var EntryUploader = class {
@@ -213,7 +215,11 @@ var LiveView = (() => {
             e.target.result
           );
         } else {
-          return logError("Read error: " + ((_b = e.target) == null ? void 0 : _b.error));
+          return this.entry.view.logError(
+            "upload.read-failed",
+            "Read error: " + ((_b = e.target) == null ? void 0 : _b.error),
+            { entry: this.entry, offset: this.offset }
+          );
         }
       };
       reader.readAsArrayBuffer(blob);
@@ -234,8 +240,25 @@ var LiveView = (() => {
     }
   };
 
+  // js/phoenix_live_view/diagnostics.ts
+  var dispatchDiagnostic = (diagnostic) => {
+    window.dispatchEvent(
+      new CustomEvent(PHX_LV_DIAGNOSTIC_EVENT, {
+        detail: __spreadValues({ version: PHX_LV_DIAGNOSTIC_VERSION }, diagnostic)
+      })
+    );
+  };
+  var logError = (code, message, metadata, context = {}) => {
+    console.error && console.error(message, metadata);
+    dispatchDiagnostic(__spreadValues({
+      level: "error",
+      code,
+      message,
+      metadata
+    }, context));
+  };
+
   // js/phoenix_live_view/utils.ts
-  var logError = (msg, obj) => console.error && console.error(msg, obj);
   var ensureSameOrigin = (href, kind) => {
     let url;
     try {
@@ -255,30 +278,39 @@ var LiveView = (() => {
     const type = typeof cid;
     return type === "number" || type === "string" && /^(0|[1-9]\d*)$/.test(cid);
   };
-  function detectDuplicateIds() {
-    const ids = /* @__PURE__ */ new Set();
+  function detectDuplicateIds(reportError = logError) {
+    const ids = /* @__PURE__ */ new Map();
     const elems = document.querySelectorAll("*[id]");
     for (let i = 0, len = elems.length; i < len; i++) {
-      if (ids.has(elems[i].id)) {
-        console.error(
-          `Multiple IDs detected: ${elems[i].id}. Ensure unique element ids.`
+      const id = elems[i].id;
+      const existing = ids.get(id);
+      if (existing) {
+        reportError(
+          "dom.duplicate-id",
+          `Multiple IDs detected: ${id}. Ensure unique element ids.`,
+          { id, elements: [existing, elems[i]] }
         );
       } else {
-        ids.add(elems[i].id);
+        ids.set(id, elems[i]);
       }
     }
   }
-  function detectInvalidStreamInserts(inserts) {
-    const errors = /* @__PURE__ */ new Set();
+  function detectInvalidStreamInserts(inserts, reportError = logError) {
+    const invalidContainers = /* @__PURE__ */ new Set();
     Object.keys(inserts).forEach((id) => {
       const streamEl = document.getElementById(id);
       if (streamEl && streamEl.parentElement && streamEl.parentElement.getAttribute("phx-update") !== "stream") {
-        errors.add(
-          `The stream container with id "${streamEl.parentElement.id}" is missing the phx-update="stream" attribute. Ensure it is set for streams to work properly.`
-        );
+        invalidContainers.add(streamEl.parentElement);
       }
     });
-    errors.forEach((error) => console.error(error));
+    invalidContainers.forEach((container) => {
+      const id = container.id;
+      reportError(
+        "dom.invalid-stream-container",
+        `The stream container with id "${id}" is missing the phx-update="stream" attribute. Ensure it is set for streams to work properly.`,
+        { id, container }
+      );
+    });
   }
   var debug = (view, kind, msg, obj) => {
     if (view.liveSocket.isDebugEnabled()) {
@@ -417,7 +449,7 @@ var LiveView = (() => {
   // js/phoenix_live_view/dom.ts
   var DOM = {
     byId(id) {
-      return document.getElementById(id) || logError(`no id found for ${id}`);
+      return document.getElementById(id) || logError("dom.element-not-found", `no id found for ${id}`, { id });
     },
     elementFromTarget(target) {
       if (!(target instanceof Node)) {
@@ -647,7 +679,11 @@ var LiveView = (() => {
           const trigger = () => throttle ? this.deletePrivate(el, THROTTLED) : callback();
           const currentCycle = this.incCycle(el, DEBOUNCE_TRIGGER, trigger);
           if (isNaN(timeout)) {
-            return logError(`invalid throttle/debounce value: ${value}`);
+            return logError(
+              "binding.invalid-debounce",
+              `invalid throttle/debounce value: ${value}`,
+              { el, value }
+            );
           }
           if (throttle) {
             let newKeyDown = false;
@@ -736,10 +772,14 @@ var LiveView = (() => {
       if (el.isConnected) {
         el.setAttribute("data-phx-hook", "");
       } else {
-        console.error(`
+        logError(
+          "hook.non-connected-element",
+          `
         hook attached to non-connected DOM element
         ensure you are calling createHook within your connectedCallback. ${el.outerHTML}
-      `);
+      `,
+          { el }
+        );
       }
       this.putPrivate(el, "custom-el-hook", hook);
     },
@@ -903,19 +943,21 @@ var LiveView = (() => {
     isNowTriggerFormExternal(el, phxTriggerExternal) {
       return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null && document.body.contains(el);
     },
-    cleanChildNodes(container, phxUpdate) {
+    cleanChildNodes(container, phxUpdate, reportError = logError) {
       if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend", PHX_STREAM])) {
         const toRemove = [];
         container.childNodes.forEach((childNode) => {
           if (!("id" in childNode) || !childNode.id) {
             const isEmptyTextNode = childNode.nodeType === Node.TEXT_NODE && childNode.nodeValue && childNode.nodeValue.trim() === "";
             if (!isEmptyTextNode && childNode.nodeType !== Node.COMMENT_NODE) {
-              logError(
+              reportError(
+                "dom.invalid-phx-update-child",
                 `only HTML element tags with an id are allowed inside containers with phx-update.
 
 removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || childNode.nodeValue || "").trim()}"
 
-`
+`,
+                { container, childNode, phxUpdate }
               );
             }
             toRemove.push(childNode);
@@ -1104,7 +1146,11 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     }
     uploader(uploaders) {
       if (this.meta.uploader) {
-        const callback = uploaders[this.meta.uploader] || logError(`no uploader configured for ${this.meta.uploader}`);
+        const callback = uploaders[this.meta.uploader] || this.view.logError(
+          "upload.missing-uploader",
+          `no uploader configured for ${this.meta.uploader}`,
+          { uploader: this.meta.uploader, uploaders }
+        );
         return { name: this.meta.uploader, callback };
       } else {
         return { name: "channel", callback: channelUploader };
@@ -1113,10 +1159,15 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     zipPostFlight(resp) {
       this.meta = resp.entries[this.ref];
       if (!this.meta) {
-        logError(`no preflight upload response returned with ref ${this.ref}`, {
-          input: this.fileEl,
-          response: resp
-        });
+        this.view.logError(
+          "upload.missing-preflight-response",
+          `no preflight upload response returned with ref ${this.ref}`,
+          {
+            ref: this.ref,
+            input: this.fileEl,
+            response: resp
+          }
+        );
       }
     }
   };
@@ -2057,6 +2108,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         return parent.appendChild(child);
       };
       var childrenOnly = options.childrenOnly === true;
+      var keyedRoot = options.keyedRoot === true;
       var fromNodesLookup = /* @__PURE__ */ Object.create(null);
       var keyedRemovalList = [];
       function addKeyedRemoval(key) {
@@ -2271,6 +2323,31 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           specialElHandler(fromEl, toEl);
         }
       }
+      function cleanupKeyedNodes() {
+        for (var i = 0, len = keyedRemovalList.length; i < len; i++) {
+          var elToRemove = fromNodesLookup[keyedRemovalList[i]];
+          if (elToRemove) {
+            removeNode(elToRemove, elToRemove.parentNode, false);
+          }
+        }
+      }
+      if (keyedRoot && !childrenOnly) {
+        var fromNodeKey = getNodeKey(fromNode);
+        var toNodeKey = getNodeKey(toNode);
+        if ((fromNodeKey || toNodeKey) && fromNodeKey !== toNodeKey) {
+          if (toNode.actualize) {
+            toNode = toNode.actualize(fromNode.ownerDocument || doc);
+          }
+          onNodeDiscarded(fromNode);
+          if (fromNode.parentNode) {
+            fromNode.parentNode.replaceChild(toNode, fromNode);
+          }
+          handleNodeAdded(toNode);
+          walkDiscardedChildNodes(fromNode, false);
+          cleanupKeyedNodes();
+          return toNode;
+        }
+      }
       var morphedNode = fromNode;
       var morphedNodeType = morphedNode.nodeType;
       var toNodeType = toNode.nodeType;
@@ -2302,14 +2379,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           return;
         }
         morphEl(morphedNode, toNode, childrenOnly);
-        if (keyedRemovalList) {
-          for (var i = 0, len = keyedRemovalList.length; i < len; i++) {
-            var elToRemove = fromNodesLookup[keyedRemovalList[i]];
-            if (elToRemove) {
-              removeNode(elToRemove, elToRemove.parentNode, false);
-            }
-          }
-        }
+        cleanupKeyedNodes();
       }
       if (!childrenOnly && morphedNode !== fromNode && fromNode.parentNode) {
         if (morphedNode.actualize) {
@@ -2378,6 +2448,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     }
     perform(isJoinPatch) {
       const { view, liveSocket, html, container } = this;
+      const reportError = (code, message, metadata) => view.logError(code, message, metadata);
       let targetContainer = this.targetContainer;
       if (this.targetCID) {
         const closestLock = targetContainer.closest(`[${PHX_REF_LOCK}]`);
@@ -2551,7 +2622,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
               phxViewportTop,
               phxViewportBottom
             );
-            dom_default.cleanChildNodes(toEl, phxUpdate);
+            dom_default.cleanChildNodes(toEl, phxUpdate, reportError);
             const isFocusedFormEl = focused && fromEl.isSameNode(focused) && dom_default.isEditableInput(fromEl);
             const focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl);
             if (this.skipCIDSibling(toEl)) {
@@ -2680,14 +2751,15 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         });
       });
       if (liveSocket.isDebugEnabled()) {
-        detectDuplicateIds();
-        detectInvalidStreamInserts(this.streamInserts);
+        detectDuplicateIds(reportError);
+        detectInvalidStreamInserts(this.streamInserts, reportError);
         Array.from(document.querySelectorAll("input[name=id]")).forEach(
           (node) => {
             if (node instanceof HTMLInputElement && node.form) {
-              console.error(
+              reportError(
+                "dom.form-input-name-id",
                 'Detected an input with name="id" inside a form! This will cause problems when patching the DOM.\n',
-                node
+                { el: node }
               );
             }
           }
@@ -3366,21 +3438,36 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       }
     }
     recursiveCIDToString(components, cid, onlyCids) {
-      const component = components[cid] || logError(`no component for CID ${cid}`, components);
-      const attrs = { [PHX_COMPONENT]: cid, [PHX_VIEW_REF]: this.viewId };
-      const skip = onlyCids && !onlyCids.has(cid);
-      component.newRender = !skip;
-      component.magicId = `c${cid}-${this.parentViewId()}`;
-      const changeTracking = !component.reset;
-      const { buffer: html, streams } = this.recursiveToString(
-        component,
-        components,
-        onlyCids,
-        changeTracking,
-        attrs
-      );
-      delete component.reset;
-      return { buffer: html, streams };
+      if (components[cid]) {
+        const component = components[cid];
+        const attrs = { [PHX_COMPONENT]: cid, [PHX_VIEW_REF]: this.viewId };
+        const skip = onlyCids && !onlyCids.has(cid);
+        component.newRender = !skip;
+        component.magicId = `c${cid}-${this.parentViewId()}`;
+        const changeTracking = !component.reset;
+        const { buffer: html, streams } = this.recursiveToString(
+          component,
+          components,
+          onlyCids,
+          changeTracking,
+          attrs
+        );
+        delete component.reset;
+        return { buffer: html, streams };
+      } else {
+        logError(
+          "render.missing-component",
+          `no component for CID ${cid}`,
+          {
+            cid,
+            components
+          },
+          { viewId: this.viewId }
+        );
+        throw new Error(
+          "Cannot continue render due to missing component: " + cid
+        );
+      }
     }
   };
 
@@ -4257,7 +4344,8 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       this.el = el;
       const boundView = dom_default.private(this.el, "view");
       if (boundView !== void 0 && boundView.isDead !== true) {
-        logError(
+        this.logError(
+          "view.duplicate-binding",
           `The DOM element for this view has already been bound to a view.
 
         An element can only ever be associated with a single view!
@@ -4363,7 +4451,13 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         }
       };
       dom_default.markPhxChildDestroyed(this.el);
-      this.log("destroyed", () => ["the child has been removed from the parent"]);
+      this.log(
+        "destroyed",
+        () => ["the child has been removed from the parent"],
+        {
+          code: "view.child-destroyed"
+        }
+      );
       this.channel.leave().receive("ok", onFinished).receive("error", onFinished).receive("timeout", onFinished);
     }
     setContainerClasses(...classes) {
@@ -4405,8 +4499,14 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         this.viewHooks[id].__reconnected();
       }
     }
-    log(kind, msgCallback) {
-      this.liveSocket.log(this, kind, msgCallback);
+    log(kind, msgCallback, diagnostic) {
+      this.liveSocket.log(this, kind, msgCallback, diagnostic);
+    }
+    logError(code, message, metadata) {
+      var _a;
+      logError(code, message, metadata, {
+        viewId: (_a = this.id) != null ? _a : this.el.id
+      });
     }
     transition(time, onStart, onDone = function() {
     }) {
@@ -4428,7 +4528,11 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       if (isCid(phxTarget)) {
         const target = dom_default.findComponent(this.id, phxTarget, dom);
         if (!target) {
-          logError(`no component found matching phx-target of ${phxTarget}`);
+          this.logError(
+            "event.missing-component-target",
+            `no component found matching phx-target of ${phxTarget}`,
+            { target: phxTarget }
+          );
         } else {
           callback(
             this,
@@ -4438,8 +4542,10 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       } else {
         const targets = Array.from(dom.querySelectorAll(phxTarget));
         if (targets.length === 0) {
-          logError(
-            `nothing found matching the phx-target selector "${phxTarget}"`
+          this.logError(
+            "event.missing-selector-target",
+            `nothing found matching the phx-target selector "${phxTarget}"`,
+            { target: phxTarget }
           );
         }
         targets.forEach(
@@ -4448,7 +4554,11 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       }
     }
     applyDiff(type, rawDiff, callback) {
-      this.log(type, () => ["", clone(rawDiff)]);
+      const clonedDiff = clone(rawDiff);
+      this.log(type, () => ["received diff", clonedDiff], {
+        code: `view.diff.${type}`,
+        metadata: () => ({ diff: clonedDiff })
+      });
       const { diff, reply, events, title } = Rendered.extract(rawDiff);
       const ev = events.reduce(
         (acc, args) => {
@@ -4905,7 +5015,11 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         if (ViewHook.deadHook(el)) {
           return;
         }
-        const hook = dom_default.getCustomElHook(el) || logError(`no hook found for custom element: ${el.id}`);
+        const hook = dom_default.getCustomElHook(el) || this.logError(
+          "hook.custom-element-missing-hook",
+          `no hook found for custom element: ${el.id}`,
+          { el }
+        );
         this.viewHooks[hookElId] = hook;
         hook.__attachView(this);
         return hook;
@@ -4919,9 +5033,10 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         const hookDefinition = this.liveSocket.getHookDefinition(hookName);
         if (hookDefinition) {
           if (!el.id) {
-            logError(
+            this.logError(
+              "hook.missing-id",
               `no DOM ID for hook "${hookName}". Hooks require a unique ID on each element.`,
-              el
+              { el, hookName }
             );
             return;
           }
@@ -4932,21 +5047,29 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
             } else if (typeof hookDefinition === "object" && hookDefinition !== null) {
               hookInstance = new ViewHook(this, el, hookDefinition);
             } else {
-              logError(
+              this.logError(
+                "hook.invalid-definition",
                 `Invalid hook definition for "${hookName}". Expected a class extending ViewHook or an object definition.`,
-                el
+                { el, hookName }
               );
               return;
             }
           } catch (e) {
             const errorMessage = e instanceof Error ? e.message : String(e);
-            logError(`Failed to create hook "${hookName}": ${errorMessage}`, el);
+            this.logError(
+              "hook.creation-failed",
+              `Failed to create hook "${hookName}": ${errorMessage}`,
+              { el, hookName, error: e }
+            );
             return;
           }
           this.viewHooks[ViewHook.elementID(hookInstance.el)] = hookInstance;
           return hookInstance;
         } else if (hookName !== null) {
-          logError(`unknown hook found for "${hookName}"`, el);
+          this.logError("hook.unknown", `unknown hook found for "${hookName}"`, {
+            el,
+            hookName
+          });
         }
       }
     }
@@ -5057,20 +5180,36 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         this.liveSocket.dispatchEvents(resp.events);
       }
       if (resp.reason === "reload") {
-        this.log("error", () => [
-          `failed mount with ${resp.status}. Falling back to page reload`,
-          resp
-        ]);
+        this.log(
+          "error",
+          () => [
+            `failed mount with ${resp.status}. Falling back to page reload`,
+            resp
+          ],
+          {
+            code: "view.mount-reload",
+            level: "error",
+            metadata: () => ({ status: resp.status })
+          }
+        );
         this.onRedirect({
           to: this.liveSocket.main.href,
           reloadToken: resp.token
         });
         return;
       } else if (resp.reason === "unauthorized" || resp.reason === "stale") {
-        this.log("error", () => [
-          "unauthorized live_redirect. Falling back to page request",
-          resp
-        ]);
+        this.log(
+          "error",
+          () => [
+            "unauthorized live_redirect. Falling back to page request",
+            resp
+          ],
+          {
+            code: "view.unauthorized-live-redirect",
+            level: "error",
+            metadata: () => ({ reason: resp.reason })
+          }
+        );
         this.onRedirect({ to: this.liveSocket.main.href, flash: this.flash });
         return;
       }
@@ -5084,7 +5223,11 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       if (resp.live_redirect) {
         return this.onLiveRedirect(resp.live_redirect);
       }
-      this.log("error", () => ["unable to join", resp]);
+      this.log("error", () => ["unable to join", resp], {
+        code: "view.join-failed",
+        level: "error",
+        metadata: () => ({ response: resp })
+      });
       if (this.isMain()) {
         this.displayError(
           [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS],
@@ -5099,10 +5242,21 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
             [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS],
             { unstructuredError: resp, errorKind: "server" }
           );
-          this.log("error", () => [
-            `giving up trying to mount after ${MAX_CHILD_JOIN_ATTEMPTS} tries`,
-            resp
-          ]);
+          this.log(
+            "error",
+            () => [
+              `giving up trying to mount after ${MAX_CHILD_JOIN_ATTEMPTS} tries`,
+              resp
+            ],
+            {
+              code: "view.mount-give-up",
+              level: "error",
+              metadata: () => ({
+                attempts: MAX_CHILD_JOIN_ATTEMPTS,
+                response: resp
+              })
+            }
+          );
           this.destroy();
         }
         const trueChildEl = dom_default.byId(this.el.id);
@@ -5134,7 +5288,11 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     onError(reason) {
       this.onClose(reason);
       if (this.liveSocket.isConnected()) {
-        this.log("error", () => ["view crashed", reason]);
+        this.log("error", () => ["view crashed", reason], {
+          code: "view.crashed",
+          level: "error",
+          metadata: () => ({ reason })
+        });
       }
       if (!this.liveSocket.isUnloaded()) {
         if (this.liveSocket.isConnected()) {
@@ -5239,9 +5397,13 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
             reject(new Error("timeout"));
             if (this.joinCount === oldJoinCount) {
               this.liveSocket.reloadWithJitter(this, () => {
-                this.log("timeout", () => [
-                  "received timeout while communicating with server. Falling back to hard refresh for recovery"
-                ]);
+                this.log(
+                  "timeout",
+                  () => [
+                    "received timeout while communicating with server. Falling back to hard refresh for recovery"
+                  ],
+                  { code: "view.push-timeout", level: "error" }
+                );
               });
             }
           }
@@ -5442,11 +5604,17 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     }
     pushHookEvent(el, targetCtx, event, payload) {
       if (!this.isConnected()) {
-        this.log("hook", () => [
-          "unable to push hook event. LiveView not connected",
-          event,
-          payload
-        ]);
+        this.log(
+          "hook",
+          () => [
+            "unable to push hook event. LiveView not connected",
+            { event, payload }
+          ],
+          {
+            code: "hook.push-disconnected",
+            metadata: () => ({ event, payload })
+          }
+        );
         return Promise.reject(
           new Error("unable to push hook event. LiveView not connected")
         );
@@ -5578,7 +5746,14 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           value: this.extractMeta(el, meta, opts.value),
           cid: this.targetComponentID(el, targetCtx, opts)
         }
-      ).then(({ reply }) => onReply && onReply(reply)).catch((error) => logError("Failed to push event", error));
+      ).then(({ reply }) => onReply && onReply(reply)).catch(
+        (error) => this.logError("event.push-failed", "Failed to push event", {
+          error,
+          type,
+          phxEvent,
+          el
+        })
+      );
     }
     pushFileProgress(fileEl, entryRef, progress, onReply = function() {
     }) {
@@ -5589,7 +5764,13 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           entry_ref: entryRef,
           progress,
           cid: view.targetComponentID(fileEl.form, targetCtx)
-        }).then(() => onReply()).catch((error) => logError("Failed to push file progress", error));
+        }).then(() => onReply()).catch(
+          (error) => view.logError(
+            "upload.progress-push-failed",
+            "Failed to push file progress",
+            { error, fileEl, entryRef, progress }
+          )
+        );
       });
     }
     pushInput(inputEl, targetCtx, forceCid, phxEvent, opts, callback) {
@@ -5663,7 +5844,13 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         } else {
           callback && callback(resp);
         }
-      }).catch((error) => logError("Failed to push input event", error));
+      }).catch(
+        (error) => this.logError("event.input-push-failed", "Failed to push input event", {
+          error,
+          inputEl,
+          phxEvent
+        })
+      );
     }
     triggerAwaitingSubmit(formEl, phxEvent) {
       const awaitingSubmit = this.getScheduledSubmit(formEl);
@@ -5769,7 +5956,17 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
             value: formData,
             meta,
             cid
-          }).then(({ resp }) => onReply(resp)).catch((error) => logError("Failed to push form submit", error));
+          }).then(({ resp }) => onReply(resp)).catch(
+            (error) => this.logError(
+              "event.submit-push-failed",
+              "Failed to push form submit",
+              {
+                error,
+                phxEvent,
+                formEl
+              }
+            )
+          );
         });
       } else if (!(formEl.hasAttribute(PHX_REF_SRC) && formEl.classList.contains("phx-submit-loading"))) {
         const meta = this.extractMeta(formEl, {}, opts.value);
@@ -5780,7 +5977,17 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           value: formData,
           meta,
           cid
-        }).then(({ resp }) => onReply(resp)).catch((error) => logError("Failed to push form submit", error));
+        }).then(({ resp }) => onReply(resp)).catch(
+          (error) => this.logError(
+            "event.submit-push-failed",
+            "Failed to push form submit",
+            {
+              error,
+              phxEvent,
+              formEl
+            }
+          )
+        );
       }
     }
     uploadFiles(formEl, phxEvent, targetCtx, ref, cid, onComplete) {
@@ -5804,9 +6011,15 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           entries,
           cid: this.targetComponentID(inputEl.form, targetCtx)
         };
-        this.log("upload", () => ["sending preflight request", payload]);
+        this.log("upload", () => ["sending preflight request", payload], {
+          code: "upload.preflight-request",
+          metadata: () => ({ payload })
+        });
         this.pushWithReply(null, "allow_upload", payload).then(({ resp }) => {
-          this.log("upload", () => ["got preflight response", resp]);
+          this.log("upload", () => ["got preflight response", resp], {
+            code: "upload.preflight-response",
+            metadata: () => ({ response: resp })
+          });
           uploader.entries().forEach((entry) => {
             if (resp.entries && !resp.entries[entry.ref]) {
               this.handleFailedEntryPreflight(
@@ -5832,7 +6045,13 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
             };
             uploader.initAdapterUpload(resp, onError, this.liveSocket);
           }
-        }).catch((error) => logError("Failed to push upload", error));
+        }).catch(
+          (error) => this.logError("upload.push-failed", "Failed to push upload", {
+            error,
+            phxEvent,
+            formEl
+          })
+        );
       });
     }
     handleFailedEntryPreflight(uploadRef, reason, uploader) {
@@ -5844,7 +6063,10 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       } else {
         uploader.entries().map((entry) => entry.cancel());
       }
-      this.log("upload", () => [`error for entry ${uploadRef}`, reason]);
+      this.log("upload", () => [`error for entry ${uploadRef}`, reason], {
+        code: "upload.entry-error",
+        metadata: () => ({ uploadRef, reason })
+      });
     }
     dispatchUploads(targetCtx, name, filesOrBlobs) {
       const targetElement = this.targetCtxElement(targetCtx) || this.el;
@@ -5852,9 +6074,17 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         (el) => el.name === name
       );
       if (inputs.length === 0) {
-        logError(`no live file inputs found matching the name "${name}"`);
+        this.logError(
+          "upload.input-not-found",
+          `no live file inputs found matching the name "${name}"`,
+          { name }
+        );
       } else if (inputs.length > 1) {
-        logError(`duplicate live file inputs found matching the name "${name}"`);
+        this.logError(
+          "upload.duplicate-input",
+          `duplicate live file inputs found matching the name "${name}"`,
+          { name, inputs }
+        );
       } else {
         dom_default.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, {
           detail: { files: filesOrBlobs }
@@ -5985,9 +6215,13 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       let willDestroyCIDs = destroyedCIDs.filter((cid) => {
         return dom_default.findComponent(this.id, cid) === null;
       });
-      const onError = (error) => {
+      const onError = (error, cids) => {
         if (!this.isDestroyed()) {
-          logError("Failed to push components destroyed", error);
+          this.logError(
+            "component.destroy-push-failed",
+            "Failed to push components destroyed",
+            { error, cids }
+          );
         }
       };
       if (willDestroyCIDs.length > 0) {
@@ -6002,10 +6236,10 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
                 cids: completelyDestroyCIDs
               }).then(({ resp }) => {
                 this.rendered.pruneCIDs(resp.cids);
-              }).catch(onError);
+              }).catch((err) => onError(err, completelyDestroyCIDs));
             }
           });
-        }).catch(onError);
+        }).catch((err) => onError(err, willDestroyCIDs));
       }
     }
     ownsElement(el) {
@@ -6203,7 +6437,8 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
      * Connects to the LiveView server.
      */
     connect() {
-      if (window.location.hostname === "localhost" && !this.isDebugDisabled()) {
+      const host = window.location.hostname.toLowerCase();
+      if ((host === "localhost" || host.endsWith(".localhost")) && !this.isDebugDisabled()) {
         this.enableDebug();
       }
       const doConnect = () => {
@@ -6268,7 +6503,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         return;
       }
       if (this.main && this.isConnected()) {
-        this.log(this.main, "socket", () => ["disconnect for page nav"]);
+        this.log(this.main, "socket", () => ["disconnect for page nav"], {
+          code: "socket.page-navigation-disconnect"
+        });
       }
       this.unloaded = true;
       this.destroyAllViews();
@@ -6289,13 +6526,28 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       return result;
     }
     /** @internal */
-    log(view, kind, msgCallback) {
+    log(view, kind, msgCallback, diagnostic) {
+      var _a, _b;
+      const debugEnabled = this.isDebugEnabled();
+      const level = (_a = diagnostic == null ? void 0 : diagnostic.level) != null ? _a : "debug";
+      const emitDiagnostic = !!diagnostic && (level !== "debug" || debugEnabled);
+      if (!this.viewLogger && !debugEnabled && !emitDiagnostic) {
+        return;
+      }
+      const [message, obj] = msgCallback();
       if (this.viewLogger) {
-        const [msg, obj] = msgCallback();
-        this.viewLogger(view, kind, msg, obj);
-      } else if (this.isDebugEnabled()) {
-        const [msg, obj] = msgCallback();
-        debug(view, kind, msg, obj);
+        this.viewLogger(view, kind, message, obj);
+      } else if (debugEnabled) {
+        debug(view, kind, message, obj);
+      }
+      if (emitDiagnostic && diagnostic) {
+        dispatchDiagnostic({
+          level,
+          code: diagnostic.code,
+          message,
+          viewId: view.id,
+          metadata: (_b = diagnostic.metadata) == null ? void 0 : _b.call(diagnostic)
+        });
       }
     }
     /** @internal */
@@ -6344,13 +6596,28 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           return;
         }
         view.destroy();
-        log ? log() : this.log(view, "join", () => [
-          `encountered ${tries} consecutive reloads`
-        ]);
+        log ? log() : this.log(
+          view,
+          "join",
+          () => [`encountered ${tries} consecutive reloads`],
+          {
+            code: "view.reload-attempts",
+            metadata: () => ({ tries })
+          }
+        );
         if (tries >= this.maxReloads) {
-          this.log(view, "join", () => [
-            `exceeded ${this.maxReloads} consecutive reloads. Entering failsafe mode`
-          ]);
+          this.log(
+            view,
+            "join",
+            () => [
+              `exceeded ${this.maxReloads} consecutive reloads. Entering failsafe mode`
+            ],
+            {
+              code: "view.reload-failsafe",
+              level: "error",
+              metadata: () => ({ tries, maxReloads: this.maxReloads })
+            }
+          );
         }
         if (this.pendingLink !== null) {
           window.location.href = this.pendingLink;
@@ -6380,7 +6647,14 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       }
       let callbacks = window[`phx_hook_${name}`];
       if (!callbacks || typeof callbacks !== "function") {
-        logError("a runtime hook must be a function", runtimeHook);
+        logError(
+          "hook.runtime-not-function",
+          "a runtime hook must be a function",
+          {
+            runtimeHook,
+            name
+          }
+        );
         return;
       }
       const hookDefiniton = callbacks();
@@ -6388,8 +6662,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         return hookDefiniton;
       }
       logError(
+        "hook.runtime-invalid-return",
         "runtime hook must return an object with hook callbacks or an instance of ViewHook",
-        runtimeHook
+        { runtimeHook, name }
       );
     }
     /** @internal */
@@ -7324,8 +7599,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     }
     if (!el.hasAttribute("id")) {
       logError(
+        "hook.missing-id",
         "Elements passed to createHook need to have a unique id attribute",
-        el
+        { el }
       );
     }
     let hook = new ViewHook(View.closestView(el), el, callbacks);
