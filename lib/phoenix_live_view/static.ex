@@ -26,28 +26,27 @@ defmodule Phoenix.LiveView.Static do
   end
 
   @doc """
-  Verifies a LiveView token.
+  Verifies a signed LiveView token.
   """
   def verify_token(endpoint, token) do
-    case Phoenix.Token.verify(endpoint, Utils.salt!(endpoint), token, max_age: @max_session_age) do
-      {:ok, {@token_vsn, term}} -> {:ok, term}
-      {:ok, _} -> {:error, :outdated}
-      {:error, :missing} -> {:error, :invalid}
-      {:error, reason} when reason in [:expired, :invalid] -> {:error, reason}
-    end
+    endpoint
+    |> Phoenix.Token.verify(Utils.salt!(endpoint), token, max_age: @max_session_age)
+    |> token_payload()
   end
 
   @doc """
-  Verifies and decrypts a LiveView token previously produced by `encrypt_token/2`.
+  Verifies an encrytped LiveView token.
   """
   def decrypt_token(endpoint, token) do
-    case Phoenix.Token.decrypt(endpoint, Utils.salt!(endpoint), token, max_age: @max_session_age) do
-      {:ok, {@token_vsn, term}} -> {:ok, term}
-      {:ok, _} -> {:error, :outdated}
-      {:error, :missing} -> {:error, :invalid}
-      {:error, reason} when reason in [:expired, :invalid] -> {:error, reason}
-    end
+    endpoint
+    |> Phoenix.Token.decrypt(Utils.salt!(endpoint), token, max_age: @max_session_age)
+    |> token_payload()
   end
+
+  defp token_payload({:ok, {@token_vsn, term}}), do: {:ok, term}
+  defp token_payload({:ok, _}), do: {:error, :outdated}
+  defp token_payload({:error, :missing}), do: {:error, :invalid}
+  defp token_payload({:error, reason}) when reason in [:expired, :invalid], do: {:error, reason}
 
   defp live_session(%Plug.Conn{} = conn) do
     case conn.private[:phoenix_live_view] do
