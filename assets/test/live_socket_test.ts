@@ -81,6 +81,27 @@ describe("LiveSocket", () => {
     expect(liveSocket.getViewByEl(container(1)).destroy).toBeDefined();
   });
 
+  test("disconnecting and reconnecting rebinds the server close listener", () => {
+    liveSocket = new LiveSocket("/live", Socket);
+    jest.spyOn(liveSocket.socket, "connect").mockImplementation(() => {});
+    jest.spyOn(liveSocket.socket, "disconnect").mockImplementation(() => {});
+    const onClose = jest.spyOn(liveSocket.socket, "onClose");
+    const reloadWithJitter = jest
+      .spyOn(liveSocket, "reloadWithJitter")
+      .mockImplementation(() => {});
+
+    liveSocket.connect();
+    liveSocket.disconnect();
+    liveSocket.connect();
+
+    expect(onClose).toHaveBeenCalledTimes(2);
+    const serverClose = onClose.mock.calls[1][0] as (event: CloseEvent) => void;
+    serverClose(new CloseEvent("close", { code: 1000 }));
+
+    expect(reloadWithJitter).toHaveBeenCalledTimes(1);
+    expect(reloadWithJitter).toHaveBeenCalledWith(liveSocket.main);
+  });
+
   test("channel", async () => {
     liveSocket = new LiveSocket("/live", Socket);
 
