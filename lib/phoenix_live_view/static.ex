@@ -35,7 +35,7 @@ defmodule Phoenix.LiveView.Static do
   end
 
   @doc """
-  Verifies an encrytped LiveView token.
+  Verifies an encrypted LiveView token.
   """
   def decrypt_token(endpoint, token) do
     endpoint
