@@ -10,15 +10,28 @@
 
 import LiveSocket, { type LiveSocketOptions, isUsedInput } from "./live_socket";
 import DOM from "./dom";
-import { ViewHook } from "./view_hook";
+import { ViewHook, lazy } from "./view_hook";
 import View from "./view";
 import { logError } from "./utils";
 
 import type { EncodedJS } from "./js_commands";
-import type { Hook, HooksOptions, HookInterface } from "./view_hook";
+import type {
+  Hook,
+  HooksOptions,
+  HookInterface,
+  LazyHook,
+  LazyHookLoader,
+} from "./view_hook";
 import LiveUploader from "./live_uploader";
 
-export type { LiveSocketOptions, HookInterface, HooksOptions, EncodedJS };
+export type {
+  LiveSocketOptions,
+  HookInterface,
+  HooksOptions,
+  LazyHook,
+  LazyHookLoader,
+  EncodedJS,
+};
 
 /** Creates a hook instance for the given element and callbacks.
  *
@@ -91,5 +104,6 @@ export {
   createHook,
   ViewHook,
   Hook,
+  lazy,
   getFileURLForUpload,
 };

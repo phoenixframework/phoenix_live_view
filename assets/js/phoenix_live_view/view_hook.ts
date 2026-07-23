@@ -318,7 +318,11 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
     this.__attachView(view);
     this.__listeners = new Set();
     this.__isDisconnected = false;
-    DOM.putPrivate(this.el, HOOK_ID, ViewHook.makeID());
+    // the element may already carry an id from a PendingHook this instance
+    // replaces; keeping it stable keeps the View's registry key valid
+    if (ViewHook.elementID(this.el) == null) {
+      DOM.putPrivate(this.el, HOOK_ID, ViewHook.makeID());
+    }
     if (view && view.isDead) {
       DOM.putPrivate(this.el, DEAD_HOOK, true);
     }
@@ -567,8 +571,201 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
 }
 
 /**
+ * A hook definition: either a class extending {@link ViewHook} or an object
+ * with lifecycle callbacks.
+ *
  * @category JavaScript Hooks
  */
-export type HooksOptions = Record<string, typeof ViewHook | Hook<any, any>>;
+export type HookOptionValue = typeof ViewHook | Hook<any, any>;
+
+const LAZY = Symbol("phx-lazy-hook");
+
+/**
+ * The loader function passed to {@link lazy}.
+ *
+ * Must return a promise resolving to either a hook definition or a module
+ * whose default export is the hook definition (the `() => import(...)` case).
+ *
+ * @category JavaScript Hooks
+ */
+export type LazyHookLoader = () => Promise<
+  HookOptionValue | { default: HookOptionValue }
+>;
+
+/**
+ * A lazily loaded hook definition, created with {@link lazy}.
+ *
+ * @category JavaScript Hooks
+ */
+export interface LazyHook {
+  /** @internal */
+  [LAZY]: LazyHookLoader;
+}
+
+/**
+ * Marks a hook as lazily loaded.
+ *
+ * The loader is called the first time an element using the hook is added
+ * and its result is cached per hook name, so the loader runs at most once
+ * per page no matter how many elements use the hook. If the load fails, the
+ * failure is logged and the next element added with the hook retries it.
+ *
+ * The loader must resolve to the hook definition itself (an object with
+ * lifecycle callbacks or a class extending {@link ViewHook}) or to a module
+ * that has the hook definition as its default export.
+ *
+ * A lazy hook's life begins once its definition finishes loading: its
+ * `mounted` callback is then invoked with the element's current DOM state.
+ * Server updates applied while the definition was still loading are not
+ * replayed - `updated` is not called. Likewise, events pushed by the server
+ * before `mounted` could register a `handleEvent` handler are not delivered.
+ * You should request initial state from `mounted` via `pushEvent` instead of
+ * pushing an event from the server that races the load. Hooks that must run
+ * synchronously with DOM insertion (e.g. to measure before first paint) should
+ * not be lazy.
+ *
+ * @example
+ * ```typescript
+ * import { lazy } from "phoenix_live_view"
+ *
+ * const hooks = {
+ *   Chart: lazy(() => import("./chart")),
+ * }
+ * ```
+ *
+ * @category JavaScript Hooks
+ */
+export function lazy(loader: LazyHookLoader): LazyHook {
+  return { [LAZY]: loader };
+}
+
+/**
+ * The `hooks` option of the `LiveSocket` constructor.
+ *
+ * Maps hook names to a class extending {@link ViewHook}, an object
+ * definition with lifecycle callbacks, or a lazily loaded hook created with
+ * {@link lazy}.
+ *
+ * @category JavaScript Hooks
+ */
+export type HooksOptions = Record<string, HookOptionValue | LazyHook>;
+
+/** @internal */
+export function isLazyHook(definition: unknown): definition is LazyHook {
+  return (
+    typeof definition === "object" && definition !== null && LAZY in definition
+  );
+}
+
+/** @internal */
+export function isViewHookClass(
+  definition: unknown,
+): definition is typeof ViewHook {
+  return (
+    typeof definition === "function" && definition.prototype instanceof ViewHook
+  );
+}
+
+/** @internal */
+export function createHookFromDefinition(
+  view: View,
+  el: HTMLElement,
+  definition: HookOptionValue,
+): ViewHook {
+  if (isViewHookClass(definition)) {
+    return new definition(view, el);
+  }
+  return new ViewHook(view, el, definition as Hook);
+}
+
+function resolveLazyDefinition(
+  hookName: string,
+  loaded: unknown,
+): HookOptionValue {
+  if (isViewHookClass(loaded)) {
+    return loaded;
+  }
+
+  if (typeof loaded === "object" && loaded !== null && !Array.isArray(loaded)) {
+    const mod = loaded as { [key: string]: unknown; default?: unknown };
+    // bundlers differ in how they shape module namespace objects; besides a
+    // default export, treat the ESM toStringTag and the CJS-interop
+    // __esModule marker as module-shaped rather than as a hook object
+    const isModuleShaped =
+      Object.prototype.hasOwnProperty.call(mod, "default") ||
+      Object.prototype.toString.call(mod) === "[object Module]" ||
+      mod.__esModule === true;
+
+    if (!isModuleShaped) {
+      // the loader resolved to the hook object itself
+      return loaded as Hook;
+    }
+
+    const defaultExport = mod.default;
+    if (
+      isViewHookClass(defaultExport) ||
+      (typeof defaultExport === "object" &&
+        defaultExport !== null &&
+        !isLazyHook(defaultExport))
+    ) {
+      return defaultExport as HookOptionValue;
+    }
+
+    throw new Error(
+      `the module loaded for lazy hook "${hookName}" must export the hook definition as its default export`,
+    );
+  }
+
+  throw new Error(
+    `lazy hook "${hookName}" resolved to ${typeof loaded} instead of a hook definition`,
+  );
+}
+
+/**
+ * Runs the loader and resolves its result to a hook definition.
+ *
+ * The definition is returned wrapped in an object so a hook carrying a
+ * `then` method is not adopted as a thenable by the returned promise.
+ *
+ * @internal
+ */
+export async function loadLazyHook(
+  hookName: string,
+  hook: LazyHook,
+): Promise<{ definition: HookOptionValue }> {
+  const loaded = await hook[LAZY]();
+  return { definition: resolveLazyDefinition(hookName, loaded) };
+}
+
+/**
+ * Registered in a View in place of a hook whose definition is still
+ * loading. Buffers no lifecycle calls; it only tracks the state the View
+ * needs when it upgrades the element to the real hook after the definition
+ * arrives.
+ *
+ * @internal
+ */
+export class PendingHook extends ViewHook {
+  hookName: string;
+  cancelled = false;
+  wasDisconnected = false;
+
+  constructor(view: View, el: HTMLElement, hookName: string) {
+    super(view, el);
+    this.hookName = hookName;
+  }
+
+  disconnected() {
+    this.wasDisconnected = true;
+  }
+
+  reconnected() {
+    this.wasDisconnected = false;
+  }
+
+  destroyed() {
+    this.cancelled = true;
+  }
+}
 
 export default ViewHook;

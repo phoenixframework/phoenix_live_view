@@ -3,7 +3,7 @@ import { createHook } from "phoenix_live_view/index";
 import LiveSocket from "phoenix_live_view/live_socket";
 import DOM from "phoenix_live_view/dom";
 import View from "phoenix_live_view/view";
-import ViewHook, { HooksOptions } from "phoenix_live_view/view_hook";
+import ViewHook, { HooksOptions, lazy } from "phoenix_live_view/view_hook";
 
 import { version as liveview_version } from "../../package.json";
 
@@ -27,6 +27,9 @@ import {
 const simulateUsedInput = (input) => {
   DOM.putPrivate(input, PHX_HAS_FOCUSED, true);
 };
+
+const flushPromises = () =>
+  new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 describe("View + DOM", function () {
   let liveSocket;
@@ -1521,6 +1524,354 @@ describe("View Hooks", function () {
     expect(upcaseWasDestroyed).toBe(true);
     expect(hookLiveSocket).toBeDefined();
     expect(Object.keys(view["viewHooks"])).toEqual([]);
+  });
+
+  test("lazy hook", async () => {
+    const values: Array<string> = [];
+    let resolveHook: (definition: any) => void = () => {};
+    let loadCount = 0;
+    const Hooks = <HooksOptions>{
+      Upcase: lazy(() => {
+        loadCount++;
+        return new Promise((resolve) => {
+          resolveHook = resolve;
+        });
+      }),
+    };
+    liveSocket = new LiveSocket("/live", Socket, { hooks: Hooks });
+    const el = liveViewDOM();
+
+    const view = simulateJoinedView(el, liveSocket);
+
+    view.onJoin({
+      rendered: {
+        s: ['<h2 id="up" phx-hook="Upcase">test mount</h2>'],
+        fingerprint: 123,
+      },
+      liveview_version,
+    });
+
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe("test mount");
+    expect(Object.keys(view["viewHooks"])).toHaveLength(1);
+
+    // updates while the definition is still loading are not replayed
+    view.update(
+      {
+        s: ['<h2 id="up" phx-hook="Upcase">test update</h2>'],
+        fingerprint: 123,
+      },
+      [],
+    );
+    expect(values).toEqual([]);
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe("test update");
+
+    resolveHook({
+      default: class extends ViewHook {
+        mounted() {
+          values.push("mounted");
+          this.el.innerHTML = this.el.innerHTML.toUpperCase();
+        }
+        beforeUpdate() {
+          values.push("beforeUpdate");
+        }
+        updated() {
+          values.push("updated");
+          this.el.innerHTML = this.el.innerHTML + " updated";
+        }
+        disconnected() {
+          values.push("disconnected");
+          this.el.innerHTML = "disconnected";
+        }
+        reconnected() {
+          values.push("reconnected");
+          this.el.innerHTML = "connected";
+        }
+        destroyed() {
+          values.push("destroyed");
+        }
+      },
+    });
+    await flushPromises();
+
+    expect(loadCount).toBe(1);
+    // mounted observes the element's current, already-updated DOM state
+    expect(values).toEqual(["mounted"]);
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe("TEST UPDATE");
+
+    view.update(
+      {
+        s: ['<h2 id="up" phx-hook="Upcase">test again</h2>'],
+        fingerprint: 123,
+      },
+      [],
+    );
+    expect(values).toEqual(["mounted", "beforeUpdate", "updated"]);
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe(
+      "test again updated",
+    );
+
+    view.showLoader();
+    expect(values).toEqual([
+      "mounted",
+      "beforeUpdate",
+      "updated",
+      "disconnected",
+    ]);
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe("disconnected");
+
+    view.triggerReconnected();
+    expect(values).toEqual([
+      "mounted",
+      "beforeUpdate",
+      "updated",
+      "disconnected",
+      "reconnected",
+    ]);
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe("connected");
+
+    view.update({ s: ["<div></div>"], fingerprint: 123 }, []);
+    expect(values).toEqual([
+      "mounted",
+      "beforeUpdate",
+      "updated",
+      "disconnected",
+      "reconnected",
+      "destroyed",
+    ]);
+    expect(Object.keys(view["viewHooks"])).toEqual([]);
+  });
+
+  test("lazy hook loads once for multiple elements", async () => {
+    const mountedIds: Array<string> = [];
+    let loadCount = 0;
+    const Hooks = <HooksOptions>{
+      Check: lazy(async () => {
+        loadCount++;
+        return {
+          mounted(this: ViewHook) {
+            mountedIds.push(this.el.id);
+          },
+        };
+      }),
+    };
+    liveSocket = new LiveSocket("/live", Socket, { hooks: Hooks });
+    const el = liveViewDOM();
+
+    const view = simulateJoinedView(el, liveSocket);
+
+    view.onJoin({
+      rendered: {
+        s: [
+          '<h2 id="a" phx-hook="Check">a</h2><h2 id="b" phx-hook="Check">b</h2>',
+        ],
+        fingerprint: 123,
+      },
+      liveview_version,
+    });
+    await flushPromises();
+
+    expect(loadCount).toBe(1);
+    expect(mountedIds.sort()).toEqual(["a", "b"]);
+    expect(Object.keys(view["viewHooks"])).toHaveLength(2);
+  });
+
+  test("lazy hook resolving while disconnected mounts, then disconnects and reconnects", async () => {
+    const values: Array<string> = [];
+    let resolveHook: (definition: any) => void = () => {};
+    const Hooks = <HooksOptions>{
+      Check: lazy(
+        () =>
+          new Promise((resolve) => {
+            resolveHook = resolve;
+          }),
+      ),
+    };
+    liveSocket = new LiveSocket("/live", Socket, { hooks: Hooks });
+    const el = liveViewDOM();
+
+    const view = simulateJoinedView(el, liveSocket);
+
+    view.onJoin({
+      rendered: {
+        s: ['<h2 id="check" phx-hook="Check">x</h2>'],
+        fingerprint: 123,
+      },
+      liveview_version,
+    });
+
+    view.showLoader();
+
+    resolveHook({
+      mounted(this: ViewHook) {
+        values.push("mounted");
+      },
+      disconnected() {
+        values.push("disconnected");
+      },
+      reconnected() {
+        values.push("reconnected");
+      },
+    });
+    await flushPromises();
+
+    expect(values).toEqual(["mounted", "disconnected"]);
+
+    view.triggerReconnected();
+    expect(values).toEqual(["mounted", "disconnected", "reconnected"]);
+  });
+
+  test("lazy hook resolving after element removal does not mount", async () => {
+    const values: Array<string> = [];
+    let resolveHook: (definition: any) => void = () => {};
+    const Hooks = <HooksOptions>{
+      Check: lazy(
+        () =>
+          new Promise((resolve) => {
+            resolveHook = resolve;
+          }),
+      ),
+    };
+    liveSocket = new LiveSocket("/live", Socket, { hooks: Hooks });
+    const el = liveViewDOM();
+
+    const view = simulateJoinedView(el, liveSocket);
+
+    view.onJoin({
+      rendered: {
+        s: ['<h2 id="check" phx-hook="Check">x</h2>'],
+        fingerprint: 123,
+      },
+      liveview_version,
+    });
+    expect(Object.keys(view["viewHooks"])).toHaveLength(1);
+
+    view.update({ s: ["<div></div>"], fingerprint: 123 }, []);
+    expect(Object.keys(view["viewHooks"])).toEqual([]);
+
+    resolveHook({
+      mounted() {
+        values.push("mounted");
+      },
+    });
+    await flushPromises();
+
+    expect(values).toEqual([]);
+    expect(Object.keys(view["viewHooks"])).toEqual([]);
+  });
+
+  test("lazy hook load failure is logged, cleaned up, and retried on next mount", async () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const values: Array<string> = [];
+    let loadCount = 0;
+    const Hooks = <HooksOptions>{
+      Check: lazy(() => {
+        loadCount++;
+        return loadCount === 1
+          ? Promise.reject(new Error("chunk load failed"))
+          : Promise.resolve({
+              mounted(this: ViewHook) {
+                values.push("mounted");
+              },
+            });
+      }),
+    };
+    liveSocket = new LiveSocket("/live", Socket, { hooks: Hooks });
+    const el = liveViewDOM();
+
+    const view = simulateJoinedView(el, liveSocket);
+
+    view.onJoin({
+      rendered: {
+        s: ['<h2 id="check" phx-hook="Check">x</h2>'],
+        fingerprint: 123,
+      },
+      liveview_version,
+    });
+    await flushPromises();
+
+    expect(loadCount).toBe(1);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to load lazy hook "Check"'),
+      expect.anything(),
+    );
+    expect(Object.keys(view["viewHooks"])).toEqual([]);
+
+    // removing and re-adding the element retries the failed load
+    view.update({ s: ["<div></div>"], fingerprint: 123 }, []);
+    view.update(
+      { s: ['<h2 id="check" phx-hook="Check">x</h2>'], fingerprint: 123 },
+      [],
+    );
+    await flushPromises();
+
+    expect(loadCount).toBe(2);
+    expect(values).toEqual(["mounted"]);
+    expect(Object.keys(view["viewHooks"])).toHaveLength(1);
+    errorSpy.mockRestore();
+  });
+
+  test("lazy hook module without a default export logs an error", async () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const Hooks = <HooksOptions>{
+      Check: lazy(
+        async () => ({ __esModule: true, Check: { mounted() {} } }) as any,
+      ),
+    };
+    liveSocket = new LiveSocket("/live", Socket, { hooks: Hooks });
+    const el = liveViewDOM();
+
+    const view = simulateJoinedView(el, liveSocket);
+
+    view.onJoin({
+      rendered: {
+        s: ['<h2 id="check" phx-hook="Check">x</h2>'],
+        fingerprint: 123,
+      },
+      liveview_version,
+    });
+    await flushPromises();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to load lazy hook "Check"'),
+      expect.objectContaining({
+        message: expect.stringContaining(
+          "must export the hook definition as its default export",
+        ),
+      }),
+    );
+    expect(Object.keys(view["viewHooks"])).toEqual([]);
+    errorSpy.mockRestore();
+  });
+
+  test("plain function hook definitions are rejected without being called", () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    let called = false;
+    const Hooks = <HooksOptions>{
+      Check: (() => {
+        called = true;
+        return Promise.resolve({});
+      }) as any,
+    };
+    liveSocket = new LiveSocket("/live", Socket, { hooks: Hooks });
+    const el = liveViewDOM();
+
+    const view = simulateJoinedView(el, liveSocket);
+
+    view.onJoin({
+      rendered: {
+        s: ['<h2 id="check" phx-hook="Check">x</h2>'],
+        fingerprint: 123,
+      },
+      liveview_version,
+    });
+
+    expect(called).toBe(false);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Invalid hook definition for "Check"'),
+      expect.anything(),
+    );
+    expect(Object.keys(view["viewHooks"])).toEqual([]);
+    errorSpy.mockRestore();
   });
 
   test("createHook", (done) => {

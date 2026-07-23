@@ -51,7 +51,13 @@ import LiveUploader from "./live_uploader";
 import View from "./view";
 import JS from "./js";
 import jsCommands, { EncodedJS, LiveSocketJSCommands } from "./js_commands";
-import { HooksOptions } from "./view_hook";
+import {
+  HooksOptions,
+  HookOptionValue,
+  LazyHook,
+  isLazyHook,
+  loadLazyHook,
+} from "./view_hook";
 
 /**
  * Returns true if the given element was touched by a user.
@@ -259,6 +265,10 @@ export default class LiveSocket {
   private pendingLink: string | null;
   private currentLocation: Location;
   private hooks: HooksOptions;
+  private lazyHookDefinitions: Map<
+    string,
+    Promise<{ definition: HookOptionValue }>
+  >;
   /** @internal */
   loaderTimeout: number;
   private reloadWithJitterTimer: ReturnType<typeof setTimeout> | null;
@@ -348,6 +358,7 @@ export default class LiveSocket {
     this.pendingLink = null;
     this.currentLocation = clone(window.location);
     this.hooks = opts.hooks || {};
+    this.lazyHookDefinitions = new Map();
     this.uploaders = opts.uploaders || {};
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT;
     this.disconnectedTimeout = opts.disconnectedTimeout || DISCONNECTED_TIMEOUT;
@@ -684,11 +695,35 @@ export default class LiveSocket {
     if (!name) {
       return;
     }
-    return (
+    const definition =
       this.maybeInternalHook(name) ||
       this.hooks[name] ||
-      this.maybeRuntimeHook(name)
-    );
+      this.maybeRuntimeHook(name);
+    if (isLazyHook(definition)) {
+      return this.loadLazyHookDefinition(name, definition);
+    }
+    return definition;
+  }
+
+  /** @internal */
+  loadLazyHookDefinition(
+    name: string,
+    lazyHook: LazyHook,
+  ): Promise<{ definition: HookOptionValue }> {
+    const cached = this.lazyHookDefinitions.get(name);
+    if (cached) {
+      return cached;
+    }
+    // cache by hook name so the loader runs once regardless of how many
+    // elements use the hook
+    const loading = loadLazyHook(name, lazyHook);
+    loading.catch((error) => {
+      // drop the cached failure so the next mounted element retries the load
+      this.lazyHookDefinitions.delete(name);
+      logError(`Failed to load lazy hook "${name}"`, error);
+    });
+    this.lazyHookDefinitions.set(name, loading);
+    return loading;
   }
 
   /** @internal */

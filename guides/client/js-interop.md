@@ -268,6 +268,54 @@ let liveSocket = new LiveSocket(..., {
 })
 ```
 
+### Lazy-loading hooks
+
+Hooks that pull in heavy dependencies (charting libraries, editors, etc.) can be
+loaded on demand by wrapping a loader function with `lazy`. The hook's module is
+then only fetched the first time an element using the hook is added to the page:
+
+```javascript
+import { lazy } from "phoenix_live_view"
+
+let liveSocket = new LiveSocket("/live", Socket, {
+  hooks: {
+    Chart: lazy(() => import("./hooks/chart"))
+  }
+})
+```
+
+The loader must resolve to the hook definition itself (an object with lifecycle
+callbacks or a class extending `ViewHook`), or to a module that has the hook
+definition as its **default export**:
+
+```javascript
+// hooks/chart.js
+export default {
+  mounted() {
+    ...
+  }
+}
+```
+
+The loader runs at most once per hook name, no matter how many elements use the
+hook. If the load fails (for example due to a network error), the failure is
+logged and the load is retried the next time an element using the hook is added.
+
+Because the definition arrives asynchronously, a lazy hook's life begins once
+loading completes: `mounted` is invoked with the element's DOM state at that
+point, and server updates applied while the hook was still loading are not
+replayed. Similarly, events pushed with `push_event` before `mounted` had a
+chance to register a `handleEvent` handler are not delivered. Instead of pushing
+initial state from the server, request it from the hook once it is ready:
+
+```javascript
+export default {
+  mounted() {
+    this.pushEvent("chart-ready", {}, ({data}) => this.renderChart(data))
+  }
+}
+```
+
 ### Colocated Hooks / Colocated JavaScript
 
 When writing components that require some more control over the DOM, it often feels inconvenient to
