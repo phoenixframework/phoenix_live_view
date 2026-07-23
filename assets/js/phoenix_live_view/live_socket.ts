@@ -983,7 +983,7 @@ export default class LiveSocket {
 
   /** @internal */
   bindTopLevelEvents({ dead }: { dead?: boolean } = {}) {
-    if (!this.serverCloseRef) {
+    if (this.serverCloseRef === null) {
       // enter failsafe reload if server has gone away intentionally, such as "disconnect" broadcast
       this.serverCloseRef = this.socket.onClose((event) => {
         // failsafe reload if normal closure and we still have a main LV
