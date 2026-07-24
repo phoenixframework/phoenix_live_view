@@ -308,16 +308,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         shutdown: @async_shutdown_timeout,
         start:
           {Task, :start_link,
-            [
-              fn ->
-                Process.flag(:trap_exit, true)
+           [
+             fn ->
+               Process.flag(:trap_exit, true)
 
-                receive do
-                  {:EXIT, _from, reason} ->
-                    shutdown_view(pid, reason)
-                end
-              end
-            ]}
+               receive do
+                 {:EXIT, _from, reason} ->
+                   shutdown_view(pid, reason)
+               end
+             end
+           ]}
       })
   end
 
