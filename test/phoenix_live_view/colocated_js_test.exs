@@ -244,4 +244,36 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
 
     assert "foo" in File.ls!(symlink)
   end
+
+  test "reconciles stale node_modules symlink pointing to an outdated location" do
+    node_path = Path.expand("../../assets/node_modules", __DIR__)
+
+    if not File.exists?(node_path) do
+      on_exit(fn -> File.rm_rf!(node_path) end)
+    end
+
+    File.mkdir_p!(Path.join(node_path, "foo"))
+
+    symlink =
+      Path.join(
+        Mix.Project.build_path(),
+        "phoenix-colocated/phoenix_live_view/node_modules"
+      )
+
+    # simulate a symlink left behind by a previous compilation, before the
+    # node_modules location changed (e.g. reconfigured :node_modules_path or
+    # a dependency switching between a path dep and a hex dep)
+    File.mkdir_p!(Path.dirname(symlink))
+    File.rm_rf!(symlink)
+    stale_target = "/nonexistent/stale/node_modules"
+    File.ln_s!(stale_target, symlink)
+    on_exit(fn -> File.rm_rf!(symlink) end)
+
+    Phoenix.LiveView.ColocatedAssets.compile()
+
+    # the compiler should replace the stale link with one pointing to the
+    # currently configured node_modules location
+    refute File.read_link!(symlink) == stale_target
+    assert "foo" in File.ls!(symlink)
+  end
 end

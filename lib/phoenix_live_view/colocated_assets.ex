@@ -155,9 +155,15 @@ defmodule Phoenix.LiveView.ColocatedAssets do
 
   defp do_symlink(node_modules_path, is_fallback) do
     relative_node_modules_path = relative_to_target(node_modules_path)
+    link_path = Path.join(target_dir(), "node_modules")
 
-    with {:error, reason} when reason != :eexist <-
-           File.ln_s(relative_node_modules_path, Path.join(target_dir(), "node_modules")),
+    result =
+      case File.ln_s(relative_node_modules_path, link_path) do
+        {:error, :eexist} -> maybe_replace_stale_symlink(relative_node_modules_path, link_path)
+        other -> other
+      end
+
+    with {:error, reason} when reason != :eexist <- result,
          false <- Keyword.get(global_settings(), :disable_symlink_warning, false) do
       disable_hint = """
       If you don't use colocated hooks / js / css or you don't need to import files from "assets/node_modules"
@@ -175,6 +181,24 @@ defmodule Phoenix.LiveView.ColocatedAssets do
       On Windows, you can address this issue by starting your Windows terminal at least once
       with "Run as Administrator" and then running your Phoenix application.#{is_fallback && "\n\n" <> disable_hint}
       """)
+    end
+  end
+
+  # An existing link is only replaced when it is a symlink pointing somewhere
+  # else, for example after the node_modules location was reconfigured or a
+  # dependency moved. Anything else (like a real directory) is left untouched.
+  defp maybe_replace_stale_symlink(relative_node_modules_path, link_path) do
+    case File.read_link(link_path) do
+      {:ok, ^relative_node_modules_path} ->
+        :ok
+
+      {:ok, _stale_target} ->
+        with :ok <- File.rm(link_path) do
+          File.ln_s(relative_node_modules_path, link_path)
+        end
+
+      {:error, _} ->
+        {:error, :eexist}
     end
   end
 
