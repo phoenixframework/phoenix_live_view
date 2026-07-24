@@ -402,8 +402,8 @@ defmodule Phoenix.LiveView.Static do
   @doc """
   Signs a LiveView token.
   """
-  def sign_token(endpoint, data) do
-    Phoenix.Token.sign(endpoint, Utils.salt!(endpoint), {@token_vsn, data})
+  def sign_token(endpoint, data, opts \\ []) do
+    Phoenix.Token.sign(endpoint, Utils.salt!(endpoint), {@token_vsn, data}, opts)
   end
 
   defp container(%{container: {tag, attrs}}, opts) do
