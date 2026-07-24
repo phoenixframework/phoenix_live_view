@@ -66,6 +66,34 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive do
      end)}
   end
 
+  def mount(%{"test" => "await_shutdown"}, _session, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:result_task, fn ->
+       Process.sleep(1_000)
+       Agent.update(:start_async_test_observer, fn _completed? -> true end)
+       :finished
+     end)}
+  end
+
+  def mount(%{"test" => "await_navigate"}, _session, socket) do
+    socket = assign(socket, result: :loading)
+
+    if connected?(socket) do
+      {:ok,
+       socket
+       |> start_async(:result_task, fn ->
+         Process.sleep(1_000)
+         send(:start_async_test_process, :async_finished)
+         :finished
+       end)
+       |> push_navigate(to: "/start_async?test=ok")}
+    else
+      {:ok, socket}
+    end
+  end
+
   def mount(%{"test" => "trap_exit"}, _session, socket) do
     Process.flag(:trap_exit, true)
 

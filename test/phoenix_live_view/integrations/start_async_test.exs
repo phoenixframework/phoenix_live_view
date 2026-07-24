@@ -96,6 +96,29 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       assert_redirect(lv, "/start_async?test=ok")
     end
 
+    test "navigation awaits async tasks", %{conn: conn} do
+      Process.register(self(), :start_async_test_process)
+
+      assert {:error, {:live_redirect, %{kind: :push, to: "/start_async?test=ok"}}} =
+               live(conn, "/start_async?test=await_navigate")
+
+      assert_receive :async_finished, 1_500
+    end
+
+    test "test supervisor shutdown awaits async tasks", %{conn: conn} do
+      {:ok, observer} = Agent.start(fn -> false end, name: :start_async_test_observer)
+
+      on_exit(fn ->
+        try do
+          assert Agent.get(observer, & &1)
+        after
+          Agent.stop(observer)
+        end
+      end)
+
+      assert {:ok, _lv, _html} = live(conn, "/start_async?test=await_shutdown")
+    end
+
     test "patch", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/start_async?test=patch")
 
