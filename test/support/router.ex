@@ -48,6 +48,9 @@ defmodule Phoenix.LiveViewTest.Support.Router do
     live "/start_async", StartAsyncLive
     live "/stream_async", StreamAsyncLive
 
+    live "/async_sandbox_race", AsyncSandboxRaceLive
+    live "/async_sandbox_race/done", AsyncSandboxRaceDoneLive
+
     live "/expensive-runtime-checks", ExpensiveRuntimeChecksLive
 
     live "/duplicate-id", DuplicateIdLive

@@ -63,7 +63,9 @@ defmodule Phoenix.LiveView.MixProject do
       {:phoenix_live_reload, "~> 1.4", only: :test},
       {:phoenix_html_helpers, "~> 1.0", only: :test},
       {:bandit, "~> 1.5", only: :e2e},
-      {:ecto, "~> 3.11", only: [:docs, :e2e]},
+      {:ecto, "~> 3.11", only: [:docs, :e2e, :test]},
+      {:ecto_sql, "~> 3.11", only: [:e2e, :test]},
+      {:ecto_sqlite3, "~> 0.17", only: [:e2e, :test]},
       {:phoenix_ecto, "~> 4.5", only: :e2e}
     ]
   end
