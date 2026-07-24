@@ -3,6 +3,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   use GenServer
 
   @data_phx_upload_ref "data-phx-upload-ref"
+  @async_shutdown_timeout 5_000
   @events :e
   @title :t
   @reply :r
@@ -222,6 +223,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       {:ok, pid} ->
         mon_ref = Process.monitor(pid)
 
+        # This helper is started after the channel so that the test supervisor
+        # shuts it down first. It lets the LiveView gracefully shut down async
+        # tasks without requiring the LV to trap exists itself.
+        start_async_shutdown_helper(pid, state)
+
         receive do
           {^ref, {:ok, %{rendered: rendered} = resp}} ->
             Process.demonitor(mon_ref, [:flush])
@@ -256,7 +262,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       serializer: __MODULE__,
       channel: view.module,
       endpoint: view.endpoint,
-      private: %{connect_info: Map.put_new(view.connect_info, :session, state.session)},
+      private: %{
+        connect_info: Map.put_new(view.connect_info, :session, state.session),
+        await_asyncs_on_graceful_shutdown: true
+      },
       topic: view.topic,
       join_ref: state.join_ref
     }
@@ -287,6 +296,30 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp put_non_nil(%{} = map, _key, nil), do: map
   defp put_non_nil(%{} = map, key, val), do: Map.put(map, key, val)
+
+  defp start_async_shutdown_helper(pid, state) do
+    # We need to use a separate process because we need to trap exits
+    # and we don't want to change the LiveView channel itself to trap exits,
+    # which changes user visible behavior.
+    {:ok, _helper} =
+      Supervisor.start_child(state.test_supervisor, %{
+        id: {__MODULE__, :async_shutdown, pid},
+        restart: :temporary,
+        shutdown: @async_shutdown_timeout,
+        start:
+          {Task, :start_link,
+           [
+             fn ->
+               Process.flag(:trap_exit, true)
+
+               receive do
+                 {:EXIT, _from, reason} ->
+                   shutdown_view(pid, reason)
+               end
+             end
+           ]}
+      })
+  end
 
   def handle_info({:sync_children, topic, from}, state) do
     view = fetch_view_by_topic!(state, topic)
@@ -707,6 +740,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def handle_call({:get_lazy, id}, _from, state) do
     {state, root} = root(state, id)
     {:reply, {:ok, root}, state}
+  end
+
+  defp shutdown_view(pid, reason) do
+    try do
+      Phoenix.LiveView.Channel.graceful_exit(pid, reason)
+    catch
+      # The channel may already be stopping because its transport exited.
+      :exit, _reason -> :ok
+    end
   end
 
   defp ping!(pid, state, fun) do

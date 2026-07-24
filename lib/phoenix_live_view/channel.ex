@@ -19,6 +19,7 @@ defmodule Phoenix.LiveView.Channel do
   alias Phoenix.Socket.{Broadcast, Message}
 
   @prefix :phoenix
+  @async_shutdown_timeout 5_000
   @not_mounted_at_router :not_mounted_at_router
   @max_host_size 253
 
@@ -48,6 +49,10 @@ defmodule Phoenix.LiveView.Channel do
 
   def async_pids(lv_pid) do
     GenServer.call(lv_pid, {@prefix, :async_pids})
+  end
+
+  def graceful_exit(lv_pid, reason) do
+    GenServer.stop(lv_pid, reason, :infinity)
   end
 
   def ping(pid) do
@@ -476,8 +481,12 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   @impl true
-  def terminate(reason, %{socket: socket}) do
+  def terminate(reason, %{socket: socket} = state) do
     %{view: view} = socket
+
+    if state.await_asyncs_on_graceful_shutdown and graceful_shutdown?(reason) do
+      await_asyncs(state)
+    end
 
     if exported?(view, :terminate, 2) do
       view.terminate(reason, socket)
@@ -488,6 +497,30 @@ defmodule Phoenix.LiveView.Channel do
 
   def terminate(_reason, _state) do
     :ok
+  end
+
+  defp graceful_shutdown?(:shutdown), do: true
+  defp graceful_shutdown?({:shutdown, _reason}), do: true
+  defp graceful_shutdown?(_reason), do: false
+
+  defp await_asyncs(state) do
+    deadline = System.monotonic_time(:millisecond) + @async_shutdown_timeout
+
+    state
+    |> all_asyncs()
+    |> Map.keys()
+    |> Enum.map(&Process.monitor/1)
+    |> Enum.each(fn ref ->
+      timeout = max(deadline - System.monotonic_time(:millisecond), 0)
+
+      receive do
+        {:DOWN, ^ref, :process, _pid, _reason} ->
+          :ok
+      after
+        timeout ->
+          :ok
+      end
+    end)
   end
 
   @impl true
@@ -1456,7 +1489,8 @@ defmodule Phoenix.LiveView.Channel do
       fingerprints: Diff.new_fingerprints(),
       redirect_count: 0,
       upload_names: %{},
-      upload_pids: %{}
+      upload_pids: %{},
+      await_asyncs_on_graceful_shutdown: phx_socket.private[:await_asyncs_on_graceful_shutdown]
     }
   end
 
