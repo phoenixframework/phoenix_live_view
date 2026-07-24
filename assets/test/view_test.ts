@@ -22,6 +22,7 @@ import {
   liveViewDOM,
   simulateVisibility,
   appendTitle,
+  captureDiagnostics,
 } from "./test_helpers";
 
 const simulateUsedInput = (input) => {
@@ -1288,6 +1289,34 @@ describe("View", function () {
 
     expect(payloads).toEqual([{ from: "mount" }]);
     expect(redirectSpy).toHaveBeenCalledWith({ to: "/redirected" });
+  });
+
+  test("onJoinError reports join timeouts separately", () => {
+    liveSocket = new LiveSocket("/live", Socket);
+    const el = liveViewDOM();
+    const view = new View(el, liveSocket, null, null, null);
+    stubChannel(view);
+    const error = new Error("timeout");
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const { diagnostics, stop } = captureDiagnostics();
+
+    try {
+      view.onJoinError(error);
+    } finally {
+      stop();
+      consoleError.mockRestore();
+    }
+
+    expect(diagnostics).toContainEqual({
+      version: 1,
+      level: "error",
+      code: "view.network.join-timeout",
+      message: "join timed out",
+      viewId: view.id,
+      metadata: { error },
+    });
   });
 
   test("sends _track_static and _mounts on params", () => {

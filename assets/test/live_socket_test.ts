@@ -70,7 +70,7 @@ describe("LiveSocket", () => {
         "update",
         () => ["received diff", JSON.stringify("<div>")],
         {
-          code: "view.diff.update",
+          code: "view.diff-update",
           metadata: () => ({ diff: "<div>" }),
         },
       );
@@ -87,7 +87,7 @@ describe("LiveSocket", () => {
       {
         version: 1,
         level: "debug",
-        code: "view.diff.update",
+        code: "view.diff-update",
         message: "received diff",
         viewId: view.id,
         metadata: { diff: "<div>" },
@@ -142,7 +142,7 @@ describe("LiveSocket", () => {
 
     try {
       liveSocket.log(view, "update", () => ["message", { value: 1 }], {
-        code: "view.diff.update",
+        code: "view.diff-update",
         metadata,
       });
     } finally {
@@ -201,7 +201,7 @@ describe("LiveSocket", () => {
 
     try {
       liveSocket.log(view, "update", msgCallback, {
-        code: "view.diff.update",
+        code: "view.diff-update",
       });
     } finally {
       window.removeEventListener(PHX_LV_DIAGNOSTIC_EVENT, listener);
@@ -225,7 +225,7 @@ describe("LiveSocket", () => {
 
     try {
       liveSocket.log(view, "update", () => ["received diff", metadata], {
-        code: "view.diff.update",
+        code: "view.diff-update",
         metadata: () => metadata,
       });
 
@@ -237,7 +237,7 @@ describe("LiveSocket", () => {
         {
           version: 1,
           level: "debug",
-          code: "view.diff.update",
+          code: "view.diff-update",
           message: "received diff",
           viewId: "view-id",
           metadata,

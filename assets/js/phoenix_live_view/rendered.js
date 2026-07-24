@@ -575,7 +575,7 @@ export default class Rendered {
       return { buffer: html, streams: streams };
     } else {
       logError(
-        "render.missing-component",
+        "render.internal.missing-component",
         `no component for CID ${cid}`,
         {
           cid,
