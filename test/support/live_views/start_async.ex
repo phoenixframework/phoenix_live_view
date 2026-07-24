@@ -67,12 +67,15 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive do
   end
 
   def mount(%{"test" => "await_shutdown"}, _session, socket) do
+    test_pid = Process.whereis(:start_async_test_process)
+
     {:ok,
      socket
      |> assign(result: :loading)
      |> start_async(:result_task, fn ->
-       Process.sleep(1_000)
-       Agent.update(:start_async_test_observer, fn _completed? -> true end)
+       ref = Process.monitor(test_pid)
+       receive do: ({:DOWN, ^ref, :process, ^test_pid, _reason} -> :ok)
+       Agent.update(:start_async_test_observer, &Map.put(&1, :async_finished?, true))
        :finished
      end)}
   end
@@ -81,10 +84,13 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive do
     socket = assign(socket, result: :loading)
 
     if connected?(socket) do
+      transport_pid = socket.transport_pid
+
       {:ok,
        socket
        |> start_async(:result_task, fn ->
-         Process.sleep(1_000)
+         ref = Process.monitor(transport_pid)
+         receive do: ({:DOWN, ^ref, :process, ^transport_pid, _reason} -> :ok)
          send(:start_async_test_process, :async_finished)
          :finished
        end)
