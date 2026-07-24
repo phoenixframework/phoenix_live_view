@@ -476,6 +476,19 @@ export default class DOMPatch {
             fromEl.type !== "hidden" &&
             !focusedSelectChanged
           ) {
+            // Form-Associated Custom Elements (FACEs) keep their value in
+            // ElementInternals, not in DOM children. Their light-DOM
+            // children and slotted elements must be patched by morphdom
+            // even while the host has focus. Returning the element instead
+            // of false tells morphdom to descend into children normally.
+            if (DOM.isFormAssociatedCustomElement(fromEl)) {
+              this.trackBeforeUpdated(fromEl, toEl);
+              DOM.mergeAttrs(fromEl, toEl);
+              DOM.syncAttrsToProps(fromEl);
+              updates.push(fromEl);
+              DOM.applyStickyOperations(fromEl);
+              return fromEl;
+            }
             this.trackBeforeUpdated(fromEl, toEl);
             DOM.mergeFocusedInput(fromEl, toEl);
             DOM.syncAttrsToProps(fromEl);
