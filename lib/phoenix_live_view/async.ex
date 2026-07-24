@@ -1,7 +1,15 @@
 defmodule Phoenix.LiveView.Async do
   @moduledoc false
 
+  @test_supervisor_key :"$phoenix_live_view_test_async_supervisor"
+
   alias Phoenix.LiveView.{AsyncResult, Socket, Channel}
+
+  def put_test_supervisor(pid) when is_pid(pid) do
+    Process.put(@test_supervisor_key, pid)
+  end
+
+  def put_test_supervisor(_pid), do: :ok
 
   defp warn_socket_access(op, warn) do
     warn.("""
@@ -260,15 +268,30 @@ defmodule Phoenix.LiveView.Async do
     if Phoenix.LiveView.connected?(socket) do
       lv_pid = self()
       cid = cid(socket)
+      test_supervisor = Process.get(@test_supervisor_key)
 
       {:ok, pid} =
-        if supervisor = Keyword.get(opts, :supervisor) do
-          Task.Supervisor.start_child(supervisor, fn ->
-            Process.link(lv_pid)
-            do_async(lv_pid, cid, key, func, kind)
-          end)
-        else
-          Task.start_link(fn -> do_async(lv_pid, cid, key, func, kind) end)
+        case {Keyword.get(opts, :supervisor), test_supervisor} do
+          {nil, nil} ->
+            Task.start_link(fn -> do_async(cid, key, func, kind, lv_pid) end)
+
+          {supervisor, nil} ->
+            Task.Supervisor.start_child(supervisor, fn ->
+              Process.link(lv_pid)
+              do_async(cid, key, func, kind, lv_pid)
+            end)
+
+          {nil, test_supervisor} ->
+            Task.start(fn ->
+              Process.link(test_supervisor)
+              do_async(cid, key, func, kind, test_supervisor)
+            end)
+
+          {supervisor, test_supervisor} ->
+            Task.Supervisor.start_child(supervisor, fn ->
+              Process.link(test_supervisor)
+              do_async(cid, key, func, kind, test_supervisor)
+            end)
         end
 
       ref =
@@ -282,7 +305,7 @@ defmodule Phoenix.LiveView.Async do
     end
   end
 
-  defp do_async(lv_pid, cid, key, func, async_kind) do
+  defp do_async(cid, key, func, async_kind, link_pid) do
     receive do
       {:context, ref} ->
         try do
@@ -294,7 +317,7 @@ defmodule Phoenix.LiveView.Async do
             Channel.report_async_result(ref, async_kind, ref, cid, key, caught_result)
             :erlang.raise(catch_kind, reason, __STACKTRACE__)
         after
-          Process.unlink(lv_pid)
+          Process.unlink(link_pid)
         end
     end
   end
