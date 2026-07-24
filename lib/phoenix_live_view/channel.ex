@@ -484,7 +484,7 @@ defmodule Phoenix.LiveView.Channel do
   def terminate(reason, %{socket: socket} = state) do
     %{view: view} = socket
 
-    if state.live_view_test_await_asyncs and graceful_shutdown?(reason) do
+    if state.await_asyncs_on_graceful_shutdown and graceful_shutdown?(reason) do
       await_asyncs(state)
     end
 
@@ -1490,7 +1490,7 @@ defmodule Phoenix.LiveView.Channel do
       redirect_count: 0,
       upload_names: %{},
       upload_pids: %{},
-      live_view_test_await_asyncs: phx_socket.private[:live_view_test_await_asyncs]
+      await_asyncs_on_graceful_shutdown: phx_socket.private[:await_asyncs_on_graceful_shutdown]
     }
   end
 

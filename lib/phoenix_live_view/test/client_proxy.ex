@@ -264,7 +264,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       endpoint: view.endpoint,
       private: %{
         connect_info: Map.put_new(view.connect_info, :session, state.session),
-        live_view_test_await_asyncs: true
+        await_asyncs_on_graceful_shutdown: true
       },
       topic: view.topic,
       join_ref: state.join_ref
@@ -298,6 +298,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp put_non_nil(%{} = map, key, val), do: Map.put(map, key, val)
 
   defp start_async_shutdown_helper(pid, state) do
+    # We need to use a separate process because we need to trap exits
+    # and we don't want to change the LiveView channel itself to trap exits,
+    # which changes user visible behavior.
     {:ok, _helper} =
       Supervisor.start_child(state.test_supervisor, %{
         id: {__MODULE__, :async_shutdown, pid},
@@ -740,20 +743,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp shutdown_view(pid, reason) do
-    ref = Process.monitor(pid)
-
     try do
       Phoenix.LiveView.Channel.graceful_exit(pid, reason)
     catch
       # The channel may already be stopping because its transport exited.
-      # Its DOWN still synchronizes us with terminate/2 and therefore with any
-      # async work that terminate/2 is awaiting.
       :exit, _reason -> :ok
-    after
-      receive do
-        {:DOWN, ^ref, :process, ^pid, _reason} ->
-          :ok
-      end
     end
   end
 
