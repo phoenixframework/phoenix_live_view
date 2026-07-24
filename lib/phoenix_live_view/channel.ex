@@ -1490,7 +1490,8 @@ defmodule Phoenix.LiveView.Channel do
       redirect_count: 0,
       upload_names: %{},
       upload_pids: %{},
-      await_asyncs_on_graceful_shutdown: phx_socket.private[:await_asyncs_on_graceful_shutdown]
+      await_asyncs_on_graceful_shutdown:
+        phx_socket.private[:await_asyncs_on_graceful_shutdown] == true
     }
   end
 
