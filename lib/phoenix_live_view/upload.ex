@@ -382,12 +382,8 @@ defmodule Phoenix.LiveView.Upload do
        ) do
     reply_entries =
       for entry <- entries, entry.valid?, into: %{} do
-        # We encrypt the upload token because it contains the pid,
-        # which when serialized includes the node's address.
-        # Since uploads are not on a hot-path, always encrypting
-        # here is acceptable.
         token =
-          Phoenix.LiveView.Static.encrypt_token(socket.endpoint, %{
+          Phoenix.LiveView.Static.sign_token(socket.endpoint, %{
             pid: self(),
             ref: {conf.ref, entry.ref},
             cid: cid

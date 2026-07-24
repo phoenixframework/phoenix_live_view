@@ -56,7 +56,7 @@ defmodule Phoenix.LiveView.UploadChannel do
   def join(_topic, auth_payload, socket) do
     %{"token" => token} = auth_payload
 
-    with {:ok, %{pid: pid, ref: ref, cid: cid}} <- Static.decrypt_token(socket.endpoint, token),
+    with {:ok, %{pid: pid, ref: ref, cid: cid}} <- Static.verify_token(socket.endpoint, token),
          {:ok, config} <- Channel.register_upload(pid, ref, cid),
          %{max_file_size: max_file_size, chunk_timeout: chunk_timeout} = config,
          {writer, writer_opts} <- config.writer,
