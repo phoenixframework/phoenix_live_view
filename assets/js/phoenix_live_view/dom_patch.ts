@@ -193,6 +193,7 @@ export default class DOMPatch {
         // another case is the recursive patch of a stream item that was kept on reset (-> onBeforeNodeAdded)
         childrenOnly:
           targetContainer.getAttribute(PHX_COMPONENT) === null && !withChildren,
+        keyedRoot: targetContainer.getAttribute(PHX_COMPONENT) != null,
         getNodeKey: (node) => {
           if (!(node instanceof Element)) return null;
           if (DOM.isPhxDestroyed(node)) {
@@ -362,17 +363,6 @@ export default class DOMPatch {
           this.maybeReOrderStream(el, false);
         },
         onBeforeElUpdated: (fromEl, toEl) => {
-          // if we are patching the root target container and the id has changed, treat it as a new node
-          // by replacing the fromEl with the toEl, which ensures hooks are torn down and re-created
-          if (
-            fromEl.id &&
-            fromEl.isSameNode(targetContainer) &&
-            fromEl.id !== toEl.id
-          ) {
-            morphCallbacks.onNodeDiscarded!(fromEl);
-            fromEl.replaceWith(toEl);
-            return morphCallbacks.onNodeAdded!(toEl);
-          }
           DOM.syncPendingAttrs(fromEl, toEl);
           DOM.maintainPrivateHooks(
             fromEl,
