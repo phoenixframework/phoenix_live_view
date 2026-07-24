@@ -23,7 +23,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             uri: nil,
             connect_params: %{},
             connect_info: %{},
-            on_error: nil
+            on_error: nil,
+            link_asyncs_to_test: false
 
   alias Plug.Conn.Query
   alias Phoenix.LiveViewTest.{ClientProxy, DOM, Diff, Element, TreeDOM, Upload, View}
@@ -86,6 +87,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       url: url,
       test_supervisor: test_supervisor,
       on_error: on_error,
+      link_asyncs_to_test: link_asyncs_to_test,
       start_location: start_location
     } = opts
 
@@ -130,7 +132,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       topic: "lv:#{id}",
       # we store on_error in the view ClientProxy struct as well
       # to pass it when live_redirecting
-      on_error: on_error
+      on_error: on_error,
+      link_asyncs_to_test: link_asyncs_to_test
     }
 
     # We build an absolute path to any relative
@@ -168,6 +171,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       url: url,
       page_title: :unset,
       on_error: on_error,
+      link_asyncs_to_test: link_asyncs_to_test,
       start_location: start_location
     }
 
@@ -251,12 +255,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp start_supervised_channel(state, view, ref, url, redirect_url) do
+    private =
+      %{connect_info: Map.put_new(view.connect_info, :session, state.session)}
+      |> maybe_put_async_test_supervisor(state)
+
     socket = %Phoenix.Socket{
       transport_pid: self(),
       serializer: __MODULE__,
       channel: view.module,
       endpoint: view.endpoint,
-      private: %{connect_info: Map.put_new(view.connect_info, :session, state.session)},
+      private: private,
       topic: view.topic,
       join_ref: state.join_ref
     }
@@ -284,6 +292,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       {:ok, pid}
     end
   end
+
+  defp maybe_put_async_test_supervisor(private, %{
+         link_asyncs_to_test: true,
+         test_supervisor: test_supervisor
+       }) do
+    Map.put(private, :live_view_test_async_supervisor, test_supervisor)
+  end
+
+  defp maybe_put_async_test_supervisor(private, _state), do: private
 
   defp put_non_nil(%{} = map, _key, nil), do: map
   defp put_non_nil(%{} = map, key, val), do: Map.put(map, key, val)

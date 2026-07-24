@@ -250,6 +250,10 @@ defmodule Phoenix.LiveViewTest do
     * `:on_error` - Can be either `:raise` or `:warn` to control whether
        detected errors like duplicate IDs or live components fail the test or just log
        a warning. Defaults to `:raise`.
+    * `:link_asyncs_to_test` - When `true`, async operations are linked to the test
+      lifecycle instead of the LiveView. This allows async operations to finish when
+      their LiveView exits. Defaults to the `:phoenix_live_view`,
+      `:link_asyncs_to_test` application configuration, or `false` when not configured.
 
   ## Examples
 
@@ -289,6 +293,10 @@ defmodule Phoenix.LiveViewTest do
     * `:on_error` - Can be either `:raise` or `:warn` to control whether
        detected errors like duplicate IDs or live components fail the test or just log
        a warning. Defaults to `:raise`.
+    * `:link_asyncs_to_test` - When `true`, async operations are linked to the test
+      lifecycle instead of the LiveView. This allows async operations to finish when
+      their LiveView exits. Defaults to the `:phoenix_live_view`,
+      `:link_asyncs_to_test` application configuration, or `false` when not configured.
 
   All other options are forwarded to the LiveView for rendering. Refer to
   `Phoenix.Component.live_render/3` for a list of supported render
@@ -404,6 +412,7 @@ defmodule Phoenix.LiveViewTest do
       session: maybe_get_session(conn),
       url: Plug.Conn.request_url(conn),
       on_error: opts[:on_error],
+      link_asyncs_to_test: link_asyncs_to_test(opts),
       start_location: start_location
     })
   end
@@ -439,6 +448,7 @@ defmodule Phoenix.LiveViewTest do
 
   defp start_proxy(path, %{} = opts) do
     ref = make_ref()
+    test_supervisor = fetch_test_supervisor!()
 
     opts =
       Map.merge(opts, %{
@@ -450,7 +460,7 @@ defmodule Phoenix.LiveViewTest do
         endpoint: opts.endpoint,
         session: opts.session,
         url: opts.url,
-        test_supervisor: fetch_test_supervisor!(),
+        test_supervisor: test_supervisor,
         on_error: opts.on_error
       })
 
@@ -474,6 +484,21 @@ defmodule Phoenix.LiveViewTest do
     case ExUnit.fetch_test_supervisor() do
       {:ok, sup} -> sup
       :error -> raise ArgumentError, "LiveView helpers can only be invoked from the test process"
+    end
+  end
+
+  defp link_asyncs_to_test(opts) do
+    configured =
+      case Keyword.fetch(opts, :link_asyncs_to_test) do
+        {:ok, value} -> value
+        :error -> Application.get_env(:phoenix_live_view, :link_asyncs_to_test, false)
+      end
+
+    if is_boolean(configured) do
+      configured
+    else
+      raise ArgumentError,
+            "expected :link_asyncs_to_test to be a boolean, got: #{inspect(configured)}"
     end
   end
 
@@ -1046,8 +1071,9 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Awaits all current `assign_async`, `stream_async` and `start_async` tasks
-  for a given LiveView or element.
+  Awaits `assign_async`, `stream_async` and `start_async` tasks for a given
+  LiveView or element until no tracked async tasks remain. This includes tasks
+  started by an async callback while waiting.
 
   It renders the LiveView or Element once complete and returns the result.
   The default `timeout` is [ExUnit](https://ex-unit.hexdocs.pm/ExUnit.html#configure/1)'s
@@ -1063,36 +1089,51 @@ defmodule Phoenix.LiveViewTest do
         view_or_element,
         timeout \\ Application.fetch_env!(:ex_unit, :assert_receive_timeout)
       ) do
-    pids =
-      case view_or_element do
-        %View{} = view -> call(view, {:async_pids, {proxy_topic(view), nil, nil}})
-        %Element{} = element -> call(element, {:async_pids, element})
-      end
-
-    timeout_ref = make_ref()
-    Process.send_after(self(), {timeout_ref, :timeout}, timeout)
-
-    pids
-    |> Enum.map(&Process.monitor(&1))
-    |> Enum.each(fn ref ->
-      receive do
-        {^timeout_ref, :timeout} ->
-          raise RuntimeError, "expected async processes to finish within #{timeout}ms"
-
-        {:DOWN, ^ref, :process, _pid, _reason} ->
-          :ok
-      end
-    end)
-
-    if !Process.cancel_timer(timeout_ref) do
-      receive do
-        {^timeout_ref, :timeout} -> :noop
-      after
-        0 -> :noop
-      end
-    end
-
+    deadline = System.monotonic_time(:millisecond) + timeout
+    drain_async(view_or_element, deadline, timeout, false)
     render(view_or_element)
+  end
+
+  defp drain_async(view_or_element, deadline, timeout, empty_once?) do
+    case async_pids(view_or_element) do
+      [] when empty_once? ->
+        :ok
+
+      [] ->
+        # try again in case a handle_async starts a new
+        # async tasks by sending a message to self
+        drain_async(view_or_element, deadline, timeout, true)
+
+      pids ->
+        pids
+        |> Enum.map(&Process.monitor/1)
+        |> await_async_refs(deadline, timeout)
+
+        drain_async(view_or_element, deadline, timeout, false)
+    end
+  end
+
+  defp async_pids(%View{} = view) do
+    call(view, {:async_pids, {proxy_topic(view), nil, nil}})
+  end
+
+  defp async_pids(%Element{} = element) do
+    call(element, {:async_pids, element})
+  end
+
+  defp await_async_refs([], _deadline, _timeout), do: :ok
+
+  defp await_async_refs([ref | refs], deadline, timeout) do
+    remaining = max(deadline - System.monotonic_time(:millisecond), 0)
+
+    receive do
+      {:DOWN, ^ref, :process, _pid, _reason} ->
+        await_async_refs(refs, deadline, timeout)
+    after
+      remaining ->
+        Enum.each([ref | refs], &Process.demonitor(&1, [:flush]))
+        raise RuntimeError, "expected async processes to finish within #{timeout}ms"
+    end
   end
 
   @doc """
@@ -1973,6 +2014,7 @@ defmodule Phoenix.LiveViewTest do
       session: session,
       url: url,
       on_error: root.on_error,
+      link_asyncs_to_test: root.link_asyncs_to_test,
       start_location: start_location
     })
   end

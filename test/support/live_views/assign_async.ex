@@ -76,6 +76,16 @@ defmodule Phoenix.LiveViewTest.Support.AssignAsyncLive do
      end)}
   end
 
+  def mount(%{"test" => "sup_lv_exit"}, _session, socket) do
+    {:ok,
+     assign_async(
+       socket,
+       :data,
+       fn -> register_and_sleep(:assign_async_test_process, :lv_exit) end,
+       supervisor: TestAsyncSupervisor
+     )}
+  end
+
   def mount(%{"test" => "cancel"}, _session, socket) do
     {:ok,
      assign_async(socket, :data, fn ->

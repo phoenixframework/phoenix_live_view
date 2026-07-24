@@ -86,6 +86,19 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive do
      |> start_async({:result_task, :foo}, fn -> :complex_key end)}
   end
 
+  def mount(%{"test" => "chain"}, _session, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:chain_first, fn ->
+       send(:start_async_chain_test, {:async_started, :first, self()})
+
+       receive do
+         :finish -> :first
+       end
+     end)}
+  end
+
   def mount(%{"test" => "navigate"}, _session, socket) do
     {:ok,
      socket
@@ -148,6 +161,23 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive do
     {:noreply, assign(socket, result: result)}
   end
 
+  def handle_async(:chain_first, {:ok, result}, socket) do
+    {:noreply,
+     socket
+     |> assign(result: result)
+     |> start_async(:chain_second, fn ->
+       send(:start_async_chain_test, {:async_started, :second, self()})
+
+       receive do
+         :finish -> :second
+       end
+     end)}
+  end
+
+  def handle_async(:chain_second, {:ok, result}, socket) do
+    {:noreply, assign(socket, result: result)}
+  end
+
   def handle_async(:navigate, {:ok, _result}, socket) do
     {:noreply, push_navigate(socket, to: "/start_async?test=ok")}
   end
@@ -162,6 +192,10 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive do
 
   def handle_async(:flash, {:ok, flash}, socket) do
     {:noreply, put_flash(socket, :info, flash)}
+  end
+
+  def handle_event("navigate_while_async", _params, socket) do
+    {:noreply, push_navigate(socket, to: "/start_async?test=ok")}
   end
 
   def handle_info(:boom, _socket), do: exit(:boom)

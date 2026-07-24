@@ -20,6 +20,23 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       assert render_async(lv) =~ "result: :good"
     end
 
+    test "render_async drains tasks started by async callbacks", %{conn: conn} do
+      test_pid = self()
+
+      coordinator =
+        spawn(fn ->
+          # Ensures the tasks only finish when render_async
+          # starts monitoring them
+          release_when_monitored(:first, test_pid)
+          release_when_monitored(:second, test_pid)
+        end)
+
+      Process.register(coordinator, :start_async_chain_test)
+      {:ok, lv, _html} = live(conn, "/start_async?test=chain")
+
+      assert render_async(lv, 1_000) =~ "result: :second"
+    end
+
     test "raise during execution", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/start_async?test=raise")
 
@@ -46,6 +63,25 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       assert_receive {:DOWN, ^async_ref, :process, _pid, :boom}, 1000
     end
 
+    test "link_asyncs_to_test keeps asyncs alive across navigation", %{conn: conn} do
+      Process.register(self(), :start_async_test_process)
+
+      {:ok, lv, _html} =
+        live(conn, "/start_async?test=lv_exit", link_asyncs_to_test: true)
+
+      async_ref = wait_for_async_ready_and_monitor(:start_async_exit)
+      async_pid = Process.whereis(:start_async_exit)
+
+      assert {:error, {:live_redirect, %{to: "/start_async?test=ok"}}} =
+               render_click(lv, "navigate_while_async")
+
+      assert Process.alive?(async_pid)
+      refute_receive {:DOWN, ^async_ref, :process, _name, _reason}, 50
+
+      Process.exit(async_pid, :kill)
+      assert_receive {:DOWN, ^async_ref, :process, _name, :killed}
+    end
+
     test "cancel_async", %{conn: conn} do
       Process.register(self(), :start_async_test_process)
       {:ok, lv, _html} = live(conn, "/start_async?test=cancel")
@@ -64,6 +100,20 @@ defmodule Phoenix.LiveView.StartAsyncTest do
 
       assert render(lv) =~ "result: :loading"
       assert render_async(lv, 200) =~ "result: :renewed"
+    end
+
+    test "cancel_async remains isolated from the test lifecycle", %{conn: conn} do
+      Process.register(self(), :start_async_test_process)
+
+      {:ok, lv, _html} =
+        live(conn, "/start_async?test=cancel", link_asyncs_to_test: true)
+
+      async_ref = wait_for_async_ready_and_monitor(:start_async_cancel)
+      send(lv.pid, :cancel)
+
+      assert_receive {:DOWN, ^async_ref, :process, _pid, {:shutdown, :cancel}}, 1_000
+      assert Process.alive?(lv.pid)
+      assert render(lv) =~ "result: {:exit, {:shutdown, :cancel}}"
     end
 
     test "trapping exits", %{conn: conn} do
@@ -148,6 +198,25 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       assert_receive {:DOWN, ^async_ref, :process, _pid, :boom}, 1000
     end
 
+    test "link_asyncs_to_test applies to LiveComponent asyncs", %{conn: conn} do
+      Process.register(self(), :start_async_test_process)
+
+      {:ok, lv, _html} =
+        live(conn, "/start_async?test=lc_lv_exit", link_asyncs_to_test: true)
+
+      lv_ref = Process.monitor(lv.pid)
+      async_ref = wait_for_async_ready_and_monitor(:start_async_exit)
+      async_pid = Process.whereis(:start_async_exit)
+      send(lv.pid, :boom)
+
+      assert_receive {:DOWN, ^lv_ref, :process, _pid, :boom}, 1_000
+      assert Process.alive?(async_pid)
+      refute_receive {:DOWN, ^async_ref, :process, _name, _reason}, 50
+
+      Process.exit(async_pid, :kill)
+      assert_receive {:DOWN, ^async_ref, :process, _name, :killed}
+    end
+
     test "cancel_async", %{conn: conn} do
       Process.register(self(), :start_async_test_process)
       {:ok, lv, _html} = live(conn, "/start_async?test=lc_cancel")
@@ -201,6 +270,29 @@ defmodule Phoenix.LiveView.StartAsyncTest do
 
       flash = assert_redirect(lv, "/start_async?test=ok")
       assert %{"info" => "hello"} = flash
+    end
+  end
+
+  defp release_when_monitored(label, test_pid) do
+    receive do
+      {:async_started, ^label, async_pid} ->
+        wait_until_monitored(async_pid, test_pid)
+        send(async_pid, :finish)
+    end
+  end
+
+  defp wait_until_monitored(async_pid, test_pid) do
+    case Process.info(async_pid, :monitored_by) do
+      {:monitored_by, monitored_by} ->
+        if test_pid in monitored_by do
+          :ok
+        else
+          Process.sleep(10)
+          wait_until_monitored(async_pid, test_pid)
+        end
+
+      nil ->
+        :ok
     end
   end
 end

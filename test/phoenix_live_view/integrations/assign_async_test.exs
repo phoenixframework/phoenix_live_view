@@ -249,5 +249,24 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       assert render_async(lv) =~ "{:exit, :boom}"
       assert render(lv)
     end
+
+    test "link_asyncs_to_test works with an explicit task supervisor", %{conn: conn} do
+      Process.register(self(), :assign_async_test_process)
+
+      {:ok, lv, _html} =
+        live(conn, "/assign_async?test=sup_lv_exit", link_asyncs_to_test: true)
+
+      lv_ref = Process.monitor(lv.pid)
+      async_ref = wait_for_async_ready_and_monitor(:lv_exit)
+      async_pid = Process.whereis(:lv_exit)
+      send(lv.pid, :boom)
+
+      assert_receive {:DOWN, ^lv_ref, :process, _pid, :boom}, 1_000
+      assert Process.alive?(async_pid)
+      refute_receive {:DOWN, ^async_ref, :process, _name, _reason}, 50
+
+      Process.exit(async_pid, :kill)
+      assert_receive {:DOWN, ^async_ref, :process, _name, :killed}
+    end
   end
 end

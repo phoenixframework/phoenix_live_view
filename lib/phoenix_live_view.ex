@@ -2333,6 +2333,25 @@ defmodule Phoenix.LiveView do
   [error] MyXQL.Connection (#PID<0.308.0>) disconnected: ** (DBConnection.ConnectionError) client #PID<0.794.0>
   ```
 
+  If a LiveView may exit while async operations are still running, you can link those
+  operations to the test lifecycle instead. Configure this for all LiveView tests in
+  `config/test.exs`:
+
+  ```elixir
+  config :phoenix_live_view, :link_asyncs_to_test, true
+  ```
+
+  Or enable it for an individual LiveView when testing:
+
+  ```elixir
+  {:ok, view, _html} = live(conn, "/my_live_view", link_asyncs_to_test: true)
+  ```
+
+  This is useful when the async operation uses the shared database sandbox
+  connection. Otherwise, if you do live navigation to a different LiveView
+  and the async process exits while holding the connection, it will be rolled
+  back and become unavailable for the rest of your test.
+
   """
   defmacro assign_async(socket, key_or_keys, func, opts \\ []) do
     Async.assign_async(socket, key_or_keys, func, opts, __CALLER__)
