@@ -1589,7 +1589,7 @@ export default class View {
             lockEl.setAttribute(PHX_REF_LOCK, newRef);
             lockEl.setAttribute(PHX_REF_SRC, this.refSrc());
             lockEl.addEventListener(
-              `phx:lock-stop:${newRef}`,
+              `phx:undo-lock:${newRef}`,
               () => resolve(detail),
               { once: true },
             );
