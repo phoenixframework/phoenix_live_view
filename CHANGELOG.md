@@ -115,6 +115,24 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.8 (2026-07-27)
+
+### Enhancements
+
+* Allow cancelling client-side navigation ([#4332](https://github.com/phoenixframework/phoenix_live_view/pull/4332))
+  You can now listen for the `phx:before-navigate` event and call `event.preventDefault()` to cancel the navigation synchronously.
+  This is mostly useful to prevent a "do you really want to leave" scenario when a user has unsaved changes, combined with a `beforeunload` listener.
+* Sign LiveView upload tokens as `:local` to avoid node names being included in the token
+* Ensure async tasks exit gracefully in LiveView tests ([#4348](https://github.com/phoenixframework/phoenix_live_view/pull/4348))
+* Allow opting focused form elements into DOM patching ([#4339](https://github.com/phoenixframework/phoenix_live_view/pull/4339))
+
+### Bug fixes
+
+* Fix server close handler not being reattached after a manual disconnect + connect ([#4341](https://github.com/phoenixframework/phoenix_live_view/pull/4341))
+* Fix `detail.lock()` promise in `phx:push` event never resolving ([#4351](https://github.com/phoenixframework/phoenix_live_view/issues/4351))
+* Fix live components not being correctly patched when changing their DOM ID ([#4338](https://github.com/phoenixframework/phoenix_live_view/pull/4338))
+* Gracefully handle missing upload refs ([#4354](https://github.com/phoenixframework/phoenix_live_view/pull/4354))
+
 ## v1.2.7 (2026-07-13)
 
 ### Security fixes
