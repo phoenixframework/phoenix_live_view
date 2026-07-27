@@ -75,6 +75,7 @@ export const PHX_HOOK = "hook";
 export const PHX_DEBOUNCE = "debounce";
 export const PHX_THROTTLE = "throttle";
 export const PHX_UPDATE = "update";
+export const PHX_PATCH_FOCUSED = "patch-focused";
 export const PHX_STREAM = "stream";
 export const PHX_STREAM_REF = "data-phx-stream";
 export const PHX_PORTAL = "data-phx-portal";

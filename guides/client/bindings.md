@@ -23,7 +23,7 @@ which is then handled on the server with the `handle_event` callback, for exampl
 | [Focus Events](#focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-window-blur`, `phx-window-focus` |
 | [Key Events](#key-events) | `phx-keydown`, `phx-keyup`, `phx-window-keydown`, `phx-window-keyup`, `phx-key` |
 | [Scroll Events](#scroll-events-and-infinite-pagination) | `phx-viewport-top`, `phx-viewport-bottom` |
-| [DOM Patching](#dom-patching) | `phx-update`, `phx-mounted`, `phx-remove` |
+| [DOM Patching](#dom-patching) | `phx-update`, `phx-patch-focused`, `phx-mounted`, `phx-remove` |
 | [JS Interop](js-interop.md#client-hooks-via-phx-hook) | `phx-hook` |
 | [Lifecycle Events](#lifecycle-events) | `phx-connected`, `phx-disconnected` |
 | [Rate Limiting](#rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
@@ -339,6 +339,22 @@ with another JS library. Updates from the server to the element's content
 and attributes are ignored, *except for data attributes*. Changes, additions,
 and removals from the server to data attributes are merged with the ignored
 element which can be used to pass data to the JS handler.
+
+Focused form controls are not patched by default, so that client-side input
+always wins over potentially stale server updates. The `phx-patch-focused`
+attribute opts a form control into normal DOM patching while it is focused,
+including its attributes and children:
+
+```heex
+<my-form-control phx-patch-focused>
+  ...
+</my-form-control>
+```
+
+This is useful for form-associated custom elements whose editable state is
+kept outside of their light DOM. Because the normal patch can overwrite the
+control's current value or other client-managed state, only use this attribute
+when the server-rendered DOM should win.
 
 To react to elements being mounted to the DOM, the `phx-mounted` binding
 can be used. For example, to animate an element on mount:
