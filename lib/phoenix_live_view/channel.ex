@@ -1511,11 +1511,18 @@ defmodule Phoenix.LiveView.Channel do
     cid = payload["cid"]
 
     Enum.reduce(uploads, socket, fn {ref, entries}, acc ->
-      upload_conf = Upload.get_upload_by_ref!(acc, ref)
+      case Upload.fetch_upload_by_ref(acc, ref) do
+        {:ok, upload_conf} ->
+          case Upload.put_entries(acc, upload_conf, entries, cid) do
+            {:ok, new_socket} -> new_socket
+            {:error, _error_resp, %Socket{} = new_socket} -> new_socket
+          end
 
-      case Upload.put_entries(acc, upload_conf, entries, cid) do
-        {:ok, new_socket} -> new_socket
-        {:error, _error_resp, %Socket{} = new_socket} -> new_socket
+        # The client may include stale refs in case an input keeps
+        # being rendered after disallow_upload, or when an input
+        # event races with it.
+        :error ->
+          acc
       end
     end)
   end

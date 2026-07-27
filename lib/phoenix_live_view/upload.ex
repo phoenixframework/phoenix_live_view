@@ -193,6 +193,24 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
+  Retrieves the `%UploadConfig{}` from the socket for the provided ref.
+
+  Returns `:error` when the socket has no upload allowed for the ref.
+  """
+  def fetch_upload_by_ref(%Socket{} = socket, config_ref) do
+    case socket.assigns[:uploads] do
+      nil ->
+        :error
+
+      uploads ->
+        case Map.fetch(Map.fetch!(uploads, @refs_to_names), config_ref) do
+          {:ok, name} -> {:ok, Map.fetch!(uploads, name)}
+          :error -> :error
+        end
+    end
+  end
+
+  @doc """
   Retrieves the `%UploadConfig{}` from the socket for the provided ref or raises.
   """
   def get_upload_by_ref!(%Socket{} = socket, config_ref) do
