@@ -221,6 +221,27 @@ A lower level `phx:navigate` event is also triggered any time the browser's URL 
   - `"patch"` - the boolean flag indicating this was a patch navigation.
   - `"pop"` - the boolean flag indication this was a navigation via `popstate`
     from a user navigation forward or back in history.
+  - `"direction"` - the direction of the navigation, either `"forward"` or
+    `"backward"`.
 
 For navigation-aware logic, prefer `phx:navigate` over hook callbacks like `updated()`,
 as hooks may fire before `window.location` is updated.
+
+A cancelable `phx:before-navigate` event is also triggered before LiveView
+performs client-side live navigation from `<.link navigate={...}>`,
+`<.link patch={...}>`, or browser forward/back navigation. It receives the same
+detail shape as `phx:navigate`. Calling `event.preventDefault()` prevents the
+client-side navigation synchronously:
+
+```javascript
+window.addEventListener("phx:before-navigate", event => {
+  if (hasUnsavedChanges() && !confirm("Discard changes?")) {
+    event.preventDefault()
+  }
+})
+```
+
+This event only guards navigation initiated in the browser. It is not invoked
+for server-side `push_navigate`, `push_patch`, redirects, regular links, form
+submits, or page unloads. Use the browser's `beforeunload` event for page
+unloads.
