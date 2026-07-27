@@ -75,7 +75,7 @@ jobs:
 
       - name: Compile & lint dependencies
         run: mix compile --warnings-as-errors
-        if: ${{ matrix.lint }} or ${{ matrix.elixir == 'main' }}
+        if: ${{ matrix.lint || matrix.elixir == 'main' }}
         env:
           MIX_ENV: test
 
