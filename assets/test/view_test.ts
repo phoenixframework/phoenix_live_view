@@ -1768,7 +1768,7 @@ describe("View + Component", function () {
   });
 
   test("pushEvent", (done) => {
-    expect.assertions(17);
+    expect.assertions(19);
 
     liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewComponent();
@@ -1799,6 +1799,9 @@ describe("View + Component", function () {
     };
     (view as any).channel = channelStub;
 
+    // resolved by the extra element locked via detail.lock() below
+    let extraLockComplete;
+
     input.addEventListener("phx:push:myevent", (e) => {
       const { ref, lockComplete, loadingComplete } = e["detail"];
       expect(ref).toBe(0);
@@ -1809,7 +1812,12 @@ describe("View + Component", function () {
         lockComplete.then((detail) => {
           expect(detail.event).toBe("myevent");
           expect(detail.ref).toBe(0);
-          done();
+          // the promise returned by detail.lock() must settle as well
+          extraLockComplete.then((detail) => {
+            expect(detail.event).toBe("myevent");
+            expect(detail.ref).toBe(0);
+            done();
+          });
         });
       });
     });
@@ -1817,13 +1825,10 @@ describe("View + Component", function () {
       const { lock, unlock, lockComplete } = e["detail"];
       expect(typeof lock).toBe("function");
       expect(view.el.getAttribute("data-phx-ref-lock")).toBe(null);
-      // lock accepts unlock function to fire, which will done() the test
       lockComplete.then((detail) => {
         expect(detail.event).toBe("myevent");
       });
-      lock(view.el).then((detail) => {
-        expect(detail.event).toBe("myevent");
-      });
+      extraLockComplete = lock(view.el);
       expect(e.target).toBe(input);
       expect(input.getAttribute("data-phx-ref-lock")).toBe("0");
       expect(view.el.getAttribute("data-phx-ref-lock")).toBe("0");
