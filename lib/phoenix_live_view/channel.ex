@@ -1518,8 +1518,9 @@ defmodule Phoenix.LiveView.Channel do
             {:error, _error_resp, %Socket{} = new_socket} -> new_socket
           end
 
-        # The ref is client supplied, so it may name an upload this socket
-        # never allowed. Skipping keeps the rest of the event alive.
+        # The client may include stale refs in case an input keeps
+        # being rendered after disallow_upload, or when an input
+        # event races with it.
         :error ->
           acc
       end
