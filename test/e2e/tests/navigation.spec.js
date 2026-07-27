@@ -121,8 +121,8 @@ test("popstate", async ({ page }) => {
   await expect(page).toHaveURL(/\/navigation\/a\?/);
   expect(networkEvents).toEqual([]);
 
-  await page.getByRole("link", { name: "LiveView B" }).click(),
-    await syncLV(page);
+  await page.getByRole("link", { name: "LiveView B" }).click();
+  await syncLV(page);
   await expect(page).toHaveURL("/navigation/b");
   expect(networkEvents).toEqual([]);
 

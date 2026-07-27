@@ -2242,12 +2242,10 @@ export default class View {
           }
         });
       });
-    } else if (
-      !(
-        formEl.hasAttribute(PHX_REF_SRC) &&
-        formEl.classList.contains("phx-submit-loading")
-      )
-    ) {
+    } else if (!(
+      formEl.hasAttribute(PHX_REF_SRC) &&
+      formEl.classList.contains("phx-submit-loading")
+    )) {
       const meta = this.extractMeta(formEl, {}, opts.value);
       const formData = this.serializeForm(formEl, { submitter });
       this.pushWithReply(refGenerator, "event", {
