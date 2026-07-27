@@ -58,6 +58,7 @@ function createHook(el: HTMLElement, callbacks: Hook): ViewHook {
       "hook.missing-id",
       "Elements passed to createHook need to have a unique id attribute",
       { el },
+      { attribution: "app" },
     );
   }
 

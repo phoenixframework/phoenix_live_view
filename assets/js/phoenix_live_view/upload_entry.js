@@ -155,6 +155,7 @@ export default class UploadEntry {
           input: this.fileEl,
           response: resp,
         },
+        { attribution: "internal" },
       );
     }
   }

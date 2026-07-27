@@ -43,6 +43,7 @@ export function detectDuplicateIds(reportError: LogError = logError) {
         "dom.duplicate-id",
         `Multiple IDs detected: ${id}. Ensure unique element ids.`,
         { id, elements: [existing, elems[i]] },
+        { attribution: "app" },
       );
     } else {
       ids.set(id, elems[i]);
@@ -71,6 +72,7 @@ export function detectInvalidStreamInserts(
       "dom.invalid-stream-container",
       `The stream container with id "${id}" is missing the phx-update="stream" attribute. Ensure it is set for streams to work properly.`,
       { id, container },
+      { attribution: "app" },
     );
   });
 }

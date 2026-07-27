@@ -41,7 +41,12 @@ const DOM = {
   byId(id) {
     return (
       document.getElementById(id) ||
-      logError("dom.element-not-found", `no id found for ${id}`, { id })
+      logError(
+        "dom.element-not-found",
+        `no id found for ${id}`,
+        { id },
+        { attribution: "internal" },
+      )
     );
   },
 
@@ -366,9 +371,10 @@ const DOM = {
         const currentCycle = this.incCycle(el, DEBOUNCE_TRIGGER, trigger);
         if (isNaN(timeout)) {
           return logError(
-            "binding.invalid-debounce",
+            "dom.invalid-debounce",
             `invalid throttle/debounce value: ${value}`,
             { el, value },
+            { attribution: "app" },
           );
         }
         if (throttle) {
@@ -485,6 +491,7 @@ const DOM = {
         ensure you are calling createHook within your connectedCallback. ${el.outerHTML}
       `,
         { el },
+        { attribution: "app" },
       );
     }
     this.putPrivate(el, "custom-el-hook", hook);
@@ -750,6 +757,7 @@ const DOM = {
               "only HTML element tags with an id are allowed inside containers with phx-update.\n\n" +
                 `removing illegal node: "${(("outerHTML" in childNode && (childNode.outerHTML as string)) || childNode.nodeValue || "").trim()}"\n\n`,
               { container, childNode, phxUpdate },
+              { attribution: "app" },
             );
           }
           toRemove.push(childNode);

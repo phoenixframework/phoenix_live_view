@@ -70,7 +70,7 @@ describe("LiveSocket", () => {
         "update",
         () => ["received diff", JSON.stringify("<div>")],
         {
-          code: "view.diff.update",
+          code: "view.diff-update",
           metadata: () => ({ diff: "<div>" }),
         },
       );
@@ -87,10 +87,11 @@ describe("LiveSocket", () => {
       {
         version: 1,
         level: "debug",
-        code: "view.diff.update",
+        code: "view.diff-update",
         message: "received diff",
         viewId: view.id,
         metadata: { diff: "<div>" },
+        attribution: "unknown",
       },
     ]);
   });
@@ -123,6 +124,7 @@ describe("LiveSocket", () => {
           message: "test error",
           viewId: view.id,
           metadata: { reason: "test" },
+          attribution: "unknown",
         },
       ]);
     } finally {
@@ -142,7 +144,7 @@ describe("LiveSocket", () => {
 
     try {
       liveSocket.log(view, "update", () => ["message", { value: 1 }], {
-        code: "view.diff.update",
+        code: "view.diff-update",
         metadata,
       });
     } finally {
@@ -172,6 +174,7 @@ describe("LiveSocket", () => {
         code: "view.join-failed",
         level: "error",
         metadata: () => ({ response: { reason: 1 } }),
+        context: { attribution: "network" },
       });
     } finally {
       window.removeEventListener(PHX_LV_DIAGNOSTIC_EVENT, listener);
@@ -187,6 +190,7 @@ describe("LiveSocket", () => {
         message: "unable to join",
         viewId: "view-id",
         metadata: { response: { reason: 1 } },
+        attribution: "network",
       },
     ]);
   });
@@ -201,7 +205,7 @@ describe("LiveSocket", () => {
 
     try {
       liveSocket.log(view, "update", msgCallback, {
-        code: "view.diff.update",
+        code: "view.diff-update",
       });
     } finally {
       window.removeEventListener(PHX_LV_DIAGNOSTIC_EVENT, listener);
@@ -225,8 +229,9 @@ describe("LiveSocket", () => {
 
     try {
       liveSocket.log(view, "update", () => ["received diff", metadata], {
-        code: "view.diff.update",
+        code: "view.diff-update",
         metadata: () => metadata,
+        context: { attribution: "unknown" },
       });
 
       expect(consoleLog).toHaveBeenCalledWith(
@@ -237,10 +242,11 @@ describe("LiveSocket", () => {
         {
           version: 1,
           level: "debug",
-          code: "view.diff.update",
+          code: "view.diff-update",
           message: "received diff",
           viewId: "view-id",
           metadata,
+          attribution: "unknown",
         },
       ]);
     } finally {

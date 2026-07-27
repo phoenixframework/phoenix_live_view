@@ -98,6 +98,7 @@ describe("utils", () => {
           code: "dom.invalid-stream-container",
           message: `The stream container with id "${containerId}" is missing the phx-update="stream" attribute. Ensure it is set for streams to work properly.`,
           metadata: { id: containerId, container },
+          attribution: "app",
         },
       ]);
     });

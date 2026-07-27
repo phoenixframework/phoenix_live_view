@@ -581,7 +581,7 @@ export default class Rendered {
           cid,
           components,
         },
-        { viewId: this.viewId },
+        { viewId: this.viewId, attribution: "internal" },
       );
       throw new Error(
         "Cannot continue render due to missing component: " + cid,
