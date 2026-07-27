@@ -1944,7 +1944,7 @@ function syncBooleanAttrProp(fromEl, toEl, name) {
     }
   }
 }
-var specialElHandlers = {
+var specialElHandlers_default = {
   OPTION: function(fromEl, toEl) {
     var parentNode = fromEl.parentNode;
     if (parentNode) {
@@ -2029,7 +2029,7 @@ var specialElHandlers = {
   }
 };
 var ELEMENT_NODE = 1;
-var DOCUMENT_FRAGMENT_NODE$1 = 11;
+var DOCUMENT_FRAGMENT_NODE2 = 11;
 var TEXT_NODE = 3;
 var COMMENT_NODE = 8;
 function noop() {
@@ -2060,7 +2060,7 @@ function morphdomFactory(morphAttrs2) {
       } else {
         toNode = toElement(toNode);
       }
-    } else if (toNode.nodeType === DOCUMENT_FRAGMENT_NODE$1) {
+    } else if (toNode.nodeType === DOCUMENT_FRAGMENT_NODE2) {
       toNode = toNode.firstElementChild;
     }
     var getNodeKey = options.getNodeKey || defaultGetNodeKey;
@@ -2110,7 +2110,7 @@ function morphdomFactory(morphAttrs2) {
       walkDiscardedChildNodes(node, skipKeyedNodes);
     }
     function indexTree(node) {
-      if (node.nodeType === ELEMENT_NODE || node.nodeType === DOCUMENT_FRAGMENT_NODE$1) {
+      if (node.nodeType === ELEMENT_NODE || node.nodeType === DOCUMENT_FRAGMENT_NODE2) {
         var curChild = node.firstChild;
         while (curChild) {
           var key = getNodeKey(curChild);
@@ -2181,7 +2181,7 @@ function morphdomFactory(morphAttrs2) {
       if (fromEl.nodeName !== "TEXTAREA") {
         morphChildren(fromEl, toEl);
       } else {
-        specialElHandlers.TEXTAREA(fromEl, toEl);
+        specialElHandlers_default.TEXTAREA(fromEl, toEl);
       }
     }
     function morphChildren(fromEl, toEl) {
@@ -2286,7 +2286,7 @@ function morphdomFactory(morphAttrs2) {
           curFromNodeChild = fromNextSibling;
         }
       cleanupFromEl(fromEl, curFromNodeChild, curFromNodeKey);
-      var specialElHandler = specialElHandlers[fromEl.nodeName];
+      var specialElHandler = specialElHandlers_default[fromEl.nodeName];
       if (specialElHandler) {
         specialElHandler(fromEl, toEl);
       }
@@ -2359,7 +2359,7 @@ function morphdomFactory(morphAttrs2) {
   };
 }
 var morphdom = morphdomFactory(morphAttrs);
-var morphdom_esm_default = morphdom;
+var index_default = morphdom;
 
 // js/phoenix_live_view/dom_patch.ts
 var DOMPatch = class {
@@ -2662,7 +2662,7 @@ var DOMPatch = class {
           }
         }
       };
-      morphdom_esm_default(targetContainer2, source, morphCallbacks);
+      index_default(targetContainer2, source, morphCallbacks);
     };
     this.trackBeforeUpdated(container, container);
     liveSocket.time("morphdom", () => {
@@ -2981,7 +2981,6 @@ var DOMPatch = class {
       script.nonce = nonce;
     }
     el.replaceWith(script);
-    el = script;
   }
 };
 
@@ -3006,8 +3005,8 @@ var VOID_TAGS = /* @__PURE__ */ new Set([
 ]);
 var quoteChars = /* @__PURE__ */ new Set(["'", '"']);
 var modifyRoot = (html, attrs, clearInnerHTML) => {
-  let i = 0;
-  let insideComment = false;
+  let i;
+  let insideComment;
   let beforeTag, afterTag, tag, tagNameEndsAt, id, newHTML;
   const lookahead = html.match(/^(\s*(?:<!--.*?-->\s*)*)<([^\s\/>]+)/);
   if (lookahead === null) {
@@ -6232,7 +6231,7 @@ var View = class _View {
       (form) => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore"
     ).map((form) => {
       const clonedForm = form.cloneNode(true);
-      morphdom_esm_default(clonedForm, form, {
+      index_default(clonedForm, form, {
         onBeforeElUpdated: (fromEl, toEl) => {
           dom_default.copyPrivates(fromEl, toEl);
           if (fromEl.getAttribute("form") === form.id && fromEl.parentNode) {
@@ -6247,7 +6246,7 @@ var View = class _View {
       );
       Array.from(externalElements).forEach((el) => {
         const clonedEl = el.cloneNode(true);
-        morphdom_esm_default(clonedEl, el);
+        index_default(clonedEl, el);
         dom_default.copyPrivates(clonedEl, el);
         clonedEl.removeAttribute("form");
         clonedForm.appendChild(clonedEl);
