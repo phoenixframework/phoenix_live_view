@@ -105,6 +105,7 @@ var PHX_HOOK = "hook";
 var PHX_DEBOUNCE = "debounce";
 var PHX_THROTTLE = "throttle";
 var PHX_UPDATE = "update";
+var PHX_PATCH_FOCUSED = "patch-focused";
 var PHX_STREAM = "stream";
 var PHX_STREAM_REF = "data-phx-stream";
 var PHX_PORTAL = "data-phx-portal";
@@ -2090,6 +2091,7 @@ function morphdomFactory(morphAttrs2) {
       return parent.appendChild(child);
     };
     var childrenOnly = options.childrenOnly === true;
+    var keyedRoot = options.keyedRoot === true;
     var fromNodesLookup = /* @__PURE__ */ Object.create(null);
     var keyedRemovalList = [];
     function addKeyedRemoval(key) {
@@ -2304,6 +2306,31 @@ function morphdomFactory(morphAttrs2) {
         specialElHandler(fromEl, toEl);
       }
     }
+    function cleanupKeyedNodes() {
+      for (var i = 0, len = keyedRemovalList.length; i < len; i++) {
+        var elToRemove = fromNodesLookup[keyedRemovalList[i]];
+        if (elToRemove) {
+          removeNode(elToRemove, elToRemove.parentNode, false);
+        }
+      }
+    }
+    if (keyedRoot && !childrenOnly) {
+      var fromNodeKey = getNodeKey(fromNode);
+      var toNodeKey = getNodeKey(toNode);
+      if ((fromNodeKey || toNodeKey) && fromNodeKey !== toNodeKey) {
+        if (toNode.actualize) {
+          toNode = toNode.actualize(fromNode.ownerDocument || doc);
+        }
+        onNodeDiscarded(fromNode);
+        if (fromNode.parentNode) {
+          fromNode.parentNode.replaceChild(toNode, fromNode);
+        }
+        handleNodeAdded(toNode);
+        walkDiscardedChildNodes(fromNode, false);
+        cleanupKeyedNodes();
+        return toNode;
+      }
+    }
     var morphedNode = fromNode;
     var morphedNodeType = morphedNode.nodeType;
     var toNodeType = toNode.nodeType;
@@ -2335,14 +2362,7 @@ function morphdomFactory(morphAttrs2) {
         return;
       }
       morphEl(morphedNode, toNode, childrenOnly);
-      if (keyedRemovalList) {
-        for (var i = 0, len = keyedRemovalList.length; i < len; i++) {
-          var elToRemove = fromNodesLookup[keyedRemovalList[i]];
-          if (elToRemove) {
-            removeNode(elToRemove, elToRemove.parentNode, false);
-          }
-        }
-      }
+      cleanupKeyedNodes();
     }
     if (!childrenOnly && morphedNode !== fromNode && fromNode.parentNode) {
       if (morphedNode.actualize) {
@@ -2431,6 +2451,7 @@ var DOMPatch = class {
     const phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP);
     const phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM);
     const phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION);
+    const phxPatchFocused = liveSocket.binding(PHX_PATCH_FOCUSED);
     const added = [];
     const updates = [];
     const appendPrependUpdates = [];
@@ -2443,6 +2464,7 @@ var DOMPatch = class {
         // when we are patching a live component, we do want to patch the root element as well;
         // another case is the recursive patch of a stream item that was kept on reset (-> onBeforeNodeAdded)
         childrenOnly: targetContainer2.getAttribute(PHX_COMPONENT) === null && !withChildren,
+        keyedRoot: targetContainer2.getAttribute(PHX_COMPONENT) != null,
         getNodeKey: (node) => {
           if (!(node instanceof Element))
             return null;
@@ -2570,11 +2592,6 @@ var DOMPatch = class {
           this.maybeReOrderStream(el, false);
         },
         onBeforeElUpdated: (fromEl, toEl) => {
-          if (fromEl.id && fromEl.isSameNode(targetContainer2) && fromEl.id !== toEl.id) {
-            morphCallbacks.onNodeDiscarded(fromEl);
-            fromEl.replaceWith(toEl);
-            return morphCallbacks.onNodeAdded(toEl);
-          }
           dom_default.syncPendingAttrs(fromEl, toEl);
           dom_default.maintainPrivateHooks(
             fromEl,
@@ -2633,7 +2650,7 @@ var DOMPatch = class {
             fromEl.content.replaceChildren(toEl.content.cloneNode(true));
             return false;
           }
-          if (isFocusedFormEl && fromEl.type !== "hidden" && !focusedSelectChanged) {
+          if (isFocusedFormEl && fromEl.type !== "hidden" && !focusedSelectChanged && !toEl.hasAttribute(phxPatchFocused)) {
             this.trackBeforeUpdated(fromEl, toEl);
             dom_default.mergeFocusedInput(fromEl, toEl);
             dom_default.syncAttrsToProps(fromEl);
