@@ -176,6 +176,61 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              Phoenix.ChannelTest.subscribe_and_join(socket, "lvu:123", %{"token" => "bad"})
   end
 
+  test "ignores upload entries for a ref that is no longer allowed" do
+    # :other keeps the ref lookup non-empty, as it was in the reported crash
+    {:ok, lv} =
+      mount_lv(fn socket ->
+        socket
+        |> Phoenix.LiveView.allow_upload(:avatar, accept: :any)
+        |> Phoenix.LiveView.allow_upload(:other, accept: :any)
+      end)
+
+    avatar = file_input(lv, "form", :avatar, build_entries(1))
+
+    # disallow_upload/2 drops the ref but keeps the config that renders it
+    :ok = GenServer.call(lv.pid, {:setup, &Phoenix.LiveView.disallow_upload(&1, :avatar)})
+
+    html = lv |> form("form") |> render_change(avatar)
+    assert html =~ "save"
+    refute html =~ "myfile1.jpeg"
+  end
+
+  test "ignores upload entries when no uploads are allowed" do
+    {:ok, lv} = mount_lv(& &1)
+
+    # without allow_upload/3 there is no input to select, so only a raw
+    # message can carry uploads here
+    send_form_event_with_uploads(lv, "phx-stale-ref")
+
+    assert render(lv) =~ "loading..."
+  end
+
+  defp send_form_event_with_uploads(lv, config_ref) do
+    %{proxy: {_ref, topic, _pid}} = lv
+
+    send(lv.pid, %Phoenix.Socket.Message{
+      topic: topic,
+      event: "event",
+      ref: "1",
+      payload: %{
+        "type" => "form",
+        "event" => "validate",
+        "value" => "",
+        "uploads" => %{
+          config_ref => [
+            %{
+              "name" => "foo.jpeg",
+              "size" => 1,
+              "type" => "image/jpeg",
+              "ref" => "0",
+              "last_modified" => 1_594_171_879_000
+            }
+          ]
+        }
+      }
+    })
+  end
+
   defp setup_lv(%{allow: opts}) do
     opts = opts_for_allow_upload(opts)
     {:ok, lv} = mount_lv(fn socket -> Phoenix.LiveView.allow_upload(socket, :avatar, opts) end)
