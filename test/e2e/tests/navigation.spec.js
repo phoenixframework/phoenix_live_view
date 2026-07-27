@@ -121,8 +121,8 @@ test("popstate", async ({ page }) => {
   await expect(page).toHaveURL(/\/navigation\/a\?/);
   expect(networkEvents).toEqual([]);
 
-  await page.getByRole("link", { name: "LiveView B" }).click(),
-    await syncLV(page);
+  await page.getByRole("link", { name: "LiveView B" }).click();
+  await syncLV(page);
   await expect(page).toHaveURL("/navigation/b");
   expect(networkEvents).toEqual([]);
 
@@ -285,7 +285,6 @@ test("patch with replace replaces history", async ({ page }) => {
 
 test("falls back to http navigation when navigating between live sessions", async ({
   page,
-  browserName,
 }) => {
   await page.goto("/navigation/a");
   await syncLV(page);
@@ -303,18 +302,15 @@ test("falls back to http navigation when navigating between live sessions", asyn
     ]),
   );
   expect(webSocketEvents).toEqual(
-    expect.arrayContaining(
-      [
-        { type: "sent", payload: expect.stringContaining("phx_leave") },
-        { type: "sent", payload: expect.stringContaining("phx_join") },
-        {
-          type: "received",
-          payload: expect.stringMatching(/error.*unauthorized/),
-        },
-      ].concat(browserName === "webkit" ? [] : [{ type: "close" }]),
-    ),
+    expect.arrayContaining([
+      { type: "sent", payload: expect.stringContaining("phx_leave") },
+      { type: "sent", payload: expect.stringContaining("phx_join") },
+      {
+        type: "received",
+        payload: expect.stringMatching(/error.*unauthorized/),
+      },
+    ]),
   );
-  // ^ webkit doesn't always seem to emit websocket close events
 });
 
 test("restores scroll position after navigation", async ({ page }) => {

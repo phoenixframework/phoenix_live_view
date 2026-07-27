@@ -929,6 +929,5 @@ export default class DOMPatch {
       script.nonce = nonce;
     }
     el.replaceWith(script);
-    el = script;
   }
 }

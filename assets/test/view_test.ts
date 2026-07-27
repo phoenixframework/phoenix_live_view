@@ -454,7 +454,7 @@ describe("View + DOM", function () {
     expect(Object.keys(view.getFormsForRecovery()).length).toBe(0);
 
     html = '<form><input name="foo"></form>';
-    view = new View(liveViewDOM(), liveSocket, null, null, null);
+    view = new View(liveViewDOM(html), liveSocket, null, null, null);
     view.joinCount = 2;
     expect(Object.keys(view.getFormsForRecovery()).length).toBe(0);
 

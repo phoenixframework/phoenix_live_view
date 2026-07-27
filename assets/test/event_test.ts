@@ -3,7 +3,7 @@ import LiveSocket from "phoenix_live_view/live_socket";
 import View from "phoenix_live_view/view";
 
 import { version as liveview_version } from "../../package.json";
-import { HooksOptions } from "phoenix_live_viewview_hook";
+import { HooksOptions } from "phoenix_live_view/view_hook";
 
 let containerId = 0;
 

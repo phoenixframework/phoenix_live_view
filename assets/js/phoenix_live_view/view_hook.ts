@@ -285,9 +285,9 @@ export interface Hook<T = object, E extends HTMLElement = HTMLElement> {
  *
  * @category JavaScript Hooks
  */
-export class ViewHook<E extends HTMLElement = HTMLElement>
-  implements HookInterface<E>
-{
+export class ViewHook<
+  E extends HTMLElement = HTMLElement,
+> implements HookInterface<E> {
   el: E;
 
   private __listeners: Set<CallbackRef>;

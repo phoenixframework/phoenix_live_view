@@ -12,10 +12,10 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     env:
-      elixir: 1.18.1
-      otp: 27.2
+      elixir: 1.20.2
+      otp: 29.0.4
     steps:
       - name: Checkout
         uses: actions/checkout@v4

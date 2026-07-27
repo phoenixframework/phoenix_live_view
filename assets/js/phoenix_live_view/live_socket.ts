@@ -87,8 +87,7 @@ export interface LiveSocketOptions {
    *
    */
   params?:
-    | ((el: HTMLElement) => { [key: string]: any })
-    | { [key: string]: any };
+    ((el: HTMLElement) => { [key: string]: any }) | { [key: string]: any };
   /**
    * The optional prefix to use for all phx DOM annotations.
    *
@@ -1376,21 +1375,19 @@ export default class LiveSocket {
         // then treat the portal source as the starting point instead.
         startedAt = portalStartedAt;
       }
-      if (
-        !(
-          el.isSameNode(startedAt) ||
-          el.contains(startedAt) ||
-          // When clicking a link with custom method,
-          // phoenix_html triggers a click on a submit button
-          // of a hidden form appended to the body. For such cases
-          // where the clicked target is hidden, we skip click-away.
-          //
-          // Also, when we have a portal, we don't want to check the visibility
-          // of the portal source, as it's a <template> that is always not visible.
-          // Instead, check the visibility of the original click target.
-          !JS.isVisible(clickStartedAt)
-        )
-      ) {
+      if (!(
+        el.isSameNode(startedAt) ||
+        el.contains(startedAt) ||
+        // When clicking a link with custom method,
+        // phoenix_html triggers a click on a submit button
+        // of a hidden form appended to the body. For such cases
+        // where the clicked target is hidden, we skip click-away.
+        //
+        // Also, when we have a portal, we don't want to check the visibility
+        // of the portal source, as it's a <template> that is always not visible.
+        // Instead, check the visibility of the original click target.
+        !JS.isVisible(clickStartedAt)
+      )) {
         this.withinOwners(el, (view) => {
           const phxEvent = el.getAttribute(phxClickAway);
           if (JS.isVisible(el) && JS.isInViewport(el)) {

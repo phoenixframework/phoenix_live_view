@@ -40,8 +40,8 @@ const VOID_TAGS = new Set([
 const quoteChars = new Set(["'", '"']);
 
 export const modifyRoot = (html, attrs, clearInnerHTML) => {
-  let i = 0;
-  let insideComment = false;
+  let i;
+  let insideComment;
   let beforeTag, afterTag, tag, tagNameEndsAt, id, newHTML;
 
   const lookahead = html.match(/^(\s*(?:<!--.*?-->\s*)*)<([^\s\/>]+)/);
