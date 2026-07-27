@@ -44,6 +44,7 @@ import {
 } from "./utils";
 import {
   dispatchDiagnostic,
+  LiveViewDiagnosticContext,
   logError,
   type LiveViewDiagnosticLevel,
   type LiveViewDiagnosticMetadata,
@@ -619,6 +620,7 @@ export default class LiveSocket {
       code: string;
       level?: LiveViewDiagnosticLevel;
       metadata?: () => LiveViewDiagnosticMetadata;
+      context?: LiveViewDiagnosticContext;
     },
   ) {
     const debugEnabled = this.isDebugEnabled();
@@ -644,6 +646,7 @@ export default class LiveSocket {
         message,
         viewId: view.id,
         metadata: diagnostic.metadata?.(),
+        ...(diagnostic.context || { attribution: "unknown" }),
       });
     }
   }
@@ -766,6 +769,7 @@ export default class LiveSocket {
           runtimeHook,
           name,
         },
+        { attribution: "app" },
       );
       return;
     }
@@ -780,6 +784,7 @@ export default class LiveSocket {
       "hook.runtime-invalid-return",
       "runtime hook must return an object with hook callbacks or an instance of ViewHook",
       { runtimeHook, name },
+      { attribution: "app" },
     );
   }
 
@@ -971,7 +976,7 @@ export default class LiveSocket {
   }
 
   /** @internal */
-  withinOwners(childEl, callback) {
+  withinOwners(childEl, callback: (view: View, targetCtx: Element) => unknown) {
     this.owner(childEl, (view) => callback(view, childEl));
   }
 
@@ -1678,7 +1683,7 @@ export default class LiveSocket {
         externalFormSubmitted = true;
         e.preventDefault();
         this.withinOwners(e.target, (view) => {
-          view.disableForm(e.target);
+          view.disableForm(e.target as HTMLFormElement, phxChange);
           // safari needs next tick
           window.requestAnimationFrame(() => {
             if (DOM.isUnloadableFormSubmit(e)) {

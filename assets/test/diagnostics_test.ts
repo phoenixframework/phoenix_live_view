@@ -18,6 +18,7 @@ describe("diagnostics", () => {
         level: "debug",
         code: "test.code",
         message: "message",
+        attribution: "app",
       });
     } finally {
       window.removeEventListener("phx:live-view:diagnostic", listener);
@@ -25,7 +26,13 @@ describe("diagnostics", () => {
     }
 
     expect(received).toEqual([
-      { version: 1, level: "debug", code: "test.code", message: "message" },
+      {
+        version: 1,
+        level: "debug",
+        code: "test.code",
+        message: "message",
+        attribution: "app",
+      },
     ]);
   });
 
@@ -36,18 +43,20 @@ describe("diagnostics", () => {
     const { diagnostics, stop } = captureDiagnostics();
 
     try {
-      logError("hook.missing-id", "no id");
+      logError("hook.missing-id", "no id", {}, { attribution: "app" });
     } finally {
       stop();
     }
 
-    expect(consoleError).toHaveBeenCalledWith("no id", undefined);
+    expect(consoleError).toHaveBeenCalledWith("no id", {});
     expect(diagnostics).toEqual([
       {
         version: 1,
         level: "error",
         code: "hook.missing-id",
         message: "no id",
+        attribution: "app",
+        metadata: {},
       },
     ]);
   });
@@ -62,6 +71,7 @@ describe("diagnostics", () => {
     try {
       logError("dom.duplicate-id", "duplicate", metadata, {
         viewId: "users-view",
+        attribution: "app",
       });
     } finally {
       stop();
@@ -76,6 +86,7 @@ describe("diagnostics", () => {
         message: "duplicate",
         metadata,
         viewId: "users-view",
+        attribution: "app",
       },
     ]);
   });

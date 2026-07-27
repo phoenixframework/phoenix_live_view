@@ -136,8 +136,8 @@ export default class DOMPatch {
 
   perform(isJoinPatch) {
     const { view, liveSocket, html, container } = this;
-    const reportError = (code, message, metadata?) =>
-      view.logError(code, message, metadata);
+    const reportError = (code, message, metadata, context?) =>
+      view.logError(code, message, metadata, context);
     let targetContainer = this.targetContainer;
 
     if (this.targetCID) {

@@ -148,13 +148,14 @@ export default class UploadEntry {
     this.meta = resp.entries[this.ref];
     if (!this.meta) {
       this.view.logError(
-        "upload.internal.missing-preflight-response",
+        "upload.missing-preflight-response",
         `no preflight upload response returned with ref ${this.ref}`,
         {
           ref: this.ref,
           input: this.fileEl,
           response: resp,
         },
+        { attribution: "internal" },
       );
     }
   }

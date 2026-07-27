@@ -749,7 +749,12 @@ describe("JS", () => {
           },
           uploads: {},
         });
-        return Promise.resolve({ resp: done(), reply: null, ref: null });
+        return Promise.resolve({
+          type: "ok",
+          resp: done(),
+          reply: null,
+          ref: null,
+        });
       };
       const args = ["push", { _target: input.name, dispatcher: input }];
       JS.exec(
@@ -782,7 +787,12 @@ describe("JS", () => {
           },
           uploads: {},
         });
-        return Promise.resolve({ resp: done(), reply: null, ref: null });
+        return Promise.resolve({
+          type: "ok",
+          resp: done(),
+          reply: null,
+          ref: null,
+        });
       };
       const args = ["push", { _target: input.name, dispatcher: input }];
       JS.exec(
@@ -815,7 +825,12 @@ describe("JS", () => {
           },
           uploads: {},
         });
-        return Promise.resolve({ resp: done(), reply: null, ref: null });
+        return Promise.resolve({
+          type: "ok",
+          resp: done(),
+          reply: null,
+          ref: null,
+        });
       };
       const args = ["push", { _target: input.name, dispatcher: input }];
       JS.exec(
@@ -862,7 +877,12 @@ describe("JS", () => {
           value: "_unused_username=&username=&_unused_other=&other=",
           meta: { _target: "username" },
         });
-        return Promise.resolve({ resp: done(), reply: null, ref: null });
+        return Promise.resolve({
+          type: "ok",
+          resp: done(),
+          reply: null,
+          ref: null,
+        });
       };
       const args = ["push", { _target: input.name, dispatcher: input }];
       JS.exec(
@@ -908,7 +928,12 @@ describe("JS", () => {
           value: "_unused_username=&username=",
           meta: { _target: "username" },
         });
-        return Promise.resolve({ resp: done(), reply: null, ref: null });
+        return Promise.resolve({
+          type: "ok",
+          resp: done(),
+          reply: null,
+          ref: null,
+        });
       };
       const args = ["push", { _target: input.name, dispatcher: input }];
       JS.exec(
@@ -954,7 +979,12 @@ describe("JS", () => {
           value: "_unused_username=&username=",
           meta: { _target: "username" },
         });
-        return Promise.resolve({ resp: done(), reply: null, ref: null });
+        return Promise.resolve({
+          type: "ok",
+          resp: done(),
+          reply: null,
+          ref: null,
+        });
       };
       const args = ["push", { _target: input.name, dispatcher: input }];
       JS.exec(
@@ -985,7 +1015,12 @@ describe("JS", () => {
           value: "username=&desc=",
           meta: {},
         });
-        return Promise.resolve({ resp: done(), reply: null, ref: null });
+        return Promise.resolve({
+          type: "ok",
+          resp: done(),
+          reply: null,
+          ref: null,
+        });
       };
       JS.exec(event, "submit", form.getAttribute("phx-submit"), view, form, [
         "push",
@@ -1021,7 +1056,12 @@ describe("JS", () => {
             attribute_value: "attribute",
           },
         });
-        return Promise.resolve({ resp: done(), reply: null, ref: null });
+        return Promise.resolve({
+          type: "ok",
+          resp: done(),
+          reply: null,
+          ref: null,
+        });
       };
       JS.exec(event, "submit", form.getAttribute("phx-submit"), view, form, [
         "push",
@@ -1066,7 +1106,12 @@ describe("JS", () => {
 
       view.pushWithReply = (refGenerator, event, payload) => {
         expect(payload.value).toEqual({ one: 1, two: 2, three: "3" });
-        return Promise.resolve({ resp: done(), reply: null, ref: null });
+        return Promise.resolve({
+          type: "ok",
+          resp: done(),
+          reply: null,
+          ref: null,
+        });
       };
       JS.exec(event, "click", click.getAttribute("phx-click"), view, click);
     });

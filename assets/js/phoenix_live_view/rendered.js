@@ -575,13 +575,13 @@ export default class Rendered {
       return { buffer: html, streams: streams };
     } else {
       logError(
-        "render.internal.missing-component",
+        "render.missing-component",
         `no component for CID ${cid}`,
         {
           cid,
           components,
         },
-        { viewId: this.viewId },
+        { viewId: this.viewId, attribution: "internal" },
       );
       throw new Error(
         "Cannot continue render due to missing component: " + cid,

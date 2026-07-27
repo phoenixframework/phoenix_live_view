@@ -1296,7 +1296,7 @@ describe("View", function () {
     const el = liveViewDOM();
     const view = new View(el, liveSocket, null, null, null);
     stubChannel(view);
-    const error = new Error("timeout");
+    const error = { reason: "timeout" };
     const consoleError = jest
       .spyOn(console, "error")
       .mockImplementation(() => {});
@@ -1312,10 +1312,11 @@ describe("View", function () {
     expect(diagnostics).toContainEqual({
       version: 1,
       level: "error",
-      code: "view.network.join-timeout",
+      code: "view.join-timeout",
       message: "join timed out",
       viewId: view.id,
       metadata: { error },
+      attribution: "network",
     });
   });
 
