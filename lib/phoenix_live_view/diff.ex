@@ -1031,10 +1031,22 @@ defmodule Phoenix.LiveView.Diff do
         {diff, prints, pending, components, nil} =
           traverse(rendered, prints, %{}, components, nil, changed?)
 
-        children_cids =
+        traversed_cids =
           for {_component, list} <- pending,
               entry <- list,
               do: elem(entry, 0)
+
+        children_cids =
+          case socket.private.children_cids do
+            [] ->
+              traversed_cids
+
+            previous ->
+              # A partial render skips unchanged dynamics, so their children miss pending
+              {cid_to_component, _, _} = components
+              still_alive = Enum.filter(previous, &is_map_key(cid_to_component, &1))
+              Enum.uniq(traversed_cids ++ still_alive)
+          end
 
         diff = if linked_cid, do: Map.put(diff, @static, linked_cid), else: diff
 

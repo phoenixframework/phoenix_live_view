@@ -427,6 +427,29 @@ defmodule Phoenix.LiveView.DiffTest do
     end
   end
 
+  defmodule NestedLeafComponent do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~H"""
+      <div>LEAF</div>
+      """
+    end
+  end
+
+  defmodule NestedRootComponent do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~H"""
+      <div>
+        TICK {@tick}
+        <.live_component module={NestedLeafComponent} id="leaf" />
+      </div>
+      """
+    end
+  end
+
   defmodule TempComponent do
     use Phoenix.LiveComponent
 
@@ -1891,6 +1914,34 @@ defmodule Phoenix.LiveView.DiffTest do
                  }
                }
              }
+    end
+
+    test "does not delete a live child when its parent is revived after a partial render" do
+      component = %Component{id: "root", assigns: %{tick: 0}, component: NestedRootComponent}
+
+      {_full_render, fingerprints, components} =
+        render(component_template(%{component: component}))
+
+      {cid_to_component, _, _} = components
+      assert {NestedRootComponent, "root", _, _, _} = cid_to_component[1]
+      assert {NestedLeafComponent, "leaf", _, _, _} = cid_to_component[2]
+
+      # a partial render only traverses the dynamics that changed, leaving the leaf out
+      component = %Component{id: "root", assigns: %{tick: 1}, component: NestedRootComponent}
+
+      {_full_render, fingerprints, components} =
+        render(component_template(%{component: component}), fingerprints, components)
+
+      # the client reports both components as removed from the DOM...
+      components = Diff.mark_for_deletion_component(1, components)
+      components = Diff.mark_for_deletion_component(2, components)
+
+      # ...but they are rendered again before the client confirms the destroy
+      {_full_render, _fingerprints, components} =
+        render(component_template(%{component: component}), fingerprints, components)
+
+      assert {[], components} = Diff.delete_component(1, components)
+      assert {[], _components} = Diff.delete_component(2, components)
     end
   end
 
