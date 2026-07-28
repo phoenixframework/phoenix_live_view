@@ -2770,7 +2770,8 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
               reportError(
                 "dom.form-input-name-id",
                 'Detected an input with name="id" inside a form! This will cause problems when patching the DOM.\n',
-                { el: node }
+                { el: node },
+                { attribution: "app" }
               );
             }
           }
