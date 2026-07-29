@@ -427,6 +427,61 @@ defmodule Phoenix.LiveView.DiffTest do
     end
   end
 
+  defmodule NestedLeafComponent do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~H"""
+      <div id={@id}>LEAF</div>
+      """
+    end
+  end
+
+  defmodule NestedRootComponent do
+    use Phoenix.LiveComponent
+
+    defmodule Branch do
+      use Phoenix.LiveComponent
+
+      def render(assigns) do
+        ~H"""
+        <div>
+          <.live_component module={NestedLeafComponent} id="leaf" />
+        </div>
+        """
+      end
+    end
+
+    def render(assigns) do
+      ~H"""
+      <div>
+        TICK {@tick}
+        <%= if @show_child do %>
+          <.live_component module={Branch} id="branch" />
+        <% end %>
+      </div>
+      """
+    end
+  end
+
+  defmodule KeyedRootComponent do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~H"""
+      <div>
+        TICK {@tick}
+        <.live_component
+          :for={id <- @child_ids}
+          :key={id}
+          module={NestedLeafComponent}
+          id={id}
+        />
+      </div>
+      """
+    end
+  end
+
   defmodule TempComponent do
     use Phoenix.LiveComponent
 
@@ -1047,6 +1102,106 @@ defmodule Phoenix.LiveView.DiffTest do
   end
 
   describe "live components" do
+    test "revives a subtree that change tracking skipped" do
+      root = %Component{
+        id: "root",
+        assigns: %{tick: 0, show_child: true},
+        component: NestedRootComponent
+      }
+
+      {_, fingerprints, components} = render(component_template(%{component: root}))
+
+      root = %{root | assigns: %{tick: 1, show_child: true}}
+
+      {_, fingerprints, components} =
+        render(component_template(%{component: root}), fingerprints, components)
+
+      # The branch dynamic was skipped, so the root render never reached it.
+
+      # The client removes the component subtree and reports both CIDs.
+      {_, fingerprints, components} =
+        render(component_template(%{component: ""}), fingerprints, components)
+
+      components = Diff.mark_for_deletion_component(1, components)
+      components = Diff.mark_for_deletion_component(2, components)
+      components = Diff.mark_for_deletion_component(3, components)
+
+      # The same component identity is rendered before cids_destroyed arrives.
+      {_, _fingerprints, components} =
+        render(component_template(%{component: root}), fingerprints, components)
+
+      assert {[], components} = Diff.delete_component(1, components)
+      assert {[], components} = Diff.delete_component(2, components)
+      assert {[], _components} = Diff.delete_component(3, components)
+    end
+
+    test "does not revive children that are no longer rendered" do
+      root = %Component{
+        id: "root",
+        assigns: %{tick: 0, show_child: true},
+        component: NestedRootComponent
+      }
+
+      {_, fingerprints, components} = render(component_template(%{component: root}))
+
+      root = %{root | assigns: %{tick: 1, show_child: false}}
+
+      {_, fingerprints, components} =
+        render(component_template(%{component: root}), fingerprints, components)
+
+      # The removed branch is awaiting cids_destroyed when the parent is also removed.
+      components = Diff.mark_for_deletion_component(2, components)
+      components = Diff.mark_for_deletion_component(3, components)
+
+      {_, fingerprints, components} =
+        render(component_template(%{component: ""}), fingerprints, components)
+
+      components = Diff.mark_for_deletion_component(1, components)
+
+      # Reviving the parent must not revive the leaf that is no longer in its subtree.
+      {_, _fingerprints, components} =
+        render(component_template(%{component: root}), fingerprints, components)
+
+      assert {[], components} = Diff.delete_component(1, components)
+      assert {[2], components} = Diff.delete_component(2, components)
+      assert {[3], _components} = Diff.delete_component(3, components)
+    end
+
+    test "revives keyed comprehension children" do
+      root = %Component{
+        id: "root",
+        assigns: %{tick: 0, child_ids: ["a", "b"]},
+        component: KeyedRootComponent
+      }
+
+      {_, fingerprints, components} = render(component_template(%{component: root}))
+
+      root = %{root | assigns: %{tick: 1, child_ids: ["b", "a"]}}
+
+      {_, fingerprints, components} =
+        render(component_template(%{component: root}), fingerprints, components)
+
+      root = %{root | assigns: %{tick: 2, child_ids: ["b"]}}
+
+      {_, fingerprints, components} =
+        render(component_template(%{component: root}), fingerprints, components)
+
+      components = Diff.mark_for_deletion_component(2, components)
+
+      {_, fingerprints, components} =
+        render(component_template(%{component: ""}), fingerprints, components)
+
+      components = Diff.mark_for_deletion_component(1, components)
+      components = Diff.mark_for_deletion_component(3, components)
+
+      {_, _fingerprints, components} =
+        render(component_template(%{component: root}), fingerprints, components)
+
+      assert {[], components} = Diff.delete_component(1, components)
+      assert {[2], components} = Diff.delete_component(2, components)
+      assert {[], _components} = Diff.delete_component(3, components)
+    end
+
     test "on mount" do
       component = %Component{id: "hello", assigns: %{from: :component}, component: MyComponent}
       rendered = component_template(%{component: component})

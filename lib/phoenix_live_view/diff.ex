@@ -908,21 +908,29 @@ defmodule Phoenix.LiveView.Diff do
                         "for component #{inspect(component)} when rendering template"
               end
 
-              {socket, components, prints} =
+              {socket, components, prints, revived?} =
                 case cids do
                   %{^cid => {_component, _id, assigns, private, prints}} ->
-                    {private, components} = unmark_for_deletion(private, components)
-                    {configure_socket_for_component(socket, assigns, private), components, prints}
+                    # The client reports the whole destroyed subtree, so a component
+                    # that is used again must render in full. A full render re-traverses
+                    # every dynamic, which reaches (and therefore revives) each child in
+                    # turn.
+                    {revived?, private} = Map.pop(private, @marked_for_deletion, false)
+                    prints = if revived?, do: new_fingerprints(), else: prints
+
+                    {configure_socket_for_component(socket, assigns, private), components, prints,
+                     revived?}
 
                   %{} ->
                     myself_assigns = %{myself: %Phoenix.LiveComponent.CID{cid: cid}}
 
                     {mount_component(socket, component, myself_assigns),
-                     put_cid(components, component, id, cid), new_fingerprints()}
+                     put_cid(components, component, id, cid), new_fingerprints(), false}
                 end
 
               assigns_sockets = [{new_assigns, socket} | assigns_sockets]
-              metadata = [{cid, id, prints, new?} | metadata]
+              # or revived? forces a full render in render_component
+              metadata = [{cid, id, prints, new? or revived?} | metadata]
               seen_ids = Map.put(seen_ids, [component | id], true)
               {assigns_sockets, metadata, components, seen_ids}
           end)
@@ -1063,33 +1071,6 @@ defmodule Phoenix.LiveView.Diff do
     {cid_to_component, id_to_cid, uuids} = components
     cid_to_component = Map.put(cid_to_component, cid, dump)
     {pending, diffs, {cid_to_component, id_to_cid, uuids}}
-  end
-
-  defp unmark_for_deletion(private, {cid_to_component, id_to_cid, uuids}) do
-    {private, cid_to_component} = do_unmark_for_deletion(private, cid_to_component)
-    {private, {cid_to_component, id_to_cid, uuids}}
-  end
-
-  defp do_unmark_for_deletion(private, cids) do
-    {marked?, private} = Map.pop(private, @marked_for_deletion, false)
-
-    cids =
-      if marked? do
-        Enum.reduce(private.children_cids, cids, fn cid, cids ->
-          case cids do
-            %{^cid => {component, id, assigns, private, prints}} ->
-              {private, cids} = do_unmark_for_deletion(private, cids)
-              Map.put(cids, cid, {component, id, assigns, private, prints})
-
-            %{} ->
-              cids
-          end
-        end)
-      else
-        cids
-      end
-
-    {private, cids}
   end
 
   # 32 is one bucket from large maps
