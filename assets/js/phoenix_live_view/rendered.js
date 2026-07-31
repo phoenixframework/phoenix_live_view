@@ -16,7 +16,7 @@ import {
   KEYED_MOVED,
 } from "./constants";
 
-import { isObject, isCid } from "./utils";
+import { isObject, isCid, cloneWireData } from "./utils";
 import { logError } from "./diagnostics";
 
 const VOID_TAGS = new Set([
@@ -279,12 +279,7 @@ export default class Rendered {
   }
 
   clone(diff) {
-    if ("structuredClone" in window) {
-      return structuredClone(diff);
-    } else {
-      // fallback for jest
-      return JSON.parse(JSON.stringify(diff));
-    }
+    return cloneWireData(diff);
   }
 
   // keyed comprehensions
@@ -384,6 +379,12 @@ export default class Rendered {
 
   // private
 
+  /**
+   * Returns the live rendered tree. Callers outside of `Rendered` must never
+   * hand this object out without cloning it first.
+   *
+   * @internal
+   */
   get() {
     return this.rendered;
   }

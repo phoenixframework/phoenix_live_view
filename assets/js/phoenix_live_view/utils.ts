@@ -95,6 +95,21 @@ export const clone = (obj) => {
   return JSON.parse(JSON.stringify(obj));
 };
 
+/**
+ * Deeply copies wire data such as a diff or a rendered tree, detaching it from
+ * LiveView's internal objects.
+ *
+ * @internal
+ */
+export const cloneWireData = (data) => {
+  if ("structuredClone" in window) {
+    return structuredClone(data);
+  } else {
+    // fallback for jest
+    return JSON.parse(JSON.stringify(data));
+  }
+};
+
 export const closestPhxBinding = (
   startEl: Element,
   binding: string,

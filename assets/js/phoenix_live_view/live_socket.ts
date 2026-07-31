@@ -17,6 +17,7 @@ import {
   PHX_LV_DEBUG,
   PHX_LV_LATENCY_SIM,
   PHX_LV_PROFILE,
+  PHX_LV_SOCKET_AVAILABLE_EVENT,
   PHX_LV_HISTORY_POSITION,
   PHX_MAIN,
   PHX_PARENT_ID,
@@ -65,6 +66,35 @@ import { HooksOptions } from "./view_hook";
  * @returns {boolean} True if the element was touched by a user, false otherwise.
  */
 export const isUsedInput = (el) => DOM.isUsedInput(el);
+
+const DEBUG_REQUIRED_ERROR =
+  "LiveView debug APIs require debugging to be enabled with liveSocket.enableDebug()";
+
+/**
+ * A snapshot of a joined LiveView's rendered tree.
+ *
+ * @internal
+ */
+export interface LiveViewDebugView {
+  /** The LiveView container ID, as also used by diagnostics. */
+  viewId: string;
+  /** A detached copy of the complete rendered tree. */
+  rendered: Record<string, unknown>;
+}
+
+/**
+ * An applied mount or update diff together with the resulting rendered tree.
+ *
+ * @internal
+ */
+export interface LiveViewDebugDiff extends LiveViewDebugView {
+  kind: "mount" | "update";
+  /** A detached copy of the extracted, pre-merge diff. */
+  diff: Record<string, unknown>;
+}
+
+/** @internal */
+export type LiveViewDebugDiffCallback = (event: LiveViewDebugDiff) => void;
 
 /**
  * Options for configuring the LiveSocket instance.
@@ -296,6 +326,7 @@ export default class LiveSocket {
   private transitions: TransitionSet;
   /** @internal */
   currentHistoryPosition: number;
+  private debugDiffCallbacks: Set<LiveViewDebugDiffCallback>;
 
   /** @internal */
   params: (el: Element) => Record<string, unknown>;
@@ -382,6 +413,7 @@ export default class LiveSocket {
       opts.dom || {},
     );
     this.transitions = new TransitionSet();
+    this.debugDiffCallbacks = new Set();
     this.currentHistoryPosition =
       parseInt(this.sessionStorage.getItem(PHX_LV_HISTORY_POSITION) || "0") ||
       0;
@@ -453,6 +485,119 @@ export default class LiveSocket {
   }
 
   /**
+   * Returns a detached snapshot of every LiveView currently joined through
+   * this LiveSocket.
+   *
+   * This is not a public API. It exists for external development tooling and
+   * may change or be removed at any time.
+   *
+   * @throws when debugging is disabled.
+   *
+   * @internal
+   */
+  getDebugViews(): LiveViewDebugView[] {
+    this.assertDebugEnabled();
+    const views: LiveViewDebugView[] = [];
+    for (const id in this.roots) {
+      this.roots[id].collectDebugViews(views);
+    }
+    return views;
+  }
+
+  /**
+   * Subscribes to every mount and update diff applied by this LiveSocket.
+   *
+   * The callback receives the extracted, pre-merge diff along with the fully
+   * merged rendered tree, taken before rendering prunes stream entries.
+   *
+   * This is not a public API. It exists for external development tooling and
+   * may change or be removed at any time.
+   *
+   * @returns an idempotent unsubscribe function.
+   * @throws when debugging is disabled.
+   *
+   * @internal
+   */
+  onDebugDiff(callback: LiveViewDebugDiffCallback): () => void {
+    this.assertDebugEnabled();
+    this.debugDiffCallbacks.add(callback);
+    let unsubscribed = false;
+    return () => {
+      if (unsubscribed) {
+        return;
+      }
+      unsubscribed = true;
+      this.debugDiffCallbacks.delete(callback);
+    };
+  }
+
+  private assertDebugEnabled() {
+    if (!this.isDebugEnabled()) {
+      throw new Error(DEBUG_REQUIRED_ERROR);
+    }
+  }
+
+  /**
+   * Returns true when a debug diff would actually be dispatched. Callers use
+   * this to skip cloning a diff that merging is about to mutate.
+   *
+   * @internal
+   */
+  hasDebugDiffCallbacks(): boolean {
+    return this.debugDiffCallbacks.size > 0 && this.isDebugEnabled();
+  }
+
+  /**
+   * Dispatches an applied diff to all {@link onDebugDiff} subscribers.
+   *
+   * The rendered tree is only cloned when there is something to dispatch to,
+   * and a failing callback can never interrupt rendering.
+   *
+   * @internal
+   */
+  dispatchDebugDiff(
+    kind: "mount" | "update",
+    viewId: string,
+    diff: Record<string, unknown>,
+    getRendered: () => Record<string, unknown>,
+  ): void {
+    if (!this.hasDebugDiffCallbacks()) {
+      return;
+    }
+    const event: LiveViewDebugDiff = {
+      kind,
+      viewId,
+      diff,
+      rendered: getRendered(),
+    };
+    // iterate a snapshot so a callback may unsubscribe itself or others
+    for (const callback of Array.from(this.debugDiffCallbacks)) {
+      try {
+        callback(event);
+      } catch (error) {
+        console.error("LiveView onDebugDiff callback failed", error);
+      }
+    }
+  }
+
+  /**
+   * Makes this LiveSocket discoverable by external development tooling.
+   *
+   * Both the global and the event are needed, because a tool may initialize
+   * either before or after `connect()`.
+   *
+   * @internal
+   */
+  private announceDebugSocket() {
+    (window as any).__LIVE_VIEW_SOCKET__ = this;
+    window.dispatchEvent(
+      new CustomEvent(PHX_LV_SOCKET_AVAILABLE_EVENT, {
+        detail: { liveSocket: this },
+      }),
+    );
+  }
+
+  /**
    * Disables profiling.
    */
   disableProfiling(): void {
@@ -506,6 +651,9 @@ export default class LiveSocket {
       !this.isDebugDisabled()
     ) {
       this.enableDebug();
+    }
+    if (this.isDebugEnabled()) {
+      this.announceDebugSocket();
     }
     const doConnect = () => {
       this.resetReloadStatus();

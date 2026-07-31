@@ -48,6 +48,7 @@ import {
 
 import {
   clone,
+  cloneWireData,
   closestPhxBinding,
   isEmpty,
   isEqualObj,
@@ -71,7 +72,7 @@ import { ViewHook } from "./view_hook";
 import JS from "./js";
 
 import morphdom from "morphdom";
-import LiveSocket from "./live_socket";
+import LiveSocket, { type LiveViewDebugView } from "./live_socket";
 
 export const prependFormDataKey = (key, prefix) => {
   const isArray = key.endsWith("[]");
@@ -491,7 +492,9 @@ export default class View {
       CONSECUTIVE_RELOADS,
     );
     this.applyDiff("mount", rendered, ({ diff, events }) => {
+      const debugDiff = this.cloneDebugDiff(diff);
       this.rendered = new Rendered(this.id, diff);
+      this.dispatchDebugDiff("mount", debugDiff);
       const [html, streams] = this.renderContainer(null, "join");
       this.dropPendingRefs();
       this.joinCount++;
@@ -930,7 +933,9 @@ export default class View {
       return false;
     }
 
+    const debugDiff = this.cloneDebugDiff(diff);
     this.rendered!.mergeDiff(diff);
+    this.dispatchDebugDiff("update", debugDiff);
     let phxChildrenAdded = false;
 
     // When the diff only contains component diffs, then walk components
@@ -1122,6 +1127,40 @@ export default class View {
     for (const id in children) {
       callback(this.getChildById(id));
     }
+  }
+
+  /**
+   * Appends a detached snapshot of this view and all of its descendants to
+   * `acc`. Views that have not been joined yet have no rendered tree and are
+   * skipped.
+   *
+   * @internal
+   */
+  collectDebugViews(acc: LiveViewDebugView[]) {
+    if (this.rendered) {
+      acc.push({
+        viewId: this.id,
+        rendered: cloneWireData(this.rendered.get()),
+      });
+    }
+    this.eachChild((child) => child.collectDebugViews(acc));
+  }
+
+  /**
+   * Copies a diff for {@link LiveSocket.onDebugDiff} subscribers before
+   * merging mutates it. Returns null when there is nothing to dispatch to.
+   */
+  private cloneDebugDiff(diff) {
+    return this.liveSocket.hasDebugDiffCallbacks() ? cloneWireData(diff) : null;
+  }
+
+  private dispatchDebugDiff(kind: "mount" | "update", debugDiff) {
+    if (debugDiff === null) {
+      return;
+    }
+    this.liveSocket.dispatchDebugDiff(kind, this.id, debugDiff, () =>
+      cloneWireData(this.rendered!.get()),
+    );
   }
 
   onChannel(event, cb) {
