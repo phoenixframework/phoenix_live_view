@@ -355,8 +355,161 @@ describe("Rendered", () => {
 </div>`.trim(),
       );
     });
+
+    test("only emits paired caller IDs while debugging is enabled", () => {
+      const diff = {
+        0: { [STATIC]: ["<span>child</span>"] },
+        [STATIC]: [callerAnnotation, ""],
+      };
+      const debugDisabled = new Rendered("123", diff);
+
+      expect(debugDisabled.toString().buffer).toEqual(
+        `${callerAnnotation}<span>child</span>`,
+      );
+
+      const debugEnabled = new Rendered("123", diff, () => true);
+      const { buffer } = debugEnabled.toString();
+      const [callerId] = callerIDs(buffer);
+
+      expect(callerId).toBeTruthy();
+      expect(buffer).toContain(`<!-- CALLER_ID:${callerId} -->`);
+      expect(debugEnabled.get()[STATIC][0]).toEqual(callerAnnotation);
+    });
+
+    test.each([
+      ["single-root", true],
+      ["multi-root", false],
+    ])(
+      "keeps the caller ID for an unchanged %s function component",
+      (_name, root) => {
+        const child = {
+          0: "one",
+          [STATIC]: ["<span>", "</span><span>constant</span>"],
+          ...(root ? { r: 1 } : {}),
+        };
+        const rendered = new Rendered(
+          "123",
+          {
+            0: child,
+            1: "first",
+            [STATIC]: [callerAnnotation, "|", ""],
+          },
+          () => true,
+        );
+
+        const [initialCallerId] = callerIDs(rendered.toString().buffer);
+
+        rendered.mergeDiff({ 1: "second" });
+        const [unchangedCallerId] = callerIDs(rendered.toString().buffer);
+        expect(unchangedCallerId).toEqual(initialCallerId);
+
+        // The server sent a non-empty child diff, even though its value is equal.
+        rendered.mergeDiff({ 0: { 0: "one" } });
+        const [changedCallerId] = callerIDs(rendered.toString().buffer);
+        expect(changedCallerId).not.toEqual(initialCallerId);
+      },
+    );
+
+    test("tracks caller IDs independently in keyed comprehensions", () => {
+      const rendered = new Rendered(
+        "123",
+        {
+          [KEYED]: {
+            0: {
+              0: { 0: "one", [STATIC]: ["<span>", "</span>"] },
+            },
+            1: {
+              0: { 0: "two", [STATIC]: ["<span>", "</span>"] },
+            },
+            [KEYED_COUNT]: 2,
+          },
+          [STATIC]: [callerAnnotation, ""],
+        },
+        () => true,
+      );
+
+      const initialCallerIds = callerIDs(rendered.toString().buffer);
+      expect(initialCallerIds).toHaveLength(2);
+      expect(initialCallerIds[0]).not.toEqual(initialCallerIds[1]);
+
+      rendered.mergeDiff({
+        [KEYED]: {
+          0: { 0: { 0: "updated" } },
+          [KEYED_COUNT]: 2,
+        },
+      });
+
+      const changedCallerIds = callerIDs(rendered.toString().buffer);
+      expect(changedCallerIds[0]).not.toEqual(initialCallerIds[0]);
+      expect(changedCallerIds[1]).toEqual(initialCallerIds[1]);
+    });
+
+    test("preserves caller IDs across unrelated LiveComponent diffs", () => {
+      const rendered = new Rendered(
+        "123",
+        {
+          0: 1,
+          [COMPONENTS]: {
+            1: {
+              0: { 0: "one", [STATIC]: ["<span>", "</span>"] },
+              1: "first",
+              [STATIC]: [`<div>${callerAnnotation}`, "|", "</div>"],
+              r: 1,
+            },
+          },
+          [STATIC]: ["", ""],
+        },
+        () => true,
+      );
+
+      const [initialCallerId] = callerIDs(rendered.toString().buffer);
+
+      rendered.mergeDiff({ [COMPONENTS]: { 1: { 1: "second" } } });
+      const [unchangedCallerId] = callerIDs(
+        rendered.componentToString(1).buffer,
+      );
+      expect(unchangedCallerId).toEqual(initialCallerId);
+
+      rendered.mergeDiff({
+        [COMPONENTS]: { 1: { 0: { 0: "updated" } } },
+      });
+      const [changedCallerId] = callerIDs(rendered.componentToString(1).buffer);
+      expect(changedCallerId).not.toEqual(initialCallerId);
+    });
+
+    test("does not copy caller IDs when components share statics", () => {
+      const rendered = new Rendered(
+        "123",
+        {
+          0: 1,
+          [COMPONENTS]: {
+            1: {
+              0: { [STATIC]: ["<span>child</span>"] },
+              [STATIC]: [`<div>${callerAnnotation}`, "</div>"],
+              r: 1,
+            },
+          },
+          [STATIC]: ["", ""],
+        },
+        () => true,
+      );
+
+      const [firstCallerId] = callerIDs(rendered.toString().buffer);
+      rendered.mergeDiff({ [COMPONENTS]: { 2: { [STATIC]: -1 } } });
+      const [secondCallerId] = callerIDs(rendered.componentToString(2).buffer);
+
+      expect(secondCallerId).not.toEqual(firstCallerId);
+    });
   });
 });
+
+const callerAnnotation = "<!-- @caller example.ex:1 (app) CALLER_ID -->";
+
+const callerIDs = (html: string): string[] =>
+  Array.from(
+    html.matchAll(/<!-- @caller .*? CALLER_ID:([^ ]+) -->/g),
+    (match) => match[1],
+  );
 
 const simpleDiff1 = {
   "0": "cooling",

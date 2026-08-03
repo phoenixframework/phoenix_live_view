@@ -254,7 +254,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       line = if line == 0, do: 1, else: line
       file = Path.relative_to_cwd(file)
 
-      "<!-- @caller #{file}:#{line} (#{current_otp_app()}) -->"
+      "<!-- @caller #{file}:#{line} (#{current_otp_app()}) CALLER_ID -->"
     end
   end
 

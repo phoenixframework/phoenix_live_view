@@ -560,9 +560,16 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert compile("<DebugAnno.nested value='1'/>") ==
                """
                <!-- <Phoenix.LiveViewTest.Support.DebugAnno.nested> test/support/live_views/debug_anno.exs:23 () --><div data-phx-loc=\"24\">
-                 <!-- @caller test/support/live_views/debug_anno.exs:25 () --><!-- <Phoenix.LiveViewTest.Support.DebugAnno.local_with_tags> test/support/live_views/debug_anno.exs:19 () --><div data-phx-loc=\"20\">LOCAL COMPONENT: Value: local</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.local_with_tags> -->
+                 <!-- @caller test/support/live_views/debug_anno.exs:25 () CALLER_ID --><!-- <Phoenix.LiveViewTest.Support.DebugAnno.local_with_tags> test/support/live_views/debug_anno.exs:19 () --><div data-phx-loc=\"20\">LOCAL COMPONENT: Value: local</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.local_with_tags> -->
                </div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.nested> -->\
                """
+    end
+
+    test "caller ID marker ends the static before the component dynamic" do
+      rendered = DebugAnno.nested(%{value: "1"})
+
+      assert [static_before_component, _static_after_component] = rendered.static
+      assert String.ends_with?(static_before_component, "CALLER_ID -->")
     end
 
     test "slots without tags" do
@@ -570,7 +577,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert compile("<DebugAnno.slot />") ==
                """
-               <!-- <Phoenix.LiveViewTest.Support.DebugAnno.slot> test/support/live_views/debug_anno.exs:31 () --><!-- @caller test/support/live_views/debug_anno.exs:32 () -->
+               <!-- <Phoenix.LiveViewTest.Support.DebugAnno.slot> test/support/live_views/debug_anno.exs:31 () --><!-- @caller test/support/live_views/debug_anno.exs:32 () CALLER_ID -->
                  1
                ,
                  2
@@ -583,7 +590,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert compile("<DebugAnno.slot_with_tags />") ==
                """
-               <!-- <Phoenix.LiveViewTest.Support.DebugAnno.slot_with_tags> test/support/live_views/debug_anno.exs:40 () --><!-- @caller test/support/live_views/debug_anno.exs:41 () --><!-- <:inner_block> test/support/live_views/debug_anno.exs:41 () -->
+               <!-- <Phoenix.LiveViewTest.Support.DebugAnno.slot_with_tags> test/support/live_views/debug_anno.exs:40 () --><!-- @caller test/support/live_views/debug_anno.exs:41 () CALLER_ID --><!-- <:inner_block> test/support/live_views/debug_anno.exs:41 () -->
                  <div data-phx-loc=\"43\">1</div>
                <!-- </:inner_block> --><!-- <:separator> test/support/live_views/debug_anno.exs:42 () --><hr data-phx-loc=\"42\"><!-- </:separator> --><!-- <:inner_block> test/support/live_views/debug_anno.exs:41 () -->
                  <div data-phx-loc=\"43\">2</div>
