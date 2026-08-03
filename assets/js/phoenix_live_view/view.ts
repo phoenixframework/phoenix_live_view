@@ -491,7 +491,9 @@ export default class View {
       CONSECUTIVE_RELOADS,
     );
     this.applyDiff("mount", rendered, ({ diff, events }) => {
-      this.rendered = new Rendered(this.id, diff);
+      this.rendered = new Rendered(this.id, diff, () =>
+        this.liveSocket.isDebugEnabled(),
+      );
       const [html, streams] = this.renderContainer(null, "join");
       this.dropPendingRefs();
       this.joinCount++;

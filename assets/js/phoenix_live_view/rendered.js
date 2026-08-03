@@ -38,6 +38,7 @@ const VOID_TAGS = new Set([
   "wbr",
 ]);
 const quoteChars = new Set(["'", '"']);
+const CALLER_ID_MARKER = "CALLER_ID -->";
 
 export const modifyRoot = (html, attrs, clearInnerHTML) => {
   let i;
@@ -131,10 +132,12 @@ export default class Rendered {
     return { diff, title, reply: reply || null, events: events || [] };
   }
 
-  constructor(viewId, rendered) {
+  constructor(viewId, rendered, isDebugEnabled = () => false) {
     this.viewId = viewId;
     this.rendered = {};
     this.magicId = 0;
+    this.callerId = 0;
+    this.isDebugEnabled = isDebugEnabled;
     this.mergeDiff(rendered);
   }
 
@@ -166,6 +169,7 @@ export default class Rendered {
       components: components,
       onlyCids: onlyCids,
       streams: new Set(),
+      debug: this.isDebugEnabled(),
     };
     this.toOutputBuffer(rendered, null, output, changeTracking, rootAttrs);
     return { buffer: output.buffer, streams: output.streams };
@@ -276,6 +280,11 @@ export default class Rendered {
     if (target[ROOT]) {
       target.newRender = true;
     }
+    // The caller ID identifies this exact cached render. A non-empty source
+    // means the rendered child produced a diff, so we create a new callerId.
+    if (target.callerId !== undefined && Object.keys(source).length > 0) {
+      delete target.callerId;
+    }
   }
 
   clone(diff) {
@@ -362,8 +371,15 @@ export default class Rendered {
     if (pruneMagicId) {
       delete merged.magicId;
       delete merged.newRender;
+      delete merged.callerId;
     } else if (target[ROOT]) {
       merged.newRender = true;
+    }
+    // If we have a callerId, a non-empty source means the component changed
+    if (
+      (merged.callerId !== undefined && Object.keys(source).length > 0)
+    ) {
+      delete merged.callerId;
     }
     return merged;
   }
@@ -403,6 +419,28 @@ export default class Rendered {
   nextMagicID() {
     this.magicId++;
     return `m${this.magicId}-${this.parentViewId()}`;
+  }
+
+  nextCallerID() {
+    this.callerId++;
+    return `c${this.callerId}-${this.parentViewId()}`;
+  }
+
+  callerAnnotation(staticPart, rendered) {
+    if (!staticPart.endsWith(CALLER_ID_MARKER)) {
+      return [staticPart, ""];
+    }
+
+    if (!isObject(rendered)) {
+      // A LiveComponent is rendered as a plain number in the diff.
+      // Strip the CALLER_ID marker.
+      return [staticPart.slice(0, -CALLER_ID_MARKER.length) + "-->", ""];
+    }
+
+    rendered.callerId = rendered.callerId || this.nextCallerID();
+    const marker = `CALLER_ID:${rendered.callerId} -->`;
+    const opening = staticPart.slice(0, -CALLER_ID_MARKER.length) + marker;
+    return [opening, `<!-- ${marker}`];
   }
 
   // Converts rendered tree to output buffer.
@@ -445,10 +483,29 @@ export default class Rendered {
       rendered.magicId = this.nextMagicID();
     }
 
-    output.buffer += statics[0];
-    for (let i = 1; i < statics.length; i++) {
-      this.dynamicToBuffer(rendered[i - 1], templates, output, changeTracking);
-      output.buffer += statics[i];
+    if (output.debug) {
+      for (let i = 0; i < statics.length - 1; i++) {
+        const dynamic = rendered[i];
+        const [staticPart, callerClosing] = this.callerAnnotation(
+          statics[i],
+          dynamic,
+        );
+        output.buffer += staticPart;
+        this.dynamicToBuffer(dynamic, templates, output, changeTracking);
+        output.buffer += callerClosing;
+      }
+      output.buffer += statics[statics.length - 1];
+    } else {
+      output.buffer += statics[0];
+      for (let i = 1; i < statics.length; i++) {
+        this.dynamicToBuffer(
+          rendered[i - 1],
+          templates,
+          output,
+          changeTracking,
+        );
+        output.buffer += statics[i];
+      }
     }
 
     // Applies the root tag "skip" optimization if supported, which clears
@@ -487,15 +544,29 @@ export default class Rendered {
     rendered[STATIC] = statics;
     delete rendered[TEMPLATES];
     for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
-      output.buffer += statics[0];
-      for (let j = 1; j < statics.length; j++) {
-        this.dynamicToBuffer(
-          rendered[KEYED][i][j - 1],
-          keyedTemplates,
-          output,
-          changeTracking,
-        );
-        output.buffer += statics[j];
+      if (output.debug) {
+        for (let j = 0; j < statics.length - 1; j++) {
+          const dynamic = rendered[KEYED][i][j];
+          const [staticPart, callerClosing] = this.callerAnnotation(
+            statics[j],
+            dynamic,
+          );
+          output.buffer += staticPart;
+          this.dynamicToBuffer(dynamic, keyedTemplates, output, changeTracking);
+          output.buffer += callerClosing;
+        }
+        output.buffer += statics[statics.length - 1];
+      } else {
+        output.buffer += statics[0];
+        for (let j = 1; j < statics.length; j++) {
+          this.dynamicToBuffer(
+            rendered[KEYED][i][j - 1],
+            keyedTemplates,
+            output,
+            changeTracking,
+          );
+          output.buffer += statics[j];
+        }
       }
     }
     // we don't need to store the rendered tree for streams

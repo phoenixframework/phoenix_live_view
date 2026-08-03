@@ -62,6 +62,47 @@ describe("View + DOM", function () {
     expect(view["rendered"]!.get()).toEqual(updateDiff);
   });
 
+  test("renders paired caller IDs when client debugging is enabled", () => {
+    liveSocket = new LiveSocket("/live", Socket);
+    liveSocket.enableDebug();
+    const consoleLog = jest.spyOn(console, "log").mockImplementation(() => {});
+
+    try {
+      const el = liveViewDOM();
+      const view = new View(el, liveSocket, null, null, null);
+      stubChannel(view);
+      liveSocket.roots[view.id] = view;
+      view.isConnected = () => true;
+
+      view.onJoin({
+        rendered: {
+          0: { 0: "child", s: ["<span>", "</span>"], r: 1 },
+          1: "first",
+          s: ["<!-- @caller example.ex:1 (app) CALLER_ID -->", "|", ""],
+        },
+        liveview_version,
+      });
+
+      const callerId = () =>
+        view.el.innerHTML.match(/<!-- @caller .*? CALLER_ID:([^ ]+) -->/)?.[1];
+      const initialCallerId = callerId();
+      expect(initialCallerId).toBeTruthy();
+      expect(view.el.innerHTML).toContain(
+        `<!-- CALLER_ID:${initialCallerId} -->`,
+      );
+
+      view.update({ 1: "second" }, []);
+      expect(callerId()).toEqual(initialCallerId);
+
+      // A non-empty child diff rotates the ID even when the value is equal.
+      view.update({ 0: { 0: "child" } }, []);
+      expect(callerId()).not.toEqual(initialCallerId);
+    } finally {
+      consoleLog.mockRestore();
+      liveSocket.disableDebug();
+    }
+  });
+
   test("applyDiff with empty title uses default if present", async () => {
     appendTitle({}, "Foo");
 
