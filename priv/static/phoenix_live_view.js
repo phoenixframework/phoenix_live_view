@@ -5115,7 +5115,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     }
     onChannel(event, cb) {
       this.liveSocket.onChannel(this.channel, event, (resp) => {
-        if (this.isJoinPending()) {
+        if (this.isJoinPending() && !["redirect", "live_redirect"].includes(event)) {
           if (this.joinCount > 1) {
             this.pendingJoinOps.push(() => cb(resp));
           } else {
