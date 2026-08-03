@@ -39,6 +39,10 @@ const VOID_TAGS = new Set([
 ]);
 const quoteChars = new Set(["'", '"']);
 const CALLER_ID_MARKER = "CALLER_ID -->";
+const CHANGE_NONE = 0;
+const CHANGE_NESTED_COMPONENT_ONLY = 1;
+const CHANGE_SELF = 2;
+const dynamicKey = /^\d+$/;
 
 export const modifyRoot = (html, attrs, clearInnerHTML) => {
   let i;
@@ -145,13 +149,18 @@ export default class Rendered {
     return this.viewId;
   }
 
-  toString(onlyCids) {
+  /**
+   * @param {number[] | null} [onlyCids]
+   * @param {Map<object, number> | null} [changeKinds]
+   */
+  toString(onlyCids, changeKinds = null) {
     const { buffer: str, streams: streams } = this.recursiveToString(
       this.rendered,
       this.rendered[COMPONENTS],
       onlyCids,
       true,
       {},
+      changeKinds,
     );
     return { buffer: str, streams: streams };
   }
@@ -162,6 +171,7 @@ export default class Rendered {
     onlyCids,
     changeTracking,
     rootAttrs,
+    changeKinds,
   ) {
     onlyCids = onlyCids ? new Set(onlyCids) : null;
     const output = {
@@ -170,6 +180,7 @@ export default class Rendered {
       onlyCids: onlyCids,
       streams: new Set(),
       debug: this.isDebugEnabled(),
+      changeKinds: changeKinds,
     };
     this.toOutputBuffer(rendered, null, output, changeTracking, rootAttrs);
     return { buffer: output.buffer, streams: output.streams };
@@ -199,17 +210,27 @@ export default class Rendered {
   }
 
   mergeDiff(diff) {
+    // Debug change metadata belongs to this patch, not to the cached rendered
+    // tree. Rendering consumes the sidecar immediately after the merge.
+    const changeKinds = this.isDebugEnabled() ? new Map() : null;
     const newc = diff[COMPONENTS];
     const cache = {};
     delete diff[COMPONENTS];
-    this.rendered = this.mutableMerge(this.rendered, diff);
+    this.rendered = this.mutableMerge(this.rendered, diff, changeKinds);
     this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {};
 
     if (newc) {
       const oldc = this.rendered[COMPONENTS];
 
       for (const cid in newc) {
-        newc[cid] = this.cachedFindComponent(cid, newc[cid], oldc, newc, cache);
+        newc[cid] = this.cachedFindComponent(
+          cid,
+          newc[cid],
+          oldc,
+          newc,
+          cache,
+          changeKinds,
+        );
       }
 
       for (const cid in newc) {
@@ -217,9 +238,10 @@ export default class Rendered {
       }
       diff[COMPONENTS] = newc;
     }
+    return changeKinds;
   }
 
-  cachedFindComponent(cid, cdiff, oldc, newc, cache) {
+  cachedFindComponent(cid, cdiff, oldc, newc, cache, changeKinds) {
     if (cache[cid]) {
       return cache[cid];
     } else {
@@ -233,19 +255,28 @@ export default class Rendered {
         // @ts-expect-error: isCid also allows strings, but the diff always uses numbers
         // TODO: revisit isCid and consider differentiating cid strings from DOM and cid numbers from diffs / internal usage
         if (scid > 0) {
-          tdiff = this.cachedFindComponent(scid, newc[scid], oldc, newc, cache);
+          tdiff = this.cachedFindComponent(
+            scid,
+            newc[scid],
+            oldc,
+            newc,
+            cache,
+            changeKinds,
+          );
         } else {
           tdiff = oldc[-scid];
         }
 
         stat = tdiff[STATIC];
-        ndiff = this.cloneMerge(tdiff, cdiff, true);
+        ndiff = this.cloneMerge(tdiff, cdiff, true, changeKinds);
         ndiff[STATIC] = stat;
       } else {
-        ndiff =
-          cdiff[STATIC] !== undefined || oldc[cid] === undefined
-            ? cdiff
-            : this.cloneMerge(oldc[cid], cdiff, false);
+        if (cdiff[STATIC] !== undefined || oldc[cid] === undefined) {
+          ndiff = cdiff;
+          this.recordChange(changeKinds, ndiff, CHANGE_SELF);
+        } else {
+          ndiff = this.cloneMerge(oldc[cid], cdiff, false, changeKinds);
+        }
       }
 
       cache[cid] = ndiff;
@@ -253,38 +284,75 @@ export default class Rendered {
     }
   }
 
-  mutableMerge(target, source) {
+  mutableMerge(target, source, changeKinds) {
     if (source[STATIC] !== undefined) {
+      this.recordChange(changeKinds, source, CHANGE_SELF);
       return source;
     } else {
-      this.doMutableMerge(target, source);
+      this.doMutableMerge(target, source, changeKinds);
       return target;
     }
   }
 
-  doMutableMerge(target, source) {
+  doMutableMerge(target, source, changeKinds, statics = target[STATIC]) {
+    let changeKind = CHANGE_NONE;
     if (source[KEYED]) {
-      this.mergeKeyed(target, source);
+      changeKind = this.mergeKeyed(target, source, changeKinds);
     } else {
       for (const key in source) {
         const val = source[key];
         const targetVal = target[key];
         const isObjVal = isObject(val);
+        let dynamicChange;
         if (isObjVal && val[STATIC] === undefined && isObject(targetVal)) {
-          this.doMutableMerge(targetVal, val);
+          dynamicChange = this.doMutableMerge(targetVal, val, changeKinds);
         } else {
           target[key] = val;
+          dynamicChange = CHANGE_SELF;
+          if (isObjVal) {
+            this.recordChange(changeKinds, val, CHANGE_SELF);
+          }
+        }
+
+        if (dynamicKey.test(key)) {
+          changeKind = Math.max(
+            changeKind,
+            this.dynamicChangeKind(statics, key, target[key], dynamicChange),
+          );
         }
       }
     }
     if (target[ROOT]) {
       target.newRender = true;
     }
-    // The caller ID identifies this exact cached render. A non-empty source
-    // means the rendered child produced a diff, so we create a new callerId.
-    if (target.callerId !== undefined && Object.keys(source).length > 0) {
-      delete target.callerId;
+    return this.recordChange(changeKinds, target, changeKind);
+  }
+
+  dynamicChangeKind(statics, key, dynamic, changeKind) {
+    // An object behind a caller annotation is a function component child.
+    // Its change must not make the containing function component look changed.
+    if (
+      changeKind !== CHANGE_NONE &&
+      isObject(dynamic) &&
+      Array.isArray(statics) &&
+      typeof statics[key] === "string" &&
+      statics[key].endsWith(CALLER_ID_MARKER)
+    ) {
+      return CHANGE_NESTED_COMPONENT_ONLY;
     }
+    return changeKind;
+  }
+
+  recordChange(changeKinds, rendered, changeKind) {
+    if (!changeKinds || !isObject(rendered) || changeKind === CHANGE_NONE) {
+      return changeKind;
+    }
+    const recordedChange = Math.max(
+      changeKinds.get(rendered) || CHANGE_NONE,
+      changeKind,
+    );
+    changeKinds.set(rendered, recordedChange);
+    return recordedChange;
   }
 
   clone(diff) {
@@ -297,11 +365,16 @@ export default class Rendered {
   }
 
   // keyed comprehensions
-  mergeKeyed(target, source) {
+  mergeKeyed(target, source, changeKinds) {
     // Moves read entries from their old positions. Clone before applying any
     // entries so an earlier mutation cannot overwrite a position needed later.
     // Stable-position updates never read from another position.
     const clonedTarget = source[KEYED][KEYED_MOVED] && this.clone(target);
+    const oldCount = target[KEYED][KEYED_COUNT];
+    let changeKind =
+      source[KEYED][KEYED_MOVED] || source[KEYED][KEYED_COUNT] !== oldCount
+        ? CHANGE_SELF
+        : CHANGE_NONE;
     Object.entries(source[KEYED]).forEach(([i, entry]) => {
       if (i === KEYED_COUNT || i === KEYED_MOVED) {
         return;
@@ -311,17 +384,34 @@ export default class Rendered {
         // moved with diff
         const [old_idx, diff] = entry;
         target[KEYED][i] = clonedTarget[KEYED][old_idx];
-        this.doMutableMerge(target[KEYED][i], diff);
+        this.doMutableMerge(
+          target[KEYED][i],
+          diff,
+          changeKinds,
+          target[STATIC],
+        );
+        changeKind = CHANGE_SELF;
       } else if (typeof entry === "number") {
         // moved without diff
         const old_idx = entry;
         target[KEYED][i] = clonedTarget[KEYED][old_idx];
+        changeKind = CHANGE_SELF;
       } else if (typeof entry === "object") {
         // diff, same position
+        const isNewEntry = !target[KEYED][i];
         if (!target[KEYED][i]) {
           target[KEYED][i] = {};
         }
-        this.doMutableMerge(target[KEYED][i], entry);
+        const entryChange = this.doMutableMerge(
+          target[KEYED][i],
+          entry,
+          changeKinds,
+          target[STATIC],
+        );
+        changeKind = Math.max(
+          changeKind,
+          isNewEntry ? CHANGE_SELF : entryChange,
+        );
       }
     });
     // drop extra entries
@@ -337,10 +427,12 @@ export default class Rendered {
     target[KEYED][KEYED_COUNT] = source[KEYED][KEYED_COUNT];
     if (source[STREAM]) {
       target[STREAM] = source[STREAM];
+      changeKind = CHANGE_SELF;
     }
     if (source[TEMPLATES]) {
       target[TEMPLATES] = source[TEMPLATES];
     }
+    return changeKind;
   }
 
   // Merges cid trees together, copying statics from source tree.
@@ -351,20 +443,57 @@ export default class Rendered {
   // mutableMerge, where we set newRender to true if there is a root
   // (effectively forcing the new version to be rendered instead of skipped)
   //
-  cloneMerge(target, source, pruneMagicId) {
+  cloneMerge(target, source, pruneMagicId, changeKinds) {
     let merged;
+    let changeKind = CHANGE_NONE;
     if (source[KEYED]) {
       merged = this.clone(target);
-      this.mergeKeyed(merged, source);
+      if (pruneMagicId) {
+        this.pruneInternalIds(merged);
+      }
+      changeKind = this.mergeKeyed(merged, source, changeKinds);
     } else {
       merged = { ...target, ...source };
       for (const key in merged) {
         const val = source[key];
         const targetVal = target[key];
+        let dynamicChange = CHANGE_NONE;
         if (isObject(val) && val[STATIC] === undefined && isObject(targetVal)) {
-          merged[key] = this.cloneMerge(targetVal, val, pruneMagicId);
+          merged[key] = this.cloneMerge(
+            targetVal,
+            val,
+            pruneMagicId,
+            changeKinds,
+          );
+          dynamicChange = changeKinds
+            ? changeKinds.get(merged[key]) || CHANGE_NONE
+            : CHANGE_NONE;
         } else if (val === undefined && isObject(targetVal)) {
-          merged[key] = this.cloneMerge(targetVal, {}, pruneMagicId);
+          merged[key] = this.cloneMerge(
+            targetVal,
+            {},
+            pruneMagicId,
+            changeKinds,
+          );
+        } else if (val !== undefined) {
+          dynamicChange = CHANGE_SELF;
+          if (isObject(val)) {
+            this.recordChange(changeKinds, val, CHANGE_SELF);
+          }
+        }
+
+        if (val !== undefined && dynamicKey.test(key)) {
+          changeKind = Math.max(
+            changeKind,
+            this.dynamicChangeKind(
+              target[STATIC],
+              key,
+              merged[key],
+              dynamicChange,
+            ),
+          );
+        } else if (key === STATIC && val !== undefined) {
+          changeKind = CHANGE_SELF;
         }
       }
     }
@@ -375,20 +504,31 @@ export default class Rendered {
     } else if (target[ROOT]) {
       merged.newRender = true;
     }
-    // If we have a callerId, a non-empty source means the component changed
-    if (
-      (merged.callerId !== undefined && Object.keys(source).length > 0)
-    ) {
-      delete merged.callerId;
-    }
+    this.recordChange(changeKinds, merged, changeKind);
     return merged;
   }
 
-  componentToString(cid) {
+  pruneInternalIds(rendered) {
+    for (const key in rendered) {
+      if (isObject(rendered[key])) {
+        this.pruneInternalIds(rendered[key]);
+      }
+    }
+    delete rendered.magicId;
+    delete rendered.newRender;
+    delete rendered.callerId;
+  }
+
+  /**
+   * @param {number} cid
+   * @param {Map<object, number> | null} [changeKinds]
+   */
+  componentToString(cid, changeKinds = null) {
     const { buffer: str, streams } = this.recursiveCIDToString(
       this.rendered[COMPONENTS],
       cid,
       null,
+      changeKinds,
     );
     const [strippedHTML, _before, _after] = modifyRoot(str, {});
     return { buffer: strippedHTML, streams: streams };
@@ -426,7 +566,7 @@ export default class Rendered {
     return `c${this.callerId}-${this.parentViewId()}`;
   }
 
-  callerAnnotation(staticPart, rendered) {
+  callerAnnotation(staticPart, rendered, changeKinds) {
     if (!staticPart.endsWith(CALLER_ID_MARKER)) {
       return [staticPart, ""];
     }
@@ -437,7 +577,12 @@ export default class Rendered {
       return [staticPart.slice(0, -CALLER_ID_MARKER.length) + "-->", ""];
     }
 
-    rendered.callerId = rendered.callerId || this.nextCallerID();
+    if (changeKinds?.get(rendered) === CHANGE_SELF) {
+      rendered.callerId = this.nextCallerID();
+      changeKinds.delete(rendered);
+    } else {
+      rendered.callerId = rendered.callerId || this.nextCallerID();
+    }
     const marker = `CALLER_ID:${rendered.callerId} -->`;
     const opening = staticPart.slice(0, -CALLER_ID_MARKER.length) + marker;
     return [opening, `<!-- ${marker}`];
@@ -489,6 +634,7 @@ export default class Rendered {
         const [staticPart, callerClosing] = this.callerAnnotation(
           statics[i],
           dynamic,
+          output.changeKinds,
         );
         output.buffer += staticPart;
         this.dynamicToBuffer(dynamic, templates, output, changeTracking);
@@ -550,6 +696,7 @@ export default class Rendered {
           const [staticPart, callerClosing] = this.callerAnnotation(
             statics[j],
             dynamic,
+            output.changeKinds,
           );
           output.buffer += staticPart;
           this.dynamicToBuffer(dynamic, keyedTemplates, output, changeTracking);
@@ -592,6 +739,7 @@ export default class Rendered {
         output.components,
         rendered,
         output.onlyCids,
+        output.changeKinds,
       );
       output.buffer += str;
       output.streams = new Set([...output.streams, ...streams]);
@@ -602,7 +750,7 @@ export default class Rendered {
     }
   }
 
-  recursiveCIDToString(components, cid, onlyCids) {
+  recursiveCIDToString(components, cid, onlyCids, changeKinds) {
     if (components[cid]) {
       const component = components[cid];
 
@@ -639,6 +787,7 @@ export default class Rendered {
         onlyCids,
         changeTracking,
         attrs,
+        changeKinds,
       );
       // disable reset after we've rendered
       delete component.reset;
