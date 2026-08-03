@@ -1126,7 +1126,8 @@ export default class View {
 
   onChannel(event, cb) {
     this.liveSocket.onChannel(this.channel, event, (resp) => {
-      if (this.isJoinPending()) {
+      // We don't need to wait if we know that we'll redirect
+      if (this.isJoinPending() && !["redirect", "live_redirect"].includes(event)) {
         // in case this is a rejoin (joinCount > 1) we store our own join ops
         if (this.joinCount > 1) {
           this.pendingJoinOps.push(() => cb(resp));
