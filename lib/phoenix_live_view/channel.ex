@@ -1306,6 +1306,10 @@ defmodule Phoenix.LiveView.Channel do
       {:error, :noproc} ->
         GenServer.reply(from, {:error, %{reason: "stale"}})
         {:stop, :shutdown, :no_state}
+
+      {:error, :parent_redirect} ->
+        GenServer.reply(from, {:error, %{reason: "parent_redirect"}})
+        {:stop, :shutdown, :no_state}
     end
   end
 
@@ -1398,8 +1402,8 @@ defmodule Phoenix.LiveView.Channel do
            live_session_name: live_session_name
          }}
 
-      {:error, :noproc} ->
-        {:error, :noproc}
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -1407,7 +1411,11 @@ defmodule Phoenix.LiveView.Channel do
     try do
       GenServer.call(parent, {@prefix, :child_mount, self(), assign_new})
     catch
-      :exit, {:noproc, _} -> {:error, :noproc}
+      :exit, {:noproc, _} ->
+        {:error, :noproc}
+
+      :exit, {{:shutdown, {kind, _opts}}, _} when kind in [:redirect, :live_redirect] ->
+        {:error, :parent_redirect}
     end
   end
 
