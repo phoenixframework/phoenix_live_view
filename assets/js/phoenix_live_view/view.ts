@@ -932,7 +932,7 @@ export default class View {
       return false;
     }
 
-    this.rendered!.mergeDiff(diff);
+    const changeKinds = this.rendered!.mergeDiff(diff);
     let phxChildrenAdded = false;
 
     // When the diff only contains component diffs, then walk components
@@ -949,6 +949,7 @@ export default class View {
             this.componentPatch(
               this.rendered!.getComponent(diff, parentCID),
               parentCID,
+              changeKinds,
             )
           ) {
             phxChildrenAdded = true;
@@ -957,7 +958,11 @@ export default class View {
       });
     } else if (!isEmpty(diff)) {
       this.liveSocket.time("full patch complete", () => {
-        const [html, streams] = this.renderContainer(diff, "update");
+        const [html, streams] = this.renderContainer(
+          diff,
+          "update",
+          changeKinds,
+        );
         const patch = new DOMPatch(this, this.el, html, streams, null);
         phxChildrenAdded = this.performPatch(patch, true);
       });
@@ -971,20 +976,26 @@ export default class View {
     return true;
   }
 
-  renderContainer(diff, kind) {
+  renderContainer(diff, kind, changeKinds: Map<object, number> | null = null) {
     return this.liveSocket.time(`toString diff (${kind})`, () => {
       const tag = this.el.tagName;
       // Don't skip any component in the diff nor any marked as pruned
       // (as they may have been added back)
       const cids = diff ? this.rendered!.componentCIDs(diff) : null;
-      const { buffer: html, streams } = this.rendered!.toString(cids);
+      const { buffer: html, streams } = this.rendered!.toString(
+        cids,
+        changeKinds,
+      );
       return [`<${tag}>${html}</${tag}>`, streams];
     });
   }
 
-  componentPatch(diff, cid) {
+  componentPatch(diff, cid, changeKinds: Map<object, number> | null = null) {
     if (isEmpty(diff)) return false;
-    const { buffer: html, streams } = this.rendered!.componentToString(cid);
+    const { buffer: html, streams } = this.rendered!.componentToString(
+      cid,
+      changeKinds,
+    );
     const patch = new DOMPatch(this, this.el, html, streams, cid);
     const childrenAdded = this.performPatch(patch, true);
     return childrenAdded;
