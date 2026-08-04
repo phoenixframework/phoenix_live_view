@@ -38,8 +38,27 @@ const VOID_TAGS = new Set([
   "wbr",
 ]);
 const quoteChars = new Set(["'", '"']);
+
+// HEEx debug annotations for a function component call site end with this
+// marker, so the static segment right before the component's dynamic always
+// terminates with it. See Phoenix.LiveView.HTMLEngine.
 const CALLER_ID_MARKER = "CALLER_ID -->";
-const dynamicKey = /^\d+$/;
+
+// Diff cursor sentinel meaning "everything below here is new". Used when a
+// subtree arrives with fresh statics, so there is nothing to compare against.
+const ALL_CHANGED = Symbol("all changed");
+
+// Descends the diff cursor alongside the rendered tree. `undefined` means the
+// server sent nothing for this position, i.e. it did not change.
+const diffFor = (diffNode, key) => {
+  if (diffNode === undefined || diffNode === null) {
+    return undefined;
+  } else if (diffNode === ALL_CHANGED || diffNode[STATIC] !== undefined) {
+    return ALL_CHANGED;
+  } else {
+    return diffNode[key];
+  }
+};
 
 export const modifyRoot = (html, attrs, clearInnerHTML) => {
   let i;
@@ -138,9 +157,16 @@ export default class Rendered {
     this.rendered = {};
     this.magicId = 0;
     this.callerId = 0;
-    this.mergeId = 0;
     this.isDebugEnabled = isDebugEnabled;
+    // Debug-only state. diffCursor/componentDiffs hold a clone of the
+    // last diff, which the render pass walks alongside the tree to attribute
+    // changes to function component call sites; see captureDiffCursor.
+    this.diffCursor = undefined;
+    this.componentDiffs = undefined;
+    // The first merge is the join: everything is new, nothing is a change.
+    this.initialMerge = true;
     this.mergeDiff(rendered);
+    this.initialMerge = false;
   }
 
   parentViewId() {
@@ -154,6 +180,7 @@ export default class Rendered {
       onlyCids,
       true,
       {},
+      this.diffCursor,
     );
     return { buffer: str, streams: streams };
   }
@@ -164,6 +191,7 @@ export default class Rendered {
     onlyCids,
     changeTracking,
     rootAttrs,
+    diffNode,
   ) {
     onlyCids = onlyCids ? new Set(onlyCids) : null;
     const output = {
@@ -173,7 +201,14 @@ export default class Rendered {
       streams: new Set(),
       debug: this.isDebugEnabled(),
     };
-    this.toOutputBuffer(rendered, null, output, changeTracking, rootAttrs);
+    this.toOutputBuffer(
+      rendered,
+      diffNode,
+      null,
+      output,
+      changeTracking,
+      rootAttrs,
+    );
     return { buffer: output.buffer, streams: output.streams };
   }
 
@@ -201,29 +236,18 @@ export default class Rendered {
   }
 
   mergeDiff(diff) {
-    // Store the patch ID rather than a boolean on changed callees. If a
-    // component is not serialized by this patch, its stale marker cannot make
-    // a later patch look like a re-render.
-    this.mergeId++;
-    const mergeId = this.isDebugEnabled() ? this.mergeId : null;
+    this.captureDiffCursor(diff);
     const newc = diff[COMPONENTS];
     const cache = {};
     delete diff[COMPONENTS];
-    this.rendered = this.mutableMerge(this.rendered, diff, mergeId);
+    this.rendered = this.mutableMerge(this.rendered, diff);
     this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {};
 
     if (newc) {
       const oldc = this.rendered[COMPONENTS];
 
       for (const cid in newc) {
-        newc[cid] = this.cachedFindComponent(
-          cid,
-          newc[cid],
-          oldc,
-          newc,
-          cache,
-          mergeId,
-        );
+        newc[cid] = this.cachedFindComponent(cid, newc[cid], oldc, newc, cache);
       }
 
       for (const cid in newc) {
@@ -233,7 +257,22 @@ export default class Rendered {
     }
   }
 
-  cachedFindComponent(cid, cdiff, oldc, newc, cache, mergeId) {
+  // Keeps a deep copy of the incoming diff so the render pass can walk it
+  // alongside the tree. Cloning is not optional: the merge adopts diff
+  // subtrees into the rendered tree and then mutates them.
+  captureDiffCursor(diff) {
+    if (!this.isDebugEnabled() || this.initialMerge) {
+      this.diffCursor = undefined;
+      this.componentDiffs = undefined;
+      return;
+    }
+    const cloned = this.clone(diff);
+    this.componentDiffs = cloned[COMPONENTS];
+    delete cloned[COMPONENTS];
+    this.diffCursor = cloned;
+  }
+
+  cachedFindComponent(cid, cdiff, oldc, newc, cache) {
     if (cache[cid]) {
       return cache[cid];
     } else {
@@ -247,27 +286,19 @@ export default class Rendered {
         // @ts-expect-error: isCid also allows strings, but the diff always uses numbers
         // TODO: revisit isCid and consider differentiating cid strings from DOM and cid numbers from diffs / internal usage
         if (scid > 0) {
-          tdiff = this.cachedFindComponent(
-            scid,
-            newc[scid],
-            oldc,
-            newc,
-            cache,
-            mergeId,
-          );
+          tdiff = this.cachedFindComponent(scid, newc[scid], oldc, newc, cache);
         } else {
           tdiff = oldc[-scid];
         }
 
         stat = tdiff[STATIC];
-        [ndiff] = this.cloneMerge(tdiff, cdiff, true, mergeId);
+        ndiff = this.cloneMerge(tdiff, cdiff, true);
         ndiff[STATIC] = stat;
       } else {
-        if (cdiff[STATIC] !== undefined || oldc[cid] === undefined) {
-          ndiff = cdiff;
-        } else {
-          [ndiff] = this.cloneMerge(oldc[cid], cdiff, false, mergeId);
-        }
+        ndiff =
+          cdiff[STATIC] !== undefined || oldc[cid] === undefined
+            ? cdiff
+            : this.cloneMerge(oldc[cid], cdiff, false);
       }
 
       cache[cid] = ndiff;
@@ -275,68 +306,33 @@ export default class Rendered {
     }
   }
 
-  mutableMerge(target, source, mergeId) {
+  mutableMerge(target, source) {
     if (source[STATIC] !== undefined) {
       return source;
     } else {
-      this.doMutableMerge(target, source, mergeId);
+      this.doMutableMerge(target, source);
       return target;
     }
   }
 
-  doMutableMerge(target, source, mergeId, statics = target[STATIC]) {
-    delete target.calledWithChanges;
-    let changed = false;
+  doMutableMerge(target, source) {
     if (source[KEYED]) {
-      changed = this.mergeKeyed(target, source, mergeId);
+      this.mergeKeyed(target, source);
     } else {
       for (const key in source) {
         const val = source[key];
         const targetVal = target[key];
         const isObjVal = isObject(val);
-        let dynamicChanged;
         if (isObjVal && val[STATIC] === undefined && isObject(targetVal)) {
-          dynamicChanged = this.doMutableMerge(targetVal, val, mergeId);
+          this.doMutableMerge(targetVal, val);
         } else {
           target[key] = val;
-          dynamicChanged = true;
-        }
-
-        if (dynamicKey.test(key)) {
-          changed =
-            this.dynamicChanged(
-              statics,
-              key,
-              target[key],
-              dynamicChanged,
-              mergeId,
-            ) || changed;
         }
       }
     }
     if (target[ROOT]) {
       target.newRender = true;
     }
-    return changed;
-  }
-
-  dynamicChanged(statics, key, dynamic, changed, mergeId) {
-    // An object behind a caller annotation is a function component child.
-    // Mark that child and stop its changes from propagating to the containing
-    // function component.
-    if (
-      changed &&
-      isObject(dynamic) &&
-      Array.isArray(statics) &&
-      typeof statics[key] === "string" &&
-      statics[key].endsWith(CALLER_ID_MARKER)
-    ) {
-      if (mergeId !== null) {
-        dynamic.calledWithChanges = mergeId;
-      }
-      return false;
-    }
-    return changed;
   }
 
   clone(diff) {
@@ -349,16 +345,11 @@ export default class Rendered {
   }
 
   // keyed comprehensions
-  mergeKeyed(target, source, mergeId) {
+  mergeKeyed(target, source) {
     // Moves read entries from their old positions. Clone before applying any
     // entries so an earlier mutation cannot overwrite a position needed later.
     // Stable-position updates never read from another position.
     const clonedTarget = source[KEYED][KEYED_MOVED] && this.clone(target);
-    const oldCount = target[KEYED][KEYED_COUNT];
-    let changed =
-      source[KEYED][KEYED_MOVED] || source[KEYED][KEYED_COUNT] !== oldCount
-        ? true
-        : false;
     Object.entries(source[KEYED]).forEach(([i, entry]) => {
       if (i === KEYED_COUNT || i === KEYED_MOVED) {
         return;
@@ -368,26 +359,17 @@ export default class Rendered {
         // moved with diff
         const [old_idx, diff] = entry;
         target[KEYED][i] = clonedTarget[KEYED][old_idx];
-        this.doMutableMerge(target[KEYED][i], diff, mergeId, target[STATIC]);
-        changed = true;
+        this.doMutableMerge(target[KEYED][i], diff);
       } else if (typeof entry === "number") {
         // moved without diff
         const old_idx = entry;
         target[KEYED][i] = clonedTarget[KEYED][old_idx];
-        changed = true;
       } else if (typeof entry === "object") {
         // diff, same position
-        const isNewEntry = !target[KEYED][i];
         if (!target[KEYED][i]) {
           target[KEYED][i] = {};
         }
-        const entryChanged = this.doMutableMerge(
-          target[KEYED][i],
-          entry,
-          mergeId,
-          target[STATIC],
-        );
-        changed = isNewEntry || entryChanged || changed;
+        this.doMutableMerge(target[KEYED][i], entry);
       }
     });
     // drop extra entries
@@ -403,12 +385,10 @@ export default class Rendered {
     target[KEYED][KEYED_COUNT] = source[KEYED][KEYED_COUNT];
     if (source[STREAM]) {
       target[STREAM] = source[STREAM];
-      changed = true;
     }
     if (source[TEMPLATES]) {
       target[TEMPLATES] = source[TEMPLATES];
     }
-    return changed;
   }
 
   // Merges cid trees together, copying statics from source tree.
@@ -419,12 +399,13 @@ export default class Rendered {
   // mutableMerge, where we set newRender to true if there is a root
   // (effectively forcing the new version to be rendered instead of skipped)
   //
-  cloneMerge(target, source, pruneMagicId, mergeId) {
+  cloneMerge(target, source, pruneMagicId) {
     let merged;
-    let changed = false;
     if (source[KEYED]) {
       merged = this.clone(target);
-      changed = this.mergeKeyed(merged, source, mergeId);
+      this.mergeKeyed(merged, source);
+      // The non-keyed branch below prunes as it recurses; the keyed clone has
+      // to be walked separately.
       if (pruneMagicId) {
         this.pruneInternalIds(merged);
       }
@@ -433,55 +414,38 @@ export default class Rendered {
       for (const key in merged) {
         const val = source[key];
         const targetVal = target[key];
-        let dynamicChanged = false;
         if (isObject(val) && val[STATIC] === undefined && isObject(targetVal)) {
-          [merged[key], dynamicChanged] = this.cloneMerge(
-            targetVal,
-            val,
-            pruneMagicId,
-            mergeId,
-          );
+          merged[key] = this.cloneMerge(targetVal, val, pruneMagicId);
         } else if (val === undefined && isObject(targetVal)) {
-          [merged[key]] = this.cloneMerge(targetVal, {}, pruneMagicId, mergeId);
-        } else if (val !== undefined) {
-          dynamicChanged = true;
-        }
-
-        if (val !== undefined && dynamicKey.test(key)) {
-          changed =
-            this.dynamicChanged(
-              target[STATIC],
-              key,
-              merged[key],
-              dynamicChanged,
-              mergeId,
-            ) || changed;
-        } else if (key === STATIC && val !== undefined) {
-          changed = true;
+          merged[key] = this.cloneMerge(targetVal, {}, pruneMagicId);
         }
       }
     }
     if (pruneMagicId) {
-      delete merged.magicId;
-      delete merged.newRender;
-      delete merged.callerId;
+      this.deleteInternalIds(merged);
     } else if (target[ROOT]) {
       merged.newRender = true;
     }
-    delete merged.calledWithChanges;
-    return [merged, changed];
+    return merged;
   }
 
+  // A component sharing statics with another cid is cloned from that cid's
+  // tree, which would otherwise carry its caller IDs along. Caller IDs are
+  // stable for the lifetime of a node, so a duplicate would never heal.
   pruneInternalIds(rendered) {
     for (const key in rendered) {
       if (isObject(rendered[key])) {
         this.pruneInternalIds(rendered[key]);
       }
     }
+    this.deleteInternalIds(rendered);
+  }
+
+  deleteInternalIds(rendered) {
     delete rendered.magicId;
     delete rendered.newRender;
     delete rendered.callerId;
-    delete rendered.calledWithChanges;
+    delete rendered.keyedCount;
   }
 
   componentToString(cid) {
@@ -526,36 +490,27 @@ export default class Rendered {
     return `c${this.callerId}-${this.parentViewId()}`;
   }
 
-  callerAnnotation(staticPart, rendered) {
-    if (!staticPart.endsWith(CALLER_ID_MARKER)) {
-      return [staticPart, ""];
-    }
-
-    if (!isObject(rendered)) {
-      // A LiveComponent is rendered as a plain number in the diff.
-      // Strip the CALLER_ID marker.
-      return [staticPart.slice(0, -CALLER_ID_MARKER.length) + "-->", ""];
-    }
-
-    const calledWithChanges = rendered.calledWithChanges === this.mergeId;
-    delete rendered.calledWithChanges;
-    if (calledWithChanges) {
-      rendered.callerId = this.nextCallerID();
-    } else {
-      rendered.callerId = rendered.callerId || this.nextCallerID();
-    }
-    const marker = `CALLER_ID:${rendered.callerId} -->`;
-    const opening = staticPart.slice(0, -CALLER_ID_MARKER.length) + marker;
-    return [opening, `<!-- ${marker}`];
-  }
-
   // Converts rendered tree to output buffer.
   //
   // changeTracking controls if we can apply the PHX_SKIP optimization.
-  toOutputBuffer(rendered, templates, output, changeTracking, rootAttrs = {}) {
+  //
+  // diffNode is the debug-only cursor into the last diff (see
+  // captureDiffCursor). The return value says whether this node changed in
+  // that diff, *excluding* changes that belong to a nested function component:
+  // those are reported against their own caller ID instead, so only the
+  // deepest component that actually changed gets named.
+  toOutputBuffer(
+    rendered,
+    diffNode,
+    templates,
+    output,
+    changeTracking,
+    rootAttrs = {},
+  ) {
     if (rendered[KEYED]) {
       return this.comprehensionToBuffer(
         rendered,
+        diffNode,
         templates,
         output,
         changeTracking,
@@ -589,30 +544,14 @@ export default class Rendered {
       rendered.magicId = this.nextMagicID();
     }
 
-    if (output.debug) {
-      for (let i = 0; i < statics.length - 1; i++) {
-        const dynamic = rendered[i];
-        const [staticPart, callerClosing] = this.callerAnnotation(
-          statics[i],
-          dynamic,
-        );
-        output.buffer += staticPart;
-        this.dynamicToBuffer(dynamic, templates, output, changeTracking);
-        output.buffer += callerClosing;
-      }
-      output.buffer += statics[statics.length - 1];
-    } else {
-      output.buffer += statics[0];
-      for (let i = 1; i < statics.length; i++) {
-        this.dynamicToBuffer(
-          rendered[i - 1],
-          templates,
-          output,
-          changeTracking,
-        );
-        output.buffer += statics[i];
-      }
-    }
+    const changed = this.dynamicsToBuffer(
+      rendered,
+      diffNode,
+      statics,
+      templates,
+      output,
+      changeTracking,
+    );
 
     // Applies the root tag "skip" optimization if supported, which clears
     // the root tag attributes and innerHTML, and only maintains the magicId.
@@ -642,38 +581,118 @@ export default class Rendered {
       rendered.newRender = false;
       output.buffer = prevBuffer + commentBefore + newRoot + commentAfter;
     }
+    return changed;
   }
 
-  comprehensionToBuffer(rendered, templates, output, changeTracking) {
+  // Emits `statics` interleaved with the dynamics held on `node`, which is
+  // either a rendered struct or a single entry of a keyed comprehension.
+  //
+  // Outside of debug mode this is the plain interleave and no diff cursor is
+  // consulted at all, so change reporting costs nothing when it is off.
+  dynamicsToBuffer(node, diffNode, statics, templates, output, changeTracking) {
+    if (!output.debug) {
+      output.buffer += statics[0];
+      for (let i = 1; i < statics.length; i++) {
+        this.dynamicToBuffer(
+          node[i - 1],
+          undefined,
+          templates,
+          output,
+          changeTracking,
+        );
+        output.buffer += statics[i];
+      }
+      return false;
+    }
+
+    let changed = diffNode === ALL_CHANGED;
+    for (let i = 0; i < statics.length - 1; i++) {
+      const dynamic = node[i];
+      const childDiff = diffFor(diffNode, i);
+      const staticPart = statics[i];
+
+      if (staticPart.endsWith(CALLER_ID_MARKER) && isObject(dynamic)) {
+        // Whether the component changed is only known once we have descended
+        // into it, and the marker is emitted before its content, so render the
+        // child into its own buffer first.
+        const prevBuffer = output.buffer;
+        output.buffer = "";
+        const childChanged = this.dynamicToBuffer(
+          dynamic,
+          childDiff,
+          templates,
+          output,
+          changeTracking,
+        );
+        const childBuffer = output.buffer;
+
+        if (childChanged || !dynamic.callerId) {
+          dynamic.callerId = this.nextCallerID();
+        }
+        const marker = `CALLER_ID:${dynamic.callerId} -->`;
+        output.buffer =
+          prevBuffer +
+          staticPart.slice(0, -CALLER_ID_MARKER.length) +
+          marker +
+          childBuffer +
+          `<!-- ${marker}`;
+        // Deliberately not folded into `changed`: the change belongs to the
+        // component whose ID we just rotated, not to the template that
+        // called it. Only the deepest component that changed rotates.
+        continue;
+      }
+
+      if (staticPart.endsWith(CALLER_ID_MARKER)) {
+        // A LiveComponent call site renders as a plain cid. It is its own
+        // render boundary and reports its own changes, so drop the marker.
+        output.buffer += staticPart.slice(0, -CALLER_ID_MARKER.length) + "-->";
+      } else {
+        output.buffer += staticPart;
+      }
+      changed =
+        this.dynamicToBuffer(
+          dynamic,
+          childDiff,
+          templates,
+          output,
+          changeTracking,
+        ) || changed;
+    }
+    output.buffer += statics[statics.length - 1];
+    return changed;
+  }
+
+  comprehensionToBuffer(rendered, diffNode, templates, output, changeTracking) {
     const keyedTemplates = templates || rendered[TEMPLATES];
     const statics = this.templateStatic(rendered[STATIC], templates);
     rendered[STATIC] = statics;
     delete rendered[TEMPLATES];
-    for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
-      if (output.debug) {
-        for (let j = 0; j < statics.length - 1; j++) {
-          const dynamic = rendered[KEYED][i][j];
-          const [staticPart, callerClosing] = this.callerAnnotation(
-            statics[j],
-            dynamic,
-          );
-          output.buffer += staticPart;
-          this.dynamicToBuffer(dynamic, keyedTemplates, output, changeTracking);
-          output.buffer += callerClosing;
-        }
-        output.buffer += statics[statics.length - 1];
-      } else {
-        output.buffer += statics[0];
-        for (let j = 1; j < statics.length; j++) {
-          this.dynamicToBuffer(
-            rendered[KEYED][i][j - 1],
-            keyedTemplates,
-            output,
-            changeTracking,
-          );
-          output.buffer += statics[j];
-        }
-      }
+    const count = rendered[KEYED][KEYED_COUNT];
+
+    let changed = false;
+    let keyedDiff;
+    if (output.debug) {
+      keyedDiff = diffFor(diffNode, KEYED);
+      // Reordering or dropping entries changes the comprehension itself even
+      // when no surviving entry carries a diff. The old count is not
+      // recoverable from the merged tree, so the last render records it.
+      changed =
+        keyedDiff === ALL_CHANGED ||
+        !!(keyedDiff && keyedDiff[KEYED_MOVED]) ||
+        (rendered.keyedCount !== undefined && rendered.keyedCount !== count);
+      rendered.keyedCount = count;
+    }
+
+    for (let i = 0; i < count; i++) {
+      changed =
+        this.dynamicsToBuffer(
+          rendered[KEYED][i],
+          this.keyedEntryDiff(keyedDiff, i),
+          statics,
+          keyedTemplates,
+          output,
+          changeTracking,
+        ) || changed;
     }
     // we don't need to store the rendered tree for streams
     if (rendered[STREAM]) {
@@ -688,11 +707,31 @@ export default class Rendered {
           [KEYED_COUNT]: 0,
         };
         output.streams.add(stream);
+        changed = changed || diffNode !== undefined;
       }
+    }
+    return changed;
+  }
+
+  keyedEntryDiff(keyedDiff, i) {
+    if (keyedDiff === ALL_CHANGED) {
+      return ALL_CHANGED;
+    } else if (keyedDiff === undefined) {
+      return undefined;
+    }
+    const entry = keyedDiff[i];
+    if (Array.isArray(entry)) {
+      // [old_idx, diff] - moved with diff
+      return entry[1];
+    } else if (typeof entry === "number") {
+      // moved without diff; the move itself is reported on the comprehension
+      return undefined;
+    } else {
+      return entry;
     }
   }
 
-  dynamicToBuffer(rendered, templates, output, changeTracking) {
+  dynamicToBuffer(rendered, diffNode, templates, output, changeTracking) {
     if (typeof rendered === "number") {
       const { buffer: str, streams } = this.recursiveCIDToString(
         output.components,
@@ -701,10 +740,33 @@ export default class Rendered {
       );
       output.buffer += str;
       output.streams = new Set([...output.streams, ...streams]);
+      // Only true when the cid reference itself changed; the component's own
+      // content is reported while rendering that component.
+      return diffNode !== undefined;
     } else if (isObject(rendered)) {
-      this.toOutputBuffer(rendered, templates, output, changeTracking, {});
+      return this.toOutputBuffer(
+        rendered,
+        diffNode,
+        templates,
+        output,
+        changeTracking,
+        {},
+      );
     } else {
       output.buffer += rendered;
+      return diffNode !== undefined;
+    }
+  }
+
+  // A component whose diff carries statics was either created or rebuilt from
+  // another cid's tree, so nothing in it can be compared against a previous
+  // render.
+  componentDiffCursor(cid) {
+    const cdiff = this.componentDiffs && this.componentDiffs[cid];
+    if (cdiff === undefined || cdiff === null) {
+      return undefined;
+    } else {
+      return cdiff[STATIC] !== undefined ? ALL_CHANGED : cdiff;
     }
   }
 
@@ -745,6 +807,7 @@ export default class Rendered {
         onlyCids,
         changeTracking,
         attrs,
+        this.componentDiffCursor(cid),
       );
       // disable reset after we've rendered
       delete component.reset;
