@@ -52,12 +52,12 @@ defmodule Phoenix.LiveView.Upload do
           |> Map.fetch!(name)
           |> UploadConfig.disallow()
 
-        new_refs = Map.reject(uploads[@refs_to_names], fn {_ref, val} -> val == name end)
-
         new_uploads =
           uploads
           |> Map.put(name, upload_config)
-          |> Map.update!(@refs_to_names, fn _ -> new_refs end)
+          |> Map.update!(@refs_to_names, fn refs ->
+            Map.reject(refs, fn {_ref, val} -> val == name end)
+          end)
 
         Utils.assign(socket, :uploads, new_uploads)
 
