@@ -52,11 +52,7 @@ defmodule Phoenix.LiveView.Upload do
           |> Map.fetch!(name)
           |> UploadConfig.disallow()
 
-        new_refs =
-          Enum.reduce(uploads[@refs_to_names], uploads[@refs_to_names], fn
-            {ref, ^name}, acc -> Map.delete(acc, ref)
-            {_ref, _name}, acc -> acc
-          end)
+        new_refs = Map.reject(uploads[@refs_to_names], fn {_ref, val} -> val == name end)
 
         new_uploads =
           uploads
