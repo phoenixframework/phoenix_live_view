@@ -125,3 +125,5 @@ export const STREAM = "stream";
 // Diagnostics
 export const PHX_LV_DIAGNOSTIC_EVENT = "phx:live-view:diagnostic";
 export const PHX_LV_DIAGNOSTIC_VERSION = 1;
+// Debug tooling
+export const PHX_LV_SOCKET_AVAILABLE_EVENT = "phx:live-view:socket-available";

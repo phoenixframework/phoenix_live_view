@@ -32,6 +32,7 @@ import {
   PHX_RUNTIME_HOOK,
   PHX_DROP_TARGET_ACTIVE_CLASS,
   PHX_TELEPORTED_SRC,
+  PHX_LV_SOCKET_AVAILABLE_EVENT,
 } from "./constants";
 
 import {
@@ -66,6 +67,9 @@ import { StringSink } from "./rendered";
  * @returns {boolean} True if the element was touched by a user, false otherwise.
  */
 export const isUsedInput = (el) => DOM.isUsedInput(el);
+
+const DEBUG_REQUIRED_ERROR =
+  "LiveView debug APIs require debugging to be enabled with liveSocket.enableDebug()";
 
 /**
  * Options for configuring the LiveSocket instance.
@@ -434,6 +438,7 @@ export default class LiveSocket {
    * @internal
    */
   attachDebugSink(createSink: () => any): void {
+    this.assertDebugEnabled();
     this.useSink(createSink);
   }
 
@@ -452,6 +457,12 @@ export default class LiveSocket {
     this.createSink = createSink;
     for (const id in this.roots) {
       this.roots[id].eachDescendent((view) => view.attachSink(createSink));
+    }
+  }
+
+  private assertDebugEnabled() {
+    if (!this.isDebugEnabled()) {
+      throw new Error(DEBUG_REQUIRED_ERROR);
     }
   }
 
@@ -503,6 +514,23 @@ export default class LiveSocket {
   }
 
   /**
+   * Makes this LiveSocket discoverable by external development tooling.
+   *
+   * Both the global and the event are needed, because a tool may initialize
+   * either before or after `connect()`.
+   *
+   * @internal
+   */
+  private announceDebugSocket() {
+    (window as any).__LIVE_VIEW_SOCKET__ = this;
+    window.dispatchEvent(
+      new CustomEvent(PHX_LV_SOCKET_AVAILABLE_EVENT, {
+        detail: { liveSocket: this },
+      }),
+    );
+  }
+
+  /**
    * Enables latency simulation.
    *
    * When latency simulation is enabled, the LiveView client will add a delay to requests and responses from the server.
@@ -549,6 +577,9 @@ export default class LiveSocket {
       !this.isDebugDisabled()
     ) {
       this.enableDebug();
+    }
+    if (this.isDebugEnabled()) {
+      this.announceDebugSocket();
     }
     const doConnect = () => {
       this.resetReloadStatus();
