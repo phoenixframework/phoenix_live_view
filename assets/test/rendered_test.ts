@@ -399,19 +399,17 @@ describe("Rendered", () => {
 
         const [initialCallerId] = callerIDs(rendered.toString().buffer);
 
-        const unrelatedChanges = rendered.mergeDiff({ 1: "second" });
-        const [unchangedCallerId] = callerIDs(
-          rendered.toString(null, unrelatedChanges).buffer,
-        );
+        rendered.mergeDiff({ 1: "second" });
+        const [unchangedCallerId] = callerIDs(rendered.toString().buffer);
         expect(unchangedCallerId).toEqual(initialCallerId);
 
         // The server sent a non-empty child diff, even though its value is equal.
-        const childChanges = rendered.mergeDiff({ 0: { 0: "one" } });
+        rendered.mergeDiff({ 0: { 0: "one" } });
         expect((rendered.get() as any)[0].callerId).toEqual(initialCallerId);
-        const [changedCallerId] = callerIDs(
-          rendered.toString(null, childChanges).buffer,
-        );
+        expect((rendered.get() as any)[0].calledWithChanges).toBeDefined();
+        const [changedCallerId] = callerIDs(rendered.toString().buffer);
         expect(changedCallerId).not.toEqual(initialCallerId);
+        expect((rendered.get() as any)[0].calledWithChanges).toBeUndefined();
       },
     );
 
@@ -442,21 +440,25 @@ describe("Rendered", () => {
         rendered.toString().buffer,
       );
 
-      const innerChanges = rendered.mergeDiff({
+      rendered.mergeDiff({
         0: { 1: { 0: { 0: "inner" } } },
       });
+      expect((outer as any).calledWithChanges).toBeUndefined();
+      expect((inner as any).calledWithChanges).toBeDefined();
       const [unchangedOuterId, changedInnerId] = callerIDs(
-        rendered.toString(null, innerChanges).buffer,
+        rendered.toString().buffer,
       );
 
       expect(unchangedOuterId).toEqual(initialOuterId);
       expect(changedInnerId).not.toEqual(initialInnerId);
 
-      const mixedChanges = rendered.mergeDiff({
+      rendered.mergeDiff({
         0: { 0: "outer", 1: { 0: { 0: "inner" } } },
       });
+      expect((outer as any).calledWithChanges).toBeDefined();
+      expect((inner as any).calledWithChanges).toBeDefined();
       const [changedOuterId, changedInnerIdAgain] = callerIDs(
-        rendered.toString(null, mixedChanges).buffer,
+        rendered.toString().buffer,
       );
 
       expect(changedOuterId).not.toEqual(initialOuterId);
@@ -485,16 +487,14 @@ describe("Rendered", () => {
       expect(initialCallerIds).toHaveLength(2);
       expect(initialCallerIds[0]).not.toEqual(initialCallerIds[1]);
 
-      const changes = rendered.mergeDiff({
+      rendered.mergeDiff({
         [KEYED]: {
           0: { 0: { 0: "updated" } },
           [KEYED_COUNT]: 2,
         },
       });
 
-      const changedCallerIds = callerIDs(
-        rendered.toString(null, changes).buffer,
-      );
+      const changedCallerIds = callerIDs(rendered.toString().buffer);
       expect(changedCallerIds[0]).not.toEqual(initialCallerIds[0]);
       expect(changedCallerIds[1]).toEqual(initialCallerIds[1]);
     });
@@ -519,20 +519,18 @@ describe("Rendered", () => {
 
       const [initialCallerId] = callerIDs(rendered.toString().buffer);
 
-      const unrelatedChanges = rendered.mergeDiff({
+      rendered.mergeDiff({
         [COMPONENTS]: { 1: { 1: "second" } },
       });
       const [unchangedCallerId] = callerIDs(
-        rendered.componentToString(1, unrelatedChanges).buffer,
+        rendered.componentToString(1).buffer,
       );
       expect(unchangedCallerId).toEqual(initialCallerId);
 
-      const childChanges = rendered.mergeDiff({
+      rendered.mergeDiff({
         [COMPONENTS]: { 1: { 0: { 0: "updated" } } },
       });
-      const [changedCallerId] = callerIDs(
-        rendered.componentToString(1, childChanges).buffer,
-      );
+      const [changedCallerId] = callerIDs(rendered.componentToString(1).buffer);
       expect(changedCallerId).not.toEqual(initialCallerId);
     });
 
@@ -554,12 +552,10 @@ describe("Rendered", () => {
       );
 
       const [firstCallerId] = callerIDs(rendered.toString().buffer);
-      const changes = rendered.mergeDiff({
+      rendered.mergeDiff({
         [COMPONENTS]: { 2: { [STATIC]: -1 } },
       });
-      const [secondCallerId] = callerIDs(
-        rendered.componentToString(2, changes).buffer,
-      );
+      const [secondCallerId] = callerIDs(rendered.componentToString(2).buffer);
 
       expect(secondCallerId).not.toEqual(firstCallerId);
     });
@@ -590,7 +586,7 @@ describe("Rendered", () => {
       );
 
       const [firstCallerId] = callerIDs(rendered.toString().buffer);
-      const changes = rendered.mergeDiff({
+      rendered.mergeDiff({
         [COMPONENTS]: {
           2: {
             0: { [KEYED]: { [KEYED_COUNT]: 1 } },
@@ -598,9 +594,7 @@ describe("Rendered", () => {
           },
         },
       });
-      const [secondCallerId] = callerIDs(
-        rendered.componentToString(2, changes).buffer,
-      );
+      const [secondCallerId] = callerIDs(rendered.componentToString(2).buffer);
 
       expect(secondCallerId).not.toEqual(firstCallerId);
     });
