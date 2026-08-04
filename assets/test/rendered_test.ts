@@ -405,11 +405,10 @@ describe("Rendered", () => {
 
         // The server sent a non-empty child diff, even though its value is equal.
         rendered.mergeDiff({ 0: { 0: "one" } });
+        // The merge leaves the ID alone; rotation happens while rendering.
         expect((rendered.get() as any)[0].callerId).toEqual(initialCallerId);
-        expect((rendered.get() as any)[0].calledWithChanges).toBeDefined();
         const [changedCallerId] = callerIDs(rendered.toString().buffer);
         expect(changedCallerId).not.toEqual(initialCallerId);
-        expect((rendered.get() as any)[0].calledWithChanges).toBeUndefined();
       },
     );
 
@@ -443,8 +442,6 @@ describe("Rendered", () => {
       rendered.mergeDiff({
         0: { 1: { 0: { 0: "inner" } } },
       });
-      expect((outer as any).calledWithChanges).toBeUndefined();
-      expect((inner as any).calledWithChanges).toBeDefined();
       const [unchangedOuterId, changedInnerId] = callerIDs(
         rendered.toString().buffer,
       );
@@ -455,8 +452,6 @@ describe("Rendered", () => {
       rendered.mergeDiff({
         0: { 0: "outer", 1: { 0: { 0: "inner" } } },
       });
-      expect((outer as any).calledWithChanges).toBeDefined();
-      expect((inner as any).calledWithChanges).toBeDefined();
       const [changedOuterId, changedInnerIdAgain] = callerIDs(
         rendered.toString().buffer,
       );
@@ -497,6 +492,56 @@ describe("Rendered", () => {
       const changedCallerIds = callerIDs(rendered.toString().buffer);
       expect(changedCallerIds[0]).not.toEqual(initialCallerIds[0]);
       expect(changedCallerIds[1]).toEqual(initialCallerIds[1]);
+    });
+
+    test.each([
+      ["shrinks", { [KEYED]: { [KEYED_COUNT]: 1 } }],
+      [
+        "reorders without entry diffs",
+        { [KEYED]: { 0: 1, 1: 0, [KEYED_MOVED]: true, [KEYED_COUNT]: 2 } },
+      ],
+    ])(
+      "rotates a function component whose comprehension only %s",
+      (_name, keyedDiff) => {
+        const rendered = new Rendered(
+          "123",
+          {
+            0: {
+              [KEYED]: {
+                0: { 0: "one" },
+                1: { 0: "two" },
+                [KEYED_COUNT]: 2,
+              },
+              [STATIC]: ["<span>", "</span>"],
+            },
+            [STATIC]: [callerAnnotation, ""],
+          },
+          () => true,
+        );
+
+        const [initialCallerId] = callerIDs(rendered.toString().buffer);
+
+        // No surviving entry carries a diff of its own, so the change is only
+        // visible on the comprehension.
+        rendered.mergeDiff({ 0: keyedDiff });
+        const [changedCallerId] = callerIDs(rendered.toString().buffer);
+
+        expect(changedCallerId).not.toEqual(initialCallerId);
+      },
+    );
+
+    test("does not touch the diff when debugging is disabled", () => {
+      const rendered = new Rendered("123", {
+        0: { 0: "one", [STATIC]: ["<span>", "</span>"] },
+        [STATIC]: [callerAnnotation, ""],
+      });
+      const clone = jest.spyOn(rendered, "clone");
+
+      const diff = { 0: { 0: "two" } };
+      rendered.mergeDiff(diff);
+
+      expect(clone).not.toHaveBeenCalled();
+      expect(diff).toEqual({ 0: { 0: "two" } });
     });
 
     test("preserves caller IDs across unrelated LiveComponent diffs", () => {
