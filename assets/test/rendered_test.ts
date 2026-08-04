@@ -367,7 +367,7 @@ describe("Rendered", () => {
       expect(plain.toString().buffer).toEqual(
         `${callerAnnotation}<span>child</span>`,
       );
-      expect(plain.observed).toBe(false);
+      expect(plain.reportsChanges).toBe(false);
     });
 
     test("hands each call site to the sink, which owns the marker format", () => {
@@ -446,6 +446,31 @@ describe("Rendered", () => {
         expect(changedCallerId.split(":")[0]).toEqual(stable);
       },
     );
+
+    test("rotates the caller ID for a static-only subtree replacement", () => {
+      const rendered = new Rendered(
+        "123",
+        {
+          0: { [STATIC]: ["<span>old</span>"] },
+          [STATIC]: [callerAnnotation, ""],
+        },
+        markingSink(),
+      );
+
+      const [initialCallerId] = callerIDs(rendered.toString().buffer);
+
+      rendered.mergeDiff({
+        0: { [STATIC]: ["<div>new</div>"] },
+      });
+      const { buffer } = rendered.toString();
+      const [changedCallerId] = callerIDs(buffer);
+
+      expect(buffer).toContain("<div>new</div>");
+      expect(changedCallerId).not.toEqual(initialCallerId);
+      expect(changedCallerId.split(":")[0]).toEqual(
+        initialCallerId.split(":")[0],
+      );
+    });
 
     test("only rotates the deepest function components that changed", () => {
       const inner = {

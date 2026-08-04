@@ -133,6 +133,9 @@ describe("View + DOM", function () {
     }
 
     liveSocket = new LiveSocket("/live", Socket);
+    // attachDebugSink is a debug API and requires debugging to be on.
+    liveSocket.enableDebug();
+    const consoleLog = jest.spyOn(console, "log").mockImplementation(() => {});
 
     const el = liveViewDOM();
     const view = new View(el, liveSocket, null, null, null);
@@ -180,6 +183,16 @@ describe("View + DOM", function () {
     nextId = 0;
     liveSocket.attachDebugSink(() => new MarkingSink());
     expect(debugId()).toMatch(/:0$/);
+
+    consoleLog.mockRestore();
+    liveSocket.disableDebug();
+  });
+
+  test("attachDebugSink requires debugging to be enabled", () => {
+    liveSocket = new LiveSocket("/live", Socket);
+    expect(() => liveSocket.attachDebugSink(() => new StringSink())).toThrow(
+      /require debugging to be enabled/,
+    );
   });
 
   test("applyDiff with empty title uses default if present", async () => {

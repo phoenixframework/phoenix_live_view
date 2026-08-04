@@ -113,9 +113,10 @@ export class StringSink {
   //   enter(node, index, statics)   before the dynamic at statics[index]
   //   exit(changed)                 after it, with whether the diff touched it
   //
-  // Implementing `enter` opts into change tracking, which is otherwise skipped
-  // entirely. Between the two calls the sink can read `length` to bracket that
-  // dynamic's output, and it may keep per-node state under SINK_STATE.
+  // Implementing `enter` opts into change reporting, which is otherwise
+  // skipped entirely. Between the two calls the sink can read `length` to
+  // bracket that dynamic's output, and it may keep per-node state under
+  // SINK_STATE.
   //
   // `changed` is reported at every level, so a dynamic containing a changed
   // one is itself reported as changed. A sink that wants to attribute a change
@@ -232,9 +233,9 @@ export default class Rendered {
 
   useSink(createSink) {
     this.createSink = createSink;
-    // Change tracking is only paid for when the installed sink asks for it.
+    // Change reporting is only paid for when the installed sink asks for it.
     const probe = /** @type {{enter?: unknown}} */ (createSink());
-    this.observed = typeof probe.enter === "function";
+    this.reportsChanges = typeof probe.enter === "function";
     // diffCursor/componentDiffs hold a clone of the last diff, which the
     // render pass walks alongside the tree to tell the sink which dynamics
     // this patch touched; see captureDiffCursor.
@@ -296,7 +297,7 @@ export default class Rendered {
       components: components,
       onlyCids: onlyCids,
       streams: new Set(),
-      observed: this.observed,
+      reportsChanges: this.reportsChanges,
     };
     this.toOutputBuffer(
       rendered,
@@ -358,7 +359,7 @@ export default class Rendered {
   // alongside the tree. Cloning is not optional: the merge adopts diff
   // subtrees into the rendered tree and then mutates them.
   captureDiffCursor(diff) {
-    if (!this.observed || this.initialMerge) {
+    if (!this.reportsChanges || this.initialMerge) {
       this.diffCursor = undefined;
       this.componentDiffs = undefined;
       return;
@@ -675,11 +676,11 @@ export default class Rendered {
   // either a rendered struct or a single entry of a keyed comprehension.
   //
   // Unless the sink implements `enter` this is the plain interleave: no diff
-  // cursor is consulted and the sink is not called, so change tracking costs
-  // nothing when nobody asked for it.
+  // cursor is consulted and the sink is not called, so change reporting
+  // costs nothing when nobody asked for it.
   dynamicsToBuffer(node, diffNode, statics, templates, output, changeTracking) {
     const sink = output.sink;
-    if (!output.observed) {
+    if (!output.reportsChanges) {
       sink.write(statics[0]);
       for (let i = 1; i < statics.length; i++) {
         this.dynamicToBuffer(
@@ -694,7 +695,7 @@ export default class Rendered {
       return false;
     }
 
-    let changed = diffNode === ALL_CHANGED;
+    let changed = diffNode === ALL_CHANGED || diffNode?.[STATIC] !== undefined;
     for (let i = 0; i < statics.length - 1; i++) {
       sink.write(statics[i]);
       sink.enter(node, i, statics);
@@ -721,7 +722,7 @@ export default class Rendered {
 
     let changed = false;
     let keyedDiff;
-    if (output.observed) {
+    if (output.reportsChanges) {
       keyedDiff = diffFor(diffNode, KEYED);
       // Reordering or dropping entries changes the comprehension itself even
       // when no surviving entry carries a diff. The old count is not
