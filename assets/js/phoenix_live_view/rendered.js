@@ -39,11 +39,6 @@ const VOID_TAGS = new Set([
 ]);
 const quoteChars = new Set(["'", '"']);
 
-// HEEx debug annotations for a function component call site end with this
-// marker, so the static segment right before the component's dynamic always
-// terminates with it. See Phoenix.LiveView.HTMLEngine.
-const CALLER_ID_MARKER = "CALLER_ID -->";
-
 // Diff cursor sentinel meaning "everything below here is new". Used when a
 // subtree arrives with fresh statics, so there is nothing to compare against.
 const ALL_CHANGED = Symbol("all changed");
@@ -59,6 +54,78 @@ const diffFor = (diffNode, key) => {
     return diffNode[key];
   }
 };
+
+// Key reserved on rendered nodes for a sink to hang its own state on. It rides
+// along with the node through diff merges, and is dropped when a node is
+// rebuilt from another component's statics - which is exactly the lifetime a
+// sink needs for anything identifying that node.
+export const SINK_STATE = "sinkState";
+
+// The buffer the render pass writes HTML through. The default is a plain
+// string accumulator; a page can install its own via the LiveSocket `sink`
+// option to observe or annotate the output.
+/** @internal */
+export class StringSink {
+  constructor() {
+    this.html = "";
+    this.pending = [];
+    this.base = 0;
+  }
+
+  // Characters written so far. A sink that records positions brackets spans
+  // with this; see `enter` below.
+  get length() {
+    return this.base + this.html.length;
+  }
+
+  write(str) {
+    this.html += str;
+  }
+
+  toString() {
+    return this.html;
+  }
+
+  // Brackets a root element: everything written in between is a single
+  // element, `attrs` are added to its start tag, and `clearInnerHTML`
+  // additionally discards its contents (LiveView skips re-rendering a root
+  // that did not change and reuses what is already in the DOM).
+  //
+  // The default isolates the element so it can rewrite it without touching
+  // what came before. A sink that records positions overrides both, keeping
+  // the buffer continuous and applying the edits at the end instead.
+  beginRoot() {
+    this.pending.push(this.html);
+    this.base += this.html.length;
+    this.html = "";
+  }
+
+  endRoot(attrs, clearInnerHTML) {
+    // Resolves to the free function below, not to a method.
+    const [root, before, after] = modifyRoot(this.html, attrs, clearInnerHTML);
+    const prefix = this.pending.pop();
+    this.base -= prefix.length;
+    this.html = prefix + before + root + after;
+  }
+
+  // A sink may additionally implement:
+  //
+  //   enter(node, index, statics)   before the dynamic at statics[index]
+  //   exit(changed)                 after it, with whether the diff touched it
+  //
+  // Implementing `enter` opts into change tracking, which is otherwise skipped
+  // entirely. Between the two calls the sink can read `length` to bracket that
+  // dynamic's output, and it may keep per-node state under SINK_STATE.
+  //
+  // `changed` is reported at every level, so a dynamic containing a changed
+  // one is itself reported as changed. A sink that wants to attribute a change
+  // to the innermost thing that changed applies that policy itself.
+  //
+  // A HEEx function component call site is a static ending in a
+  // `<!-- @caller file:line (app) -->` annotation, emitted when the server is
+  // compiled with `debug_heex_annotations`. Recognising those, and the source
+  // location they carry, is left to the sink.
+}
 
 export const modifyRoot = (html, attrs, clearInnerHTML) => {
   let i;
@@ -152,33 +219,63 @@ export default class Rendered {
     return { diff, title, reply: reply || null, events: events || [] };
   }
 
-  constructor(viewId, rendered, isDebugEnabled = () => false) {
+  constructor(viewId, rendered, createSink = () => new StringSink()) {
     this.viewId = viewId;
     this.rendered = {};
     this.magicId = 0;
-    this.callerId = 0;
-    this.isDebugEnabled = isDebugEnabled;
-    // Debug-only state. diffCursor/componentDiffs hold a clone of the
-    // last diff, which the render pass walks alongside the tree to attribute
-    // changes to function component call sites; see captureDiffCursor.
-    this.diffCursor = undefined;
-    this.componentDiffs = undefined;
+    this.useSink(createSink);
     // The first merge is the join: everything is new, nothing is a change.
     this.initialMerge = true;
     this.mergeDiff(rendered);
     this.initialMerge = false;
   }
 
+  useSink(createSink) {
+    this.createSink = createSink;
+    // Change tracking is only paid for when the installed sink asks for it.
+    const probe = /** @type {{enter?: unknown}} */ (createSink());
+    this.observed = typeof probe.enter === "function";
+    // diffCursor/componentDiffs hold a clone of the last diff, which the
+    // render pass walks alongside the tree to tell the sink which dynamics
+    // this patch touched; see captureDiffCursor.
+    this.diffCursor = undefined;
+    this.componentDiffs = undefined;
+  }
+
+  // Swaps the sink on a tree that has already been rendered. State the
+  // previous sink kept on the tree is dropped, since it means nothing to its
+  // replacement, and every component is marked for a full re-render so the new
+  // sink is shown the whole tree rather than only what changes next.
+  setSink(createSink) {
+    this.useSink(createSink);
+    this.clearSinkState(this.rendered);
+    const components = this.rendered[COMPONENTS] || {};
+    for (const cid in components) {
+      components[cid].reset = true;
+    }
+  }
+
+  clearSinkState(node) {
+    delete node[SINK_STATE];
+    for (const key in node) {
+      if (isObject(node[key])) {
+        this.clearSinkState(node[key]);
+      }
+    }
+  }
+
   parentViewId() {
     return this.viewId;
   }
 
-  toString(onlyCids) {
+  // changeTracking false forces every root to be re-rendered instead of
+  // reusing what is already in the DOM; see the PHX_SKIP optimization.
+  toString(onlyCids, changeTracking = true) {
     const { buffer: str, streams: streams } = this.recursiveToString(
       this.rendered,
       this.rendered[COMPONENTS],
       onlyCids,
-      true,
+      changeTracking,
       {},
       this.diffCursor,
     );
@@ -195,11 +292,11 @@ export default class Rendered {
   ) {
     onlyCids = onlyCids ? new Set(onlyCids) : null;
     const output = {
-      buffer: "",
+      sink: this.createSink(),
       components: components,
       onlyCids: onlyCids,
       streams: new Set(),
-      debug: this.isDebugEnabled(),
+      observed: this.observed,
     };
     this.toOutputBuffer(
       rendered,
@@ -209,7 +306,7 @@ export default class Rendered {
       changeTracking,
       rootAttrs,
     );
-    return { buffer: output.buffer, streams: output.streams };
+    return { buffer: output.sink.toString(), streams: output.streams };
   }
 
   componentCIDs(diff) {
@@ -261,7 +358,7 @@ export default class Rendered {
   // alongside the tree. Cloning is not optional: the merge adopts diff
   // subtrees into the rendered tree and then mutates them.
   captureDiffCursor(diff) {
-    if (!this.isDebugEnabled() || this.initialMerge) {
+    if (!this.observed || this.initialMerge) {
       this.diffCursor = undefined;
       this.componentDiffs = undefined;
       return;
@@ -430,8 +527,9 @@ export default class Rendered {
   }
 
   // A component sharing statics with another cid is cloned from that cid's
-  // tree, which would otherwise carry its caller IDs along. Caller IDs are
-  // stable for the lifetime of a node, so a duplicate would never heal.
+  // tree, which would otherwise carry that cid's magic IDs and sink state
+  // along. Both identify the node they came from, so a duplicate would be
+  // wrong for as long as the clone lives.
   pruneInternalIds(rendered) {
     for (const key in rendered) {
       if (isObject(rendered[key])) {
@@ -444,7 +542,7 @@ export default class Rendered {
   deleteInternalIds(rendered) {
     delete rendered.magicId;
     delete rendered.newRender;
-    delete rendered.callerId;
+    delete rendered[SINK_STATE];
     delete rendered.keyedCount;
   }
 
@@ -483,11 +581,6 @@ export default class Rendered {
   nextMagicID() {
     this.magicId++;
     return `m${this.magicId}-${this.parentViewId()}`;
-  }
-
-  nextCallerID() {
-    this.callerId++;
-    return `c${this.callerId}-${this.parentViewId()}`;
   }
 
   // Converts rendered tree to output buffer.
@@ -532,9 +625,8 @@ export default class Rendered {
     statics = this.templateStatic(statics, templates);
     rendered[STATIC] = statics;
     const isRoot = rendered[ROOT];
-    const prevBuffer = output.buffer;
     if (isRoot) {
-      output.buffer = "";
+      output.sink.beginRoot();
     }
 
     // this condition is called when first rendering an optimizable function component.
@@ -573,13 +665,8 @@ export default class Rendered {
       if (skip) {
         attrs[PHX_SKIP] = true;
       }
-      const [newRoot, commentBefore, commentAfter] = modifyRoot(
-        output.buffer,
-        attrs,
-        skip,
-      );
+      output.sink.endRoot(attrs, skip);
       rendered.newRender = false;
-      output.buffer = prevBuffer + commentBefore + newRoot + commentAfter;
     }
     return changed;
   }
@@ -587,11 +674,13 @@ export default class Rendered {
   // Emits `statics` interleaved with the dynamics held on `node`, which is
   // either a rendered struct or a single entry of a keyed comprehension.
   //
-  // Outside of debug mode this is the plain interleave and no diff cursor is
-  // consulted at all, so change reporting costs nothing when it is off.
+  // Unless the sink implements `enter` this is the plain interleave: no diff
+  // cursor is consulted and the sink is not called, so change tracking costs
+  // nothing when nobody asked for it.
   dynamicsToBuffer(node, diffNode, statics, templates, output, changeTracking) {
-    if (!output.debug) {
-      output.buffer += statics[0];
+    const sink = output.sink;
+    if (!output.observed) {
+      sink.write(statics[0]);
       for (let i = 1; i < statics.length; i++) {
         this.dynamicToBuffer(
           node[i - 1],
@@ -600,65 +689,26 @@ export default class Rendered {
           output,
           changeTracking,
         );
-        output.buffer += statics[i];
+        sink.write(statics[i]);
       }
       return false;
     }
 
     let changed = diffNode === ALL_CHANGED;
     for (let i = 0; i < statics.length - 1; i++) {
-      const dynamic = node[i];
-      const childDiff = diffFor(diffNode, i);
-      const staticPart = statics[i];
-
-      if (staticPart.endsWith(CALLER_ID_MARKER) && isObject(dynamic)) {
-        // Whether the component changed is only known once we have descended
-        // into it, and the marker is emitted before its content, so render the
-        // child into its own buffer first.
-        const prevBuffer = output.buffer;
-        output.buffer = "";
-        const childChanged = this.dynamicToBuffer(
-          dynamic,
-          childDiff,
-          templates,
-          output,
-          changeTracking,
-        );
-        const childBuffer = output.buffer;
-
-        if (childChanged || !dynamic.callerId) {
-          dynamic.callerId = this.nextCallerID();
-        }
-        const marker = `CALLER_ID:${dynamic.callerId} -->`;
-        output.buffer =
-          prevBuffer +
-          staticPart.slice(0, -CALLER_ID_MARKER.length) +
-          marker +
-          childBuffer +
-          `<!-- ${marker}`;
-        // Deliberately not folded into `changed`: the change belongs to the
-        // component whose ID we just rotated, not to the template that
-        // called it. Only the deepest component that changed rotates.
-        continue;
-      }
-
-      if (staticPart.endsWith(CALLER_ID_MARKER)) {
-        // A LiveComponent call site renders as a plain cid. It is its own
-        // render boundary and reports its own changes, so drop the marker.
-        output.buffer += staticPart.slice(0, -CALLER_ID_MARKER.length) + "-->";
-      } else {
-        output.buffer += staticPart;
-      }
-      changed =
-        this.dynamicToBuffer(
-          dynamic,
-          childDiff,
-          templates,
-          output,
-          changeTracking,
-        ) || changed;
+      sink.write(statics[i]);
+      sink.enter(node, i, statics);
+      const dynamicChanged = this.dynamicToBuffer(
+        node[i],
+        diffFor(diffNode, i),
+        templates,
+        output,
+        changeTracking,
+      );
+      sink.exit(dynamicChanged);
+      changed = dynamicChanged || changed;
     }
-    output.buffer += statics[statics.length - 1];
+    sink.write(statics[statics.length - 1]);
     return changed;
   }
 
@@ -671,7 +721,7 @@ export default class Rendered {
 
     let changed = false;
     let keyedDiff;
-    if (output.debug) {
+    if (output.observed) {
       keyedDiff = diffFor(diffNode, KEYED);
       // Reordering or dropping entries changes the comprehension itself even
       // when no surviving entry carries a diff. The old count is not
@@ -738,7 +788,7 @@ export default class Rendered {
         rendered,
         output.onlyCids,
       );
-      output.buffer += str;
+      output.sink.write(str);
       output.streams = new Set([...output.streams, ...streams]);
       // Only true when the cid reference itself changed; the component's own
       // content is reported while rendering that component.
@@ -753,7 +803,7 @@ export default class Rendered {
         {},
       );
     } else {
-      output.buffer += rendered;
+      output.sink.write(rendered);
       return diffNode !== undefined;
     }
   }

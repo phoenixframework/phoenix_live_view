@@ -1,4 +1,4 @@
-import Rendered from "phoenix_live_view/rendered";
+import Rendered, { StringSink, SINK_STATE } from "phoenix_live_view/rendered";
 import {
   STATIC,
   COMPONENTS,
@@ -356,24 +356,56 @@ describe("Rendered", () => {
       );
     });
 
-    test("only emits paired caller IDs while debugging is enabled", () => {
+    test("leaves call sites alone unless a sink asks for them", () => {
       const diff = {
         0: { [STATIC]: ["<span>child</span>"] },
         [STATIC]: [callerAnnotation, ""],
       };
-      const debugDisabled = new Rendered("123", diff);
 
-      expect(debugDisabled.toString().buffer).toEqual(
+      // Default sink: statics are emitted verbatim, nothing is tracked.
+      const plain = new Rendered("123", diff);
+      expect(plain.toString().buffer).toEqual(
         `${callerAnnotation}<span>child</span>`,
       );
+      expect(plain.observed).toBe(false);
+    });
 
-      const debugEnabled = new Rendered("123", diff, () => true);
-      const { buffer } = debugEnabled.toString();
+    test("hands each call site to the sink, which owns the marker format", () => {
+      const rendered = new Rendered(
+        "123",
+        {
+          0: { [STATIC]: ["<span>child</span>"] },
+          [STATIC]: [callerAnnotation, ""],
+        },
+        markingSink(),
+      );
+      const { buffer } = rendered.toString();
       const [callerId] = callerIDs(buffer);
 
       expect(callerId).toBeTruthy();
-      expect(buffer).toContain(`<!-- CALLER_ID:${callerId} -->`);
-      expect(debugEnabled.get()[STATIC][0]).toEqual(callerAnnotation);
+      // Multi-root component, so the sink chose the comment form.
+      expect(buffer).toEqual(
+        `${callerAnnotation}<!-- ${DEBUG_ATTR}-${callerId} -->` +
+          `<span>child</span><!-- /${DEBUG_ATTR}-${callerId.split(":")[0]} -->`,
+      );
+      // The statics themselves are never mutated.
+      expect(rendered.get()[STATIC][0]).toEqual(callerAnnotation);
+    });
+
+    test("marks a single-root component with an attribute", () => {
+      const rendered = new Rendered(
+        "123",
+        {
+          0: { 0: "one", [STATIC]: ["<span>", "</span>"], r: 1 },
+          [STATIC]: [callerAnnotation, ""],
+        },
+        markingSink(),
+      );
+      const { buffer } = rendered.toString();
+      const [callerId] = callerIDs(buffer);
+
+      expect(buffer).toContain(`${DEBUG_ATTR}="${callerId}"`);
+      expect(buffer).not.toContain("<!-- phx-debug-id");
     });
 
     test.each([
@@ -394,10 +426,11 @@ describe("Rendered", () => {
             1: "first",
             [STATIC]: [callerAnnotation, "|", ""],
           },
-          () => true,
+          markingSink(),
         );
 
         const [initialCallerId] = callerIDs(rendered.toString().buffer);
+        const stable = initialCallerId.split(":")[0];
 
         rendered.mergeDiff({ 1: "second" });
         const [unchangedCallerId] = callerIDs(rendered.toString().buffer);
@@ -405,10 +438,12 @@ describe("Rendered", () => {
 
         // The server sent a non-empty child diff, even though its value is equal.
         rendered.mergeDiff({ 0: { 0: "one" } });
-        // The merge leaves the ID alone; rotation happens while rendering.
-        expect((rendered.get() as any)[0].callerId).toEqual(initialCallerId);
+        // The stable half is the sink's own state, kept on the node that
+        // holds the dynamic and resolved while rendering, not while merging.
+        expect((rendered.get() as any)[SINK_STATE][0]).toEqual(stable);
         const [changedCallerId] = callerIDs(rendered.toString().buffer);
         expect(changedCallerId).not.toEqual(initialCallerId);
+        expect(changedCallerId.split(":")[0]).toEqual(stable);
       },
     );
 
@@ -432,7 +467,7 @@ describe("Rendered", () => {
           0: outer,
           [STATIC]: [callerAnnotation, ""],
         },
-        () => true,
+        markingSink(),
       );
 
       const [initialOuterId, initialInnerId] = callerIDs(
@@ -475,7 +510,7 @@ describe("Rendered", () => {
           },
           [STATIC]: [callerAnnotation, ""],
         },
-        () => true,
+        markingSink(),
       );
 
       const initialCallerIds = callerIDs(rendered.toString().buffer);
@@ -516,7 +551,7 @@ describe("Rendered", () => {
             },
             [STATIC]: [callerAnnotation, ""],
           },
-          () => true,
+          markingSink(),
         );
 
         const [initialCallerId] = callerIDs(rendered.toString().buffer);
@@ -559,7 +594,7 @@ describe("Rendered", () => {
           },
           [STATIC]: ["", ""],
         },
-        () => true,
+        markingSink(),
       );
 
       const [initialCallerId] = callerIDs(rendered.toString().buffer);
@@ -593,7 +628,7 @@ describe("Rendered", () => {
           },
           [STATIC]: ["", ""],
         },
-        () => true,
+        markingSink(),
       );
 
       const [firstCallerId] = callerIDs(rendered.toString().buffer);
@@ -627,7 +662,7 @@ describe("Rendered", () => {
           },
           [STATIC]: ["", ""],
         },
-        () => true,
+        markingSink(),
       );
 
       const [firstCallerId] = callerIDs(rendered.toString().buffer);
@@ -646,11 +681,188 @@ describe("Rendered", () => {
   });
 });
 
-const callerAnnotation = "<!-- @caller example.ex:1 (app) CALLER_ID -->";
+// A HEEx `@caller` annotation, which the server emits before a function
+// component call when compiled with debug_heex_annotations.
+const callerAnnotation = "<!-- @caller example.ex:1 (app) -->";
 
+const DEBUG_ATTR = "phx-debug-id";
+const CALL_SITE = /<!-- @caller [^>]* -->$/;
+
+interface Span {
+  node: any;
+  index: number;
+  callSite: boolean;
+  start: number;
+  // Children whose subtree the diff touched, and how many of those changed on
+  // their own rather than only through a nested call site.
+  changedChildren: number;
+  contributingChildren: number;
+}
+
+// Reference sink, in the shape a debug tool would take. Core reports every
+// dynamic and whether the diff touched it; recognising which of those are
+// function component call sites, which spans are single elements, how to
+// attribute a change and how to mark it are all decided here.
+//
+// Marks each call site with a two part id: the stable half identifies the call
+// site instance for as long as it lives, the volatile half is bumped whenever
+// it re-rendered with changes. Single element components carry it as an
+// attribute, so they can be found with querySelector; anything else is
+// bracketed with comments.
+class MarkingSink extends StringSink {
+  state: { nextId: number; bumps: Map<string, number> };
+  stack: Span[] = [];
+  // Deferred, so positions recorded while building stay valid.
+  edits: { at: number; text: string }[] = [];
+  // Spans endRoot told us are a single element: start -> end.
+  roots = new Map<number, number>();
+  rootStack: number[] = [];
+
+  constructor(state: { nextId: number; bumps: Map<string, number> }) {
+    super();
+    this.state = state;
+  }
+
+  enter(node: any, index: number, statics: string[]) {
+    this.stack.push({
+      node,
+      index,
+      callSite: CALL_SITE.test(statics[index]),
+      start: this.length,
+      changedChildren: 0,
+      contributingChildren: 0,
+    });
+  }
+
+  exit(changed: boolean) {
+    const span = this.stack.pop()!;
+    // Core reports a change at every level on the way up. Attribute it to the
+    // innermost call site: this span only counts as changed on its own if
+    // nothing below it changed (so the change is its own dynamics, its
+    // statics, or its comprehension), or if at least one child changed for a
+    // reason other than a nested call site.
+    const ownChange =
+      changed && (span.changedChildren === 0 || span.contributingChildren > 0);
+
+    const parent = this.stack[this.stack.length - 1];
+    if (parent) {
+      if (changed) parent.changedChildren++;
+      // A call site absorbs its own change rather than passing it on.
+      if (ownChange && !span.callSite) parent.contributingChildren++;
+    }
+    // Every call site carries a marker on every render; only the volatile
+    // half moves, and only when this component itself re-rendered.
+    if (span.callSite) this.mark(span, ownChange);
+  }
+
+  // Brackets a span that is a single element, which is how this sink knows an
+  // attribute will land somewhere sensible. `length` stays continuous across
+  // the pair, so recorded positions only need rebasing for what endRoot
+  // rewrites.
+  beginRoot() {
+    this.rootStack.push(this.length);
+    super.beginRoot();
+  }
+
+  endRoot(attrs: any, clearInnerHTML: boolean) {
+    const start = this.rootStack.pop()!;
+    const lengthBefore = this.length;
+    super.endRoot(attrs, clearInnerHTML);
+    this.roots.set(start, this.length);
+
+    // Anything inside a cleared root went away with the content.
+    if (clearInnerHTML) {
+      this.edits = this.edits.filter(
+        (e) => e.at <= start || e.at >= lengthBefore,
+      );
+    }
+    const delta = this.length - lengthBefore;
+    this.edits.forEach((e) => {
+      if (e.at > start) e.at += delta;
+    });
+    this.stack.forEach((s) => {
+      if (s.start > start) s.start += delta;
+    });
+  }
+
+  toString(): string {
+    let html = this.html;
+    // Right to left, so the offsets still to be applied stay valid.
+    [...this.edits]
+      .sort((a, b) => b.at - a.at)
+      .forEach(({ at, text }) => {
+        html = html.slice(0, at) + text + html.slice(at);
+      });
+    return html;
+  }
+
+  private mark(span: Span, changed: boolean) {
+    const id = this.idFor(span);
+    const previous = this.state.bumps.get(id);
+    const bump = previous === undefined ? 0 : changed ? previous + 1 : previous;
+    this.state.bumps.set(id, bump);
+    const value = `${id}:${bump}`;
+
+    const tagNameEnd =
+      this.roots.get(span.start) === this.length
+        ? this.tagNameEnd(span.start)
+        : -1;
+    if (tagNameEnd !== -1) {
+      this.edits.push({ at: tagNameEnd, text: ` ${DEBUG_ATTR}="${value}"` });
+    } else {
+      this.edits.push({
+        at: span.start,
+        text: `<!-- ${DEBUG_ATTR}-${value} -->`,
+      });
+      this.edits.push({
+        at: this.length,
+        text: `<!-- /${DEBUG_ATTR}-${id} -->`,
+      });
+    }
+  }
+
+  // Offset just past the start tag's name, skipping any leading comments.
+  private tagNameEnd(from: number): number {
+    const html = this.html;
+    let i = from;
+    while (i < html.length) {
+      if (html.startsWith("<!--", i)) {
+        const close = html.indexOf("-->", i);
+        if (close === -1) return -1;
+        i = close + 3;
+      } else if (html[i] === "<") {
+        i++;
+        while (i < html.length && !/[\s/>]/.test(html[i])) i++;
+        return i;
+      } else if (/\s/.test(html[i])) {
+        i++;
+      } else {
+        return -1;
+      }
+    }
+    return -1;
+  }
+
+  private idFor(span: Span): string {
+    const state = (span.node[SINK_STATE] = span.node[SINK_STATE] || {});
+    if (!state[span.index]) {
+      state[span.index] = `c${++this.state.nextId}`;
+    }
+    return state[span.index];
+  }
+}
+
+// One id counter and bump table per Rendered, shared by the sinks it creates.
+const markingSink = () => {
+  const state = { nextId: 0, bumps: new Map<string, number>() };
+  return () => new MarkingSink(state);
+};
+
+// Both forms: `phx-debug-id="c1:0"` and `<!-- phx-debug-id-c1:0 -->`, skipping
+// the closing `<!-- /phx-debug-id-c1 -->`.
 const callerIDs = (html: string): string[] =>
   Array.from(
-    html.matchAll(/<!-- @caller .*? CALLER_ID:([^ ]+) -->/g),
+    html.matchAll(new RegExp(`(?<!/)${DEBUG_ATTR}[-=]"?([^"\\s]+)`, "g")),
     (match) => match[1],
   );
 

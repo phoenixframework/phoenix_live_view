@@ -491,9 +491,7 @@ export default class View {
       CONSECUTIVE_RELOADS,
     );
     this.applyDiff("mount", rendered, ({ diff, events }) => {
-      this.rendered = new Rendered(this.id, diff, () =>
-        this.liveSocket.isDebugEnabled(),
-      );
+      this.rendered = new Rendered(this.id, diff, this.liveSocket.createSink);
       const [html, streams] = this.renderContainer(null, "join");
       this.dropPendingRefs();
       this.joinCount++;
@@ -971,15 +969,51 @@ export default class View {
     return true;
   }
 
-  renderContainer(diff, kind) {
+  renderContainer(diff, kind, changeTracking = true) {
     return this.liveSocket.time(`toString diff (${kind})`, () => {
       const tag = this.el.tagName;
       // Don't skip any component in the diff nor any marked as pruned
       // (as they may have been added back)
       const cids = diff ? this.rendered!.componentCIDs(diff) : null;
-      const { buffer: html, streams } = this.rendered!.toString(cids);
+      const { buffer: html, streams } = this.rendered!.toString(
+        cids,
+        changeTracking,
+      );
       return [`<${tag}>${html}</${tag}>`, streams];
     });
+  }
+
+  /** @internal */
+  attachSink(createSink) {
+    if (!this.rendered || this.destroyed) {
+      return;
+    }
+    this.rendered.setSink(createSink);
+    if (this.joinPending || !this.isConnected()) {
+      return;
+    }
+    // Re-render the whole tree rather than only what changes next, so the new
+    // sink sees every part of it. Change tracking is disabled for this one
+    // render to defeat the skip optimization; magic IDs are kept.
+    let phxChildrenAdded = false;
+    this.liveSocket.time("sink patch complete", () => {
+      const [html, streams] = this.renderContainer(null, "sink", false);
+      const patch = new DOMPatch(this, this.el, html, streams, null);
+      phxChildrenAdded = this.performPatch(patch, true);
+    });
+    if (phxChildrenAdded) {
+      this.joinNewChildren();
+    }
+  }
+
+  /** @internal */
+  eachDescendent(callback: (view: View) => void) {
+    callback(this);
+    for (const parentId in this.root.children) {
+      for (const childId in this.root.children[parentId]) {
+        callback(this.root.children[parentId][childId]);
+      }
+    }
   }
 
   componentPatch(diff, cid) {

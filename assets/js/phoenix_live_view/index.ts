@@ -17,6 +17,7 @@ import { logError } from "./diagnostics";
 import type { EncodedJS } from "./js_commands";
 import type { Hook, HooksOptions, HookInterface } from "./view_hook";
 import LiveUploader from "./live_uploader";
+import { StringSink } from "./rendered";
 
 export type { LiveSocketOptions, HookInterface, HooksOptions, EncodedJS };
 
@@ -94,4 +95,5 @@ export {
   ViewHook,
   Hook,
   getFileURLForUpload,
+  StringSink,
 };

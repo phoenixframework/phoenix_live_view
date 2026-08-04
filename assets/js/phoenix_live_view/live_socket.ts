@@ -58,6 +58,7 @@ import View from "./view";
 import JS from "./js";
 import jsCommands, { EncodedJS, LiveSocketJSCommands } from "./js_commands";
 import { HooksOptions } from "./view_hook";
+import { StringSink } from "./rendered";
 
 /**
  * Returns true if the given element was touched by a user.
@@ -303,6 +304,8 @@ export default class LiveSocket {
   uploaders: any;
   /** @internal */
   disconnectedTimeout: number;
+  /** @internal */
+  createSink: () => any;
 
   /**
    * Creates a new LiveSocket instance.
@@ -354,6 +357,7 @@ export default class LiveSocket {
     this.currentLocation = clone(window.location);
     this.hooks = opts.hooks || {};
     this.uploaders = opts.uploaders || {};
+    this.createSink = () => new StringSink();
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT;
     this.disconnectedTimeout = opts.disconnectedTimeout || DISCONNECTED_TIMEOUT;
     /**
@@ -410,6 +414,45 @@ export default class LiveSocket {
    */
   isProfileEnabled(): boolean {
     return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
+  }
+
+  /**
+   * Installs a sink: the buffer the renderer writes rendered HTML through.
+   *
+   * A sink can observe or annotate the output — for example to mark which HEEx
+   * function components re-rendered, for a debugging overlay. See
+   * {@link StringSink} for the protocol a sink implements.
+   *
+   * Takes a factory, since the renderer uses one sink per render. It applies
+   * to views that are already mounted, which are re-rendered in full so the
+   * new sink is shown the whole page, as well as to views that join later.
+   *
+   *     liveSocket.attachDebugSink(() => new MySink())
+   *
+   * @param createSink - Returns a new sink instance.
+   *
+   * @internal
+   */
+  attachDebugSink(createSink: () => any): void {
+    this.useSink(createSink);
+  }
+
+  /**
+   * Removes a sink installed with {@link attachDebugSink}, restoring the
+   * default one. Mounted views are re-rendered in full, dropping whatever the
+   * sink had added to the DOM.
+   *
+   * @internal
+   */
+  clearDebugSink(): void {
+    this.useSink(() => new StringSink());
+  }
+
+  private useSink(createSink: () => any): void {
+    this.createSink = createSink;
+    for (const id in this.roots) {
+      this.roots[id].eachDescendent((view) => view.attachSink(createSink));
+    }
   }
 
   /**

@@ -4,6 +4,7 @@ import LiveSocket from "phoenix_live_view/live_socket";
 import DOM from "phoenix_live_view/dom";
 import View from "phoenix_live_view/view";
 import ViewHook, { HooksOptions } from "phoenix_live_view/view_hook";
+import { StringSink } from "phoenix_live_view/rendered";
 
 import { version as liveview_version } from "../../package.json";
 
@@ -62,45 +63,123 @@ describe("View + DOM", function () {
     expect(view["rendered"]!.get()).toEqual(updateDiff);
   });
 
-  test("renders paired caller IDs when client debugging is enabled", () => {
-    liveSocket = new LiveSocket("/live", Socket);
-    liveSocket.enableDebug();
-    const consoleLog = jest.spyOn(console, "log").mockImplementation(() => {});
+  test("marks function components in the DOM when a sink is installed", () => {
+    // A minimal sink: brackets every dynamic, recognises HEEx `@caller`
+    // annotations itself, and marks the element a call site rendered.
+    const ids = new Map<string, number>();
+    let nextId = 0;
+    class MarkingSink extends StringSink {
+      stack: { start: number; node: any; index: number; callSite: boolean }[] =
+        [];
+      edits: { at: number; text: string }[] = [];
+      roots = new Map<number, number>();
+      rootStack: number[] = [];
 
-    try {
-      const el = liveViewDOM();
-      const view = new View(el, liveSocket, null, null, null);
-      stubChannel(view);
-      liveSocket.roots[view.id] = view;
-      view.isConnected = () => true;
+      enter(node, index, statics) {
+        this.stack.push({
+          start: this.length,
+          node,
+          index,
+          callSite: /<!-- @caller [^>]* -->$/.test(statics[index]),
+        });
+      }
 
-      view.onJoin({
-        rendered: {
-          0: { 0: "child", s: ["<span>", "</span>"], r: 1 },
-          1: "first",
-          s: ["<!-- @caller example.ex:1 (app) CALLER_ID -->", "|", ""],
-        },
-        liveview_version,
-      });
+      exit(changed) {
+        const span = this.stack.pop()!;
+        if (!span.callSite) return;
+        const state = (span.node.sinkState = span.node.sinkState || {});
+        const id = (state[span.index] = state[span.index] || `c${++nextId}`);
+        const previous = ids.get(id);
+        const bump =
+          previous === undefined ? 0 : changed ? previous + 1 : previous;
+        ids.set(id, bump);
+        // Single element span, so the id goes on its start tag.
+        if (this.roots.get(span.start) === this.length) {
+          this.edits.push({
+            at: this.html.indexOf(">", span.start),
+            text: ` phx-debug-id="${id}:${bump}"`,
+          });
+        }
+      }
 
-      const callerId = () =>
-        view.el.innerHTML.match(/<!-- @caller .*? CALLER_ID:([^ ]+) -->/)?.[1];
-      const initialCallerId = callerId();
-      expect(initialCallerId).toBeTruthy();
-      expect(view.el.innerHTML).toContain(
-        `<!-- CALLER_ID:${initialCallerId} -->`,
-      );
+      beginRoot() {
+        this.rootStack.push(this.length);
+        super.beginRoot();
+      }
 
-      view.update({ 1: "second" }, []);
-      expect(callerId()).toEqual(initialCallerId);
+      endRoot(attrs, clearInnerHTML) {
+        const start = this.rootStack.pop()!;
+        const before = this.length;
+        super.endRoot(attrs, clearInnerHTML);
+        this.roots.set(start, this.length);
+        const delta = this.length - before;
+        this.edits.forEach((e) => {
+          if (e.at > start) e.at += delta;
+        });
+        this.stack.forEach((s) => {
+          if (s.start > start) s.start += delta;
+        });
+      }
 
-      // A non-empty child diff rotates the ID even when the value is equal.
-      view.update({ 0: { 0: "child" } }, []);
-      expect(callerId()).not.toEqual(initialCallerId);
-    } finally {
-      consoleLog.mockRestore();
-      liveSocket.disableDebug();
+      toString() {
+        let html = this.html;
+        [...this.edits]
+          .sort((a, b) => b.at - a.at)
+          .forEach(({ at, text }) => {
+            html = html.slice(0, at) + text + html.slice(at);
+          });
+        return html;
+      }
     }
+
+    liveSocket = new LiveSocket("/live", Socket);
+
+    const el = liveViewDOM();
+    const view = new View(el, liveSocket, null, null, null);
+    stubChannel(view);
+    liveSocket.roots[view.id] = view;
+    view.isConnected = () => true;
+
+    view.onJoin({
+      rendered: {
+        0: { 0: "child", s: ["<span>", "</span>"], r: 1 },
+        1: "first",
+        s: ["<!-- @caller example.ex:1 (app) -->", "|", ""],
+      },
+      liveview_version,
+    });
+
+    const debugId = () =>
+      view.el.querySelector("[phx-debug-id]")?.getAttribute("phx-debug-id");
+
+    // Nothing is marked until a sink is attached.
+    expect(debugId()).toBeUndefined();
+
+    // Attaching re-renders the mounted view in full, so the sink sees all of
+    // it rather than only what changes next.
+    liveSocket.attachDebugSink(() => new MarkingSink());
+    const initial = debugId();
+    expect(initial).toMatch(/:0$/);
+
+    view.update({ 1: "second" }, []);
+    expect(debugId()).toEqual(initial);
+
+    // A non-empty child diff bumps the counter even when the value is equal,
+    // while the stable half is preserved.
+    view.update({ 0: { 0: "child" } }, []);
+    expect(debugId()).not.toEqual(initial);
+    expect(debugId()!.split(":")[0]).toEqual(initial!.split(":")[0]);
+
+    // Clearing re-renders too, dropping what the sink had added.
+    liveSocket.clearDebugSink();
+    expect(debugId()).toBeUndefined();
+    expect(view.el.innerHTML).toContain("child");
+
+    // A second attach starts over rather than inheriting the first sink's ids.
+    ids.clear();
+    nextId = 0;
+    liveSocket.attachDebugSink(() => new MarkingSink());
+    expect(debugId()).toMatch(/:0$/);
   });
 
   test("applyDiff with empty title uses default if present", async () => {
