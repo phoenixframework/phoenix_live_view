@@ -456,9 +456,6 @@ export default class LiveSocket {
    *     }
    *     liveSocket.attachDebugSink(() => new MySink())
    *
-   * Not guarded by {@link enableDebug}, since it only constructs an object;
-   * {@link attachDebugSink} is where that check belongs.
-   *
    * @internal
    */
   createReportingSink(): any {

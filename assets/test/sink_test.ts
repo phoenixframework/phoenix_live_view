@@ -7,6 +7,10 @@ import {
 import { STATIC, KEYED, KEYED_COUNT } from "phoenix_live_view/constants";
 
 describe("StringSink", () => {
+  test("reports no changes, so the renderer skips that machinery", () => {
+    expect(new StringSink().reportsChanges).toBe(false);
+  });
+
   test("accumulates writes", () => {
     const sink = new StringSink();
     sink.write("<div>");
@@ -87,6 +91,19 @@ describe("ReportingSink", () => {
       expect(new ReportingSink().reportsChanges).toBe(false);
       class Passive extends ReportingSink {}
       expect(new Passive().reportsChanges).toBe(false);
+    });
+
+    test("is not shadowed by the base class declaring it", () => {
+      // StringSink declares reportsChanges too. Were it a field rather than a
+      // getter it would define an own property on construction and shadow this
+      // one, silently turning reporting off for every sink.
+      class Reporting extends ReportingSink {
+        onExit(_frame: SinkFrame) {}
+      }
+      expect(
+        Object.prototype.hasOwnProperty.call(new Reporting(), "reportsChanges"),
+      ).toBe(false);
+      expect(new Reporting().reportsChanges).toBe(true);
     });
 
     test("is true when either hook is overridden", () => {

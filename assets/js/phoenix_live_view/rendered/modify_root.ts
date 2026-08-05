@@ -1,6 +1,4 @@
-// Rewrites the start tag of a rendered root element. Kept apart from both the
-// renderer and the sinks because both need it, and it is a self contained
-// string utility with its own tests.
+// Rewrites the start tag of a rendered root element. Used for the magic ID optimization.
 
 /** Attributes to add to a root element; `true` renders as a bare attribute. */
 export type RootAttrs = Record<string, string | number | boolean>;

@@ -1,4 +1,5 @@
 import Rendered from "phoenix_live_view/rendered";
+import { ReportingSink } from "phoenix_live_view/rendered/sink";
 import {
   STATIC,
   COMPONENTS,
@@ -368,6 +369,35 @@ describe("Rendered", () => {
         `${callerAnnotation}<span>child</span>`,
       );
       expect(plain.reportsChanges).toBe(false);
+    });
+
+    test("brackets every dynamic and reports the ones a diff touched", () => {
+      const seen: { index: number; changed: boolean }[] = [];
+      class CountingSink extends ReportingSink {
+        onExit(frame) {
+          seen.push({ index: frame.index, changed: frame.changed });
+        }
+      }
+      const rendered = new Rendered(
+        "123",
+        { 0: "a", 1: "b", [STATIC]: ["<div>", "|", "</div>"] },
+        () => new CountingSink(),
+      );
+
+      // The join has no previous render to compare against.
+      rendered.toString();
+      expect(seen).toEqual([
+        { index: 0, changed: false },
+        { index: 1, changed: false },
+      ]);
+
+      seen.length = 0;
+      rendered.mergeDiff({ 1: "changed" });
+      rendered.toString();
+      expect(seen).toEqual([
+        { index: 0, changed: false },
+        { index: 1, changed: true },
+      ]);
     });
 
     test("does not touch the diff when debugging is disabled", () => {

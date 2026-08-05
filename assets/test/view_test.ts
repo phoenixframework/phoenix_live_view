@@ -4,7 +4,6 @@ import LiveSocket from "phoenix_live_view/live_socket";
 import DOM from "phoenix_live_view/dom";
 import View from "phoenix_live_view/view";
 import ViewHook, { HooksOptions } from "phoenix_live_view/view_hook";
-import { ReportingSink, StringSink } from "phoenix_live_view/rendered/sink";
 
 import { version as liveview_version } from "../../package.json";
 
@@ -61,51 +60,6 @@ describe("View + DOM", function () {
 
     expect(view.el.firstChild!["tagName"]).toBe("H2");
     expect(view["rendered"]!.get()).toEqual(updateDiff);
-  });
-
-  test("createReportingSink exposes the base class without an import", () => {
-    liveSocket = new LiveSocket("/live", Socket);
-    liveSocket.enableDebug();
-    const consoleLog = jest.spyOn(console, "log").mockImplementation(() => {});
-
-    // What tooling holding only a LiveSocket handle would do.
-    const Base = liveSocket.createReportingSink().constructor;
-    expect(Base).toBe(ReportingSink);
-    // A sink that overrides neither hook stays out of the render path.
-    expect(new Base().reportsChanges).toBe(false);
-
-    const seen: boolean[] = [];
-    class CountingSink extends Base {
-      onExit(frame) {
-        seen.push(frame.changed);
-      }
-    }
-    expect(new CountingSink().reportsChanges).toBe(true);
-
-    const view = new View(liveViewDOM(), liveSocket, null, null, null);
-    stubChannel(view);
-    liveSocket.roots[view.id] = view;
-    view.isConnected = () => true;
-    view.onJoin({
-      rendered: { 0: "a", 1: "b", s: ["<div>", "|", "</div>"] },
-      liveview_version,
-    });
-
-    liveSocket.attachDebugSink(() => new CountingSink());
-    seen.length = 0;
-    view.update({ 1: "changed" }, []);
-    // One frame per dynamic, and only the one the diff carried is changed.
-    expect(seen).toEqual([false, true]);
-
-    consoleLog.mockRestore();
-    liveSocket.disableDebug();
-  });
-
-  test("attachDebugSink requires debugging to be enabled", () => {
-    liveSocket = new LiveSocket("/live", Socket);
-    expect(() => liveSocket.attachDebugSink(() => new StringSink())).toThrow(
-      /require debugging to be enabled/,
-    );
   });
 
   test("applyDiff with empty title uses default if present", async () => {

@@ -2,9 +2,7 @@ import { KEYED, STATIC } from "../constants";
 import { modifyRoot, type RootAttrs } from "./modify_root";
 
 // Key reserved on rendered nodes for a sink to hang its own state on. It rides
-// along with the node through diff merges, and is dropped when a node is
-// rebuilt from another component's statics - which is exactly the lifetime a
-// sink needs for anything identifying that node.
+// along with the node through diff merges.
 export const SINK_STATE = "sinkState";
 
 // A position in the diff the renderer is walking. Opaque: the renderer carries
@@ -26,6 +24,18 @@ export class StringSink {
   protected html = "";
   private pending: string[] = [];
   private base = 0;
+
+  /**
+   * Whether the renderer should report which parts of the page a patch
+   * touched. False here, since a plain buffer has nothing to report it to;
+   * {@link ReportingSink} overrides it.
+   *
+   * Must stay a getter rather than a field: a field on this class would define
+   * an own property on every instance and silently shadow a subclass's getter.
+   */
+  get reportsChanges(): boolean {
+    return false;
+  }
 
   /**
    * Characters written so far. A sink that records positions brackets spans
@@ -97,12 +107,7 @@ export interface SinkFrame {
  *
  * The renderer hands over an opaque cursor into the diff and this class walks
  * it alongside the tree, so no knowledge of the diff format is needed to write
- * a sink - or, for that matter, to read the renderer.
- *
- * A HEEx function component call site is a static ending in a
- * `<!-- @caller file:line (app) -->` annotation, emitted when the server is
- * compiled with `debug_heex_annotations`. Recognising those, and the source
- * location they carry, is left to the sink.
+ * a sink.
  *
  * @internal
  */
@@ -120,8 +125,8 @@ export class ReportingSink extends StringSink {
   onExit(_frame: SinkFrame): void {}
 
   /**
-   * Extending this class without overriding either hook costs nothing: the
-   * renderer then skips the whole mechanism.
+   * Extending this class without overriding either hook makes the rendered
+   * skips the extra work.
    */
   get reportsChanges(): boolean {
     const base = ReportingSink.prototype;

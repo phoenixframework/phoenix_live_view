@@ -2,6 +2,7 @@ import { Socket } from "phoenix";
 import { type LiveViewDiagnostic } from "phoenix_live_view/diagnostics";
 import { PHX_LV_DIAGNOSTIC_EVENT } from "phoenix_live_view/constants";
 import LiveSocket from "phoenix_live_view/live_socket";
+import { ReportingSink, StringSink } from "phoenix_live_view/rendered/sink";
 import JS from "phoenix_live_view/js";
 import { simulateJoinedView, simulateVisibility } from "./test_helpers";
 
@@ -724,5 +725,36 @@ describe("liveSocket.js()", () => {
     );
 
     liveSocket.pushHistoryPatch = originalPushHistoryPatch;
+  });
+});
+
+describe("liveSocket debug sinks", () => {
+  let liveSocket;
+
+  afterEach(() => {
+    liveSocket && liveSocket.destroyAllViews();
+  });
+
+  test("createReportingSink hands out the base class without an import", () => {
+    liveSocket = new LiveSocket("/live", Socket);
+
+    // What tooling holding only a LiveSocket handle can do: reach the class
+    // through an instance, since it is not part of the package's exports.
+    const Base = liveSocket.createReportingSink().constructor;
+    expect(Base).toBe(ReportingSink);
+
+    // Subclassing it is inert until a hook is overridden.
+    expect(new Base().reportsChanges).toBe(false);
+    class Reporting extends Base {
+      onExit() {}
+    }
+    expect(new Reporting().reportsChanges).toBe(true);
+  });
+
+  test("attachDebugSink requires debugging to be enabled", () => {
+    liveSocket = new LiveSocket("/live", Socket);
+    expect(() => liveSocket.attachDebugSink(() => new StringSink())).toThrow(
+      /require debugging to be enabled/,
+    );
   });
 });
