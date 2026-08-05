@@ -95,6 +95,15 @@ export const clone = (obj) => {
   return JSON.parse(JSON.stringify(obj));
 };
 
+export const deepClone = (obj) => {
+  if ("structuredClone" in window) {
+    return structuredClone(obj);
+  } else {
+    // fallback for jest
+    return JSON.parse(JSON.stringify(obj));
+  }
+};
+
 export const closestPhxBinding = (
   startEl: Element,
   binding: string,

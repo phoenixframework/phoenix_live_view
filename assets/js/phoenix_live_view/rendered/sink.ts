@@ -1,4 +1,5 @@
-import { KEYED, STATIC } from "../constants";
+import { COMPONENTS, KEYED, STATIC } from "../constants";
+import { deepClone } from "../utils";
 import { modifyRoot, type RootAttrs } from "./modify_root";
 
 // Key reserved on rendered nodes for a sink to hang its own state on. It rides
@@ -7,35 +8,67 @@ export const SINK_STATE = "sinkState";
 
 // A position in the diff the renderer is walking. Opaque: the renderer carries
 // it from one `enter` back into the next without ever inspecting it, and only
-// ReportingSink knows what is inside.
+// the reporting pair knows what is inside.
 export type DiffCursor = any;
 
 /**
- * The buffer the renderer writes HTML through.
+ * What the renderer writes HTML through, for the life of a mounted view.
  *
- * The default is a plain string accumulator. A tool can install its own with
- * `liveSocket.attachDebugSink` to observe or annotate the output; to be told
- * which parts of the page a patch touched, extend {@link ReportingSink} rather
- * than this class.
+ * A sink is installed once per {@link Rendered}. It is shown every diff before
+ * it merges, and it hands out one {@link OutputBuffer} per subtree render — so
+ * it is also where a sink keeps state that has to outlive a single render.
+ * The sink itself is never written to.
+ *
+ * The default does nothing at all and buffers into a string. A tool can install
+ * its own with `liveSocket.attachDebugSink` to observe or annotate the output;
+ * to be told which parts of the page a patch touched, extend
+ * {@link ReportingSink} rather than this class.
  *
  * @internal
  */
-export class StringSink {
-  protected html = "";
-  private pending: string[] = [];
-  private base = 0;
-
+export class Sink {
   /**
    * Whether the renderer should report which parts of the page a patch
    * touched. False here, since a plain buffer has nothing to report it to;
    * {@link ReportingSink} overrides it.
-   *
-   * Must stay a getter rather than a field: a field on this class would define
-   * an own property on every instance and silently shadow a subclass's getter.
    */
   get reportsChanges(): boolean {
     return false;
   }
+
+  /**
+   * Called before each diff merges into the rendered tree. Anything a sink
+   * wants to keep from the diff has to be copied here: the merge adopts diff
+   * subtrees into the tree and then mutates them.
+   *
+   * Not called for the join, which has no previous render to compare against.
+   */
+  preMerge(_diff: any): void {}
+
+  /**
+   * The cursor into the last diff for one subtree, where `cid` is null for the
+   * root tree and a component id otherwise.
+   */
+  cursorFor(_cid: number | null): DiffCursor {
+    return undefined;
+  }
+
+  /** A buffer for one subtree render. Same `cid` as {@link cursorFor}. */
+  new(_cid: number | null): OutputBuffer {
+    return new OutputBuffer();
+  }
+}
+
+/**
+ * The buffer one subtree render writes through. Created by {@link Sink.new},
+ * written to by the renderer, and discarded once its HTML has been taken.
+ *
+ * @internal
+ */
+export class OutputBuffer {
+  protected html = "";
+  private pending: string[] = [];
+  private base = 0;
 
   /**
    * Characters written so far. A sink that records positions brackets spans
@@ -60,9 +93,9 @@ export class StringSink {
    * that did not change and reuses what is already in the DOM).
    *
    * The default isolates the element so it can rewrite it without touching
-   * what came before. A sink that records positions overrides both, keeping
-   * the buffer continuous and applying its edits at the end instead; `length`
-   * stays continuous across the pair either way.
+   * what came before. A buffer that records positions overrides both, keeping
+   * it continuous and applying its edits at the end instead; `length` stays
+   * continuous across the pair either way.
    */
   beginRoot(): void {
     this.pending.push(this.html);
@@ -75,6 +108,27 @@ export class StringSink {
     const prefix = this.pending.pop()!;
     this.base -= prefix.length;
     this.html = prefix + before + root + after;
+  }
+
+  /**
+   * Brackets the dynamic at `statics[index]` of `node`, returning the cursor
+   * for that dynamic, which the renderer passes back down. Only called when
+   * the sink reports changes; see {@link ReportingOutputBuffer}.
+   */
+  enter(
+    _parentDiff: DiffCursor,
+    _node: any,
+    _index: number,
+    _statics: string[],
+  ): DiffCursor {
+    return undefined;
+  }
+
+  exit(): void {}
+
+  /** The cursor for one entry of a keyed comprehension. */
+  keyedEntry(_diffNode: DiffCursor, _index: number): DiffCursor {
+    return undefined;
   }
 }
 
@@ -101,9 +155,50 @@ export interface SinkFrame {
 }
 
 /**
- * Base class for sinks that want to be told which parts of the page a patch
- * touched. Subclasses override `onEnter`/`onExit`; everything else here is the
- * plumbing the renderer talks to.
+ * The sink half of the pair that reports which parts of the page a patch
+ * touched. It keeps a copy of the last diff and hands each buffer the cursor
+ * into it for the subtree that buffer renders.
+ *
+ * Subclasses override the hooks on {@link ReportingOutputBuffer} and point
+ * {@link new} at their own buffer class. State that has to survive a render
+ * belongs here, on the sink.
+ *
+ * @internal
+ */
+export class ReportingSink extends Sink {
+  private rootDiff: DiffCursor = undefined;
+  private componentDiffs: any = undefined;
+
+  get reportsChanges(): boolean {
+    return true;
+  }
+
+  // Cloning is not optional: the merge adopts diff subtrees into the rendered
+  // tree and then mutates them. Components are split off so each buffer can be
+  // handed only the cursor for the subtree it renders.
+  preMerge(diff: any): void {
+    const cloned = deepClone(diff);
+    this.componentDiffs = cloned[COMPONENTS];
+    delete cloned[COMPONENTS];
+    this.rootDiff = cloned;
+  }
+
+  cursorFor(cid: number | null): DiffCursor {
+    if (cid === null) {
+      return this.rootDiff;
+    }
+    return this.componentDiffs && this.componentDiffs[cid];
+  }
+
+  new(cid: number | null): ReportingOutputBuffer {
+    return new ReportingOutputBuffer(this, cid);
+  }
+}
+
+/**
+ * Base class for the buffers of a {@link ReportingSink}. Subclasses override
+ * `onEnter`/`onExit`; everything else here is the plumbing the renderer talks
+ * to.
  *
  * The renderer hands over an opaque cursor into the diff and this class walks
  * it alongside the tree, so no knowledge of the diff format is needed to write
@@ -111,9 +206,19 @@ export interface SinkFrame {
  *
  * @internal
  */
-export class ReportingSink extends StringSink {
+export class ReportingOutputBuffer extends OutputBuffer {
   protected frames: SinkFrame[] = [];
-  protected diff: DiffCursor = undefined;
+  /** The cursor for the subtree this buffer renders. */
+  protected diff: DiffCursor;
+
+  constructor(
+    /** The sink that made this buffer, and the home of its lasting state. */
+    readonly sink: ReportingSink,
+    cid: number | null,
+  ) {
+    super();
+    this.diff = sink.cursorFor(cid);
+  }
 
   /**
    * Called around every dynamic in the tree. A change is reported at every
@@ -124,28 +229,6 @@ export class ReportingSink extends StringSink {
   onEnter(_frame: SinkFrame): void {}
   onExit(_frame: SinkFrame): void {}
 
-  /**
-   * Extending this class without overriding either hook makes the rendered
-   * skips the extra work.
-   */
-  get reportsChanges(): boolean {
-    const base = ReportingSink.prototype;
-    return this.onEnter !== base.onEnter || this.onExit !== base.onExit;
-  }
-
-  /**
-   * Called once before the render with its diff cursor, which is undefined for
-   * a render with no diff to compare against - a join, or the first render
-   * after this sink was attached. Subclasses may override to reset state.
-   */
-  storeDiff(diff: DiffCursor): void {
-    this.diff = diff;
-  }
-
-  /**
-   * Brackets the dynamic at `statics[index]` of `node`. Returns the cursor for
-   * that dynamic, which the renderer passes back down.
-   */
   enter(
     parentDiff: DiffCursor,
     node: any,
@@ -171,8 +254,8 @@ export class ReportingSink extends StringSink {
   }
 
   /**
-   * The cursor for one entry of a keyed comprehension. Entries are not
-   * bracketed by enter/exit, so the renderer asks for theirs directly.
+   * Entries are not bracketed by enter/exit, so the renderer asks for theirs
+   * directly.
    */
   keyedEntry(diffNode: DiffCursor, index: number): DiffCursor {
     const keyed = this.diffFor(diffNode, KEYED);

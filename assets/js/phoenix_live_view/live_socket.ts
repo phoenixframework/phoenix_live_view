@@ -59,7 +59,19 @@ import View from "./view";
 import JS from "./js";
 import jsCommands, { EncodedJS, LiveSocketJSCommands } from "./js_commands";
 import { HooksOptions } from "./view_hook";
-import { ReportingSink, StringSink } from "./rendered/sink";
+import {
+  Sink,
+  OutputBuffer,
+  ReportingSink,
+  ReportingOutputBuffer,
+} from "./rendered/sink";
+
+const SINKS = Object.freeze({
+  Sink,
+  OutputBuffer,
+  ReportingSink,
+  ReportingOutputBuffer,
+});
 
 /**
  * Returns true if the given element was touched by a user.
@@ -310,6 +322,23 @@ export default class LiveSocket {
   disconnectedTimeout: number;
   /** @internal */
   createSink: () => any;
+  /**
+   * The sink base classes, for tooling that only holds a LiveSocket handle —
+   * a devtools panel that picked it up from the socket available event, say —
+   * and so cannot import them from the package:
+   *
+   *     const { ReportingSink, ReportingOutputBuffer } = liveSocket.sinks;
+   *     class MyBuffer extends ReportingOutputBuffer {
+   *       onExit(frame) { if (frame.changed) ... }
+   *     }
+   *     class MySink extends ReportingSink {
+   *       new(cid) { return new MyBuffer(this, cid) }
+   *     }
+   *     liveSocket.attachDebugSink(() => new MySink())
+   *
+   * @internal
+   */
+  readonly sinks = SINKS;
 
   /**
    * Creates a new LiveSocket instance.
@@ -361,7 +390,7 @@ export default class LiveSocket {
     this.currentLocation = clone(window.location);
     this.hooks = opts.hooks || {};
     this.uploaders = opts.uploaders || {};
-    this.createSink = () => new StringSink();
+    this.createSink = () => new Sink();
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT;
     this.disconnectedTimeout = opts.disconnectedTimeout || DISCONNECTED_TIMEOUT;
     /**
@@ -421,13 +450,13 @@ export default class LiveSocket {
   }
 
   /**
-   * Installs a sink: the buffer the renderer writes rendered HTML through.
+   * Installs a sink: what the renderer writes rendered HTML through.
    *
    * A sink can observe or annotate the output — for example to mark which HEEx
-   * function components re-rendered, for a debugging overlay. See
-   * {@link StringSink} for the protocol a sink implements.
+   * function components re-rendered, for a debugging overlay. See {@link Sink}
+   * for the protocol a sink implements.
    *
-   * Takes a factory, since the renderer uses one sink per render. It applies
+   * Takes a factory, since one sink is installed per mounted view. It applies
    * to views that are already mounted, which are re-rendered in full so the
    * new sink is shown the whole page, as well as to views that join later.
    *
@@ -443,26 +472,6 @@ export default class LiveSocket {
   }
 
   /**
-   * Returns a new {@link ReportingSink}: the base class for sinks that want to
-   * be told which parts of the page a patch touched.
-   *
-   * This exists so tooling that only has a handle on the LiveSocket, such as a
-   * devtools panel that picked it up from the socket available event, can
-   * reach the class without importing the package:
-   *
-   *     const Base = liveSocket.createReportingSink().constructor;
-   *     class MySink extends Base {
-   *       onExit(frame) { if (frame.changed) ... }
-   *     }
-   *     liveSocket.attachDebugSink(() => new MySink())
-   *
-   * @internal
-   */
-  createReportingSink(): any {
-    return new ReportingSink();
-  }
-
-  /**
    * Removes a sink installed with {@link attachDebugSink}, restoring the
    * default one. Mounted views are re-rendered in full, dropping whatever the
    * sink had added to the DOM.
@@ -470,7 +479,7 @@ export default class LiveSocket {
    * @internal
    */
   clearDebugSink(): void {
-    this.useSink(() => new StringSink());
+    this.useSink(() => new Sink());
   }
 
   private useSink(createSink: () => any): void {

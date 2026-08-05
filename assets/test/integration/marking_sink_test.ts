@@ -2,7 +2,11 @@ import { Socket } from "phoenix";
 import Rendered from "phoenix_live_view/rendered";
 import LiveSocket from "phoenix_live_view/live_socket";
 import View from "phoenix_live_view/view";
-import { ReportingSink, SINK_STATE } from "phoenix_live_view/rendered/sink";
+import {
+  ReportingSink,
+  ReportingOutputBuffer,
+  SINK_STATE,
+} from "phoenix_live_view/rendered/sink";
 import {
   STATIC,
   COMPONENTS,
@@ -431,7 +435,7 @@ const callerAnnotation = "<!-- @caller example.ex:1 (app) -->";
 const DEBUG_ATTR = "phx-debug-id";
 const CALL_SITE = /<!-- @caller [^>]* -->$/;
 
-// Reference sink, in the shape a debug tool would take. The base class reports
+// Reference sink, in the shape a debug tool would take. The base classes report
 // every dynamic and whether the patch touched it; recognising which of those
 // are function component call sites, which spans are single elements, how to
 // attribute a change and how to mark it are all decided here.
@@ -441,18 +445,25 @@ const CALL_SITE = /<!-- @caller [^>]* -->$/;
 // it re-rendered with changes. Single element components carry it as an
 // attribute, so they can be found with querySelector; anything else is
 // bracketed with comments.
+//
+// The sink is installed once per tree, so it holds everything that has to
+// outlive a single render; the buffer it hands out per render holds the rest.
 class MarkingSink extends ReportingSink {
-  state: { nextId: number; bumps: Map<string, number> };
+  nextId = 0;
+  bumps = new Map<string, number>();
+
+  new(cid: number | null): MarkingBuffer {
+    return new MarkingBuffer(this, cid);
+  }
+}
+
+class MarkingBuffer extends ReportingOutputBuffer {
+  declare readonly sink: MarkingSink;
   // Deferred, so positions recorded while building stay valid.
   edits: { at: number; text: string }[] = [];
   // Spans endRoot told us are a single element: start -> end.
   roots = new Map<number, number>();
   rootStack: number[] = [];
-
-  constructor(state: { nextId: number; bumps: Map<string, number> }) {
-    super();
-    this.state = state;
-  }
 
   onEnter(frame: any) {
     frame.callSite = CALL_SITE.test(frame.statics[frame.index]);
@@ -545,9 +556,9 @@ class MarkingSink extends ReportingSink {
 
   private mark(frame: any, changed: boolean) {
     const id = this.idFor(frame);
-    const previous = this.state.bumps.get(id);
+    const previous = this.sink.bumps.get(id);
     const bump = previous === undefined ? 0 : changed ? previous + 1 : previous;
-    this.state.bumps.set(id, bump);
+    this.sink.bumps.set(id, bump);
     const value = `${id}:${bump}`;
 
     const tagNameEnd =
@@ -593,17 +604,13 @@ class MarkingSink extends ReportingSink {
   private idFor(frame: any): string {
     const state = (frame.node[SINK_STATE] = frame.node[SINK_STATE] || {});
     if (!state[frame.index]) {
-      state[frame.index] = `c${++this.state.nextId}`;
+      state[frame.index] = `c${++this.sink.nextId}`;
     }
     return state[frame.index];
   }
 }
 
-// One id counter and bump table per Rendered, shared by the sinks it creates.
-const markingSink = () => {
-  const state = { nextId: 0, bumps: new Map<string, number>() };
-  return () => new MarkingSink(state);
-};
+const markingSink = () => () => new MarkingSink();
 
 // Both forms: `phx-debug-id="c1:0"` and `<!-- phx-debug-id-c1:0 -->`, skipping
 // the closing `<!-- /phx-debug-id-c1 -->`.

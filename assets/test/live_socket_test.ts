@@ -2,7 +2,12 @@ import { Socket } from "phoenix";
 import { type LiveViewDiagnostic } from "phoenix_live_view/diagnostics";
 import { PHX_LV_DIAGNOSTIC_EVENT } from "phoenix_live_view/constants";
 import LiveSocket from "phoenix_live_view/live_socket";
-import { ReportingSink, StringSink } from "phoenix_live_view/rendered/sink";
+import {
+  Sink,
+  OutputBuffer,
+  ReportingSink,
+  ReportingOutputBuffer,
+} from "phoenix_live_view/rendered/sink";
 import JS from "phoenix_live_view/js";
 import { simulateJoinedView, simulateVisibility } from "./test_helpers";
 
@@ -735,25 +740,27 @@ describe("liveSocket debug sinks", () => {
     liveSocket && liveSocket.destroyAllViews();
   });
 
-  test("createReportingSink hands out the base class without an import", () => {
+  test("hands out the sink base classes without an import", () => {
     liveSocket = new LiveSocket("/live", Socket);
 
-    // What tooling holding only a LiveSocket handle can do: reach the class
-    // through an instance, since it is not part of the package's exports.
-    const Base = liveSocket.createReportingSink().constructor;
-    expect(Base).toBe(ReportingSink);
+    // What tooling holding only a LiveSocket handle needs, since the classes
+    // are not otherwise reachable from a page it did not bundle.
+    expect(liveSocket.sinks).toEqual({
+      Sink,
+      OutputBuffer,
+      ReportingSink,
+      ReportingOutputBuffer,
+    });
 
-    // Subclassing it is inert until a hook is overridden.
-    expect(new Base().reportsChanges).toBe(false);
-    class Reporting extends Base {
-      onExit() {}
-    }
-    expect(new Reporting().reportsChanges).toBe(true);
+    const Base = liveSocket.sinks.ReportingSink;
+    class MySink extends Base {}
+    expect(new MySink().reportsChanges).toBe(true);
+    expect(new MySink().new(null)).toBeInstanceOf(ReportingOutputBuffer);
   });
 
   test("attachDebugSink requires debugging to be enabled", () => {
     liveSocket = new LiveSocket("/live", Socket);
-    expect(() => liveSocket.attachDebugSink(() => new StringSink())).toThrow(
+    expect(() => liveSocket.attachDebugSink(() => new Sink())).toThrow(
       /require debugging to be enabled/,
     );
   });

@@ -1,5 +1,8 @@
 import Rendered from "phoenix_live_view/rendered";
-import { ReportingSink } from "phoenix_live_view/rendered/sink";
+import {
+  ReportingSink,
+  ReportingOutputBuffer,
+} from "phoenix_live_view/rendered/sink";
 import {
   STATIC,
   COMPONENTS,
@@ -373,9 +376,14 @@ describe("Rendered", () => {
 
     test("brackets every dynamic and reports the ones a diff touched", () => {
       const seen: { index: number; changed: boolean }[] = [];
-      class CountingSink extends ReportingSink {
+      class CountingBuffer extends ReportingOutputBuffer {
         onExit(frame) {
           seen.push({ index: frame.index, changed: frame.changed });
+        }
+      }
+      class CountingSink extends ReportingSink {
+        new(cid) {
+          return new CountingBuffer(this, cid);
         }
       }
       const rendered = new Rendered(

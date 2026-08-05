@@ -16,8 +16,8 @@ import {
   KEYED_MOVED,
 } from "./constants";
 
-import { isObject, isCid } from "./utils";
-import { StringSink, SINK_STATE } from "./rendered/sink";
+import { isObject, isCid, deepClone } from "./utils";
+import { Sink, SINK_STATE } from "./rendered/sink";
 import { modifyRoot } from "./rendered/modify_root";
 import { logError } from "./diagnostics";
 
@@ -31,7 +31,7 @@ export default class Rendered {
     return { diff, title, reply: reply || null, events: events || [] };
   }
 
-  constructor(viewId, rendered, createSink = () => new StringSink()) {
+  constructor(viewId, rendered, createSink = () => new Sink()) {
     this.viewId = viewId;
     this.rendered = {};
     this.magicId = 0;
@@ -42,16 +42,12 @@ export default class Rendered {
     this.initialMerge = false;
   }
 
+  // One sink is installed for the life of this tree. It sees every diff before
+  // it merges, and hands out one buffer per subtree render.
   useSink(createSink) {
-    this.createSink = createSink;
+    this.sink = createSink();
     // Change reporting is only paid for when the installed sink asks for it.
-    const probe = /** @type {{reportsChanges?: unknown}} */ (createSink());
-    this.reportsChanges = probe.reportsChanges === true;
-    // diffCursor/componentDiffs hold a clone of the last diff, which the
-    // render pass walks alongside the tree to tell the sink which dynamics
-    // this patch touched; see captureDiffCursor.
-    this.diffCursor = undefined;
-    this.componentDiffs = undefined;
+    this.reportsChanges = this.sink.reportsChanges === true;
   }
 
   // Swaps the sink on a tree that has already been rendered. State the
@@ -89,26 +85,25 @@ export default class Rendered {
       onlyCids,
       changeTracking,
       {},
-      this.diffCursor,
+      null,
     );
     return { buffer: str, streams: streams };
   }
 
+  // cid identifies the subtree being rendered to the sink: null for the root
+  // tree, a component id otherwise.
   recursiveToString(
     rendered,
     components = rendered[COMPONENTS],
     onlyCids,
     changeTracking,
     rootAttrs,
-    diffNode,
+    cid,
   ) {
     onlyCids = onlyCids ? new Set(onlyCids) : null;
-    const sink = this.createSink();
-    if (this.reportsChanges) {
-      sink.storeDiff(diffNode);
-    }
+    const buffer = this.sink.new(cid);
     const output = {
-      sink: sink,
+      buffer: buffer,
       components: components,
       onlyCids: onlyCids,
       streams: new Set(),
@@ -116,13 +111,13 @@ export default class Rendered {
     };
     this.toOutputBuffer(
       rendered,
-      diffNode,
+      this.sink.cursorFor(cid),
       null,
       output,
       changeTracking,
       rootAttrs,
     );
-    return { buffer: sink.toString(), streams: output.streams };
+    return { buffer: buffer.toString(), streams: output.streams };
   }
 
   componentCIDs(diff) {
@@ -149,7 +144,12 @@ export default class Rendered {
   }
 
   mergeDiff(diff) {
-    this.captureDiffCursor(diff);
+    // The sink has to copy anything it wants to keep before the merge adopts
+    // diff subtrees into the tree and mutates them. The join is skipped: there
+    // is no previous render to compare against.
+    if (!this.initialMerge) {
+      this.sink.preMerge(diff);
+    }
     const newc = diff[COMPONENTS];
     const cache = {};
     delete diff[COMPONENTS];
@@ -168,21 +168,6 @@ export default class Rendered {
       }
       diff[COMPONENTS] = newc;
     }
-  }
-
-  // Keeps a deep copy of the incoming diff so the render pass can walk it
-  // alongside the tree. Cloning is not optional: the merge adopts diff
-  // subtrees into the rendered tree and then mutates them.
-  captureDiffCursor(diff) {
-    if (!this.reportsChanges || this.initialMerge) {
-      this.diffCursor = undefined;
-      this.componentDiffs = undefined;
-      return;
-    }
-    const cloned = this.clone(diff);
-    this.componentDiffs = cloned[COMPONENTS];
-    delete cloned[COMPONENTS];
-    this.diffCursor = cloned;
   }
 
   cachedFindComponent(cid, cdiff, oldc, newc, cache) {
@@ -249,12 +234,7 @@ export default class Rendered {
   }
 
   clone(diff) {
-    if ("structuredClone" in window) {
-      return structuredClone(diff);
-    } else {
-      // fallback for jest
-      return JSON.parse(JSON.stringify(diff));
-    }
+    return deepClone(diff);
   }
 
   // keyed comprehensions
@@ -438,7 +418,7 @@ export default class Rendered {
     rendered[STATIC] = statics;
     const isRoot = rendered[ROOT];
     if (isRoot) {
-      output.sink.beginRoot();
+      output.buffer.beginRoot();
     }
 
     // this condition is called when first rendering an optimizable function component.
@@ -477,7 +457,7 @@ export default class Rendered {
       if (skip) {
         attrs[PHX_SKIP] = true;
       }
-      output.sink.endRoot(attrs, skip);
+      output.buffer.endRoot(attrs, skip);
       rendered.newRender = false;
     }
   }
@@ -488,9 +468,9 @@ export default class Rendered {
   // Unless the sink reports changes this is the plain interleave, so it costs
   // nothing extra when nobody asked for it.
   dynamicsToBuffer(node, diffNode, statics, templates, output, changeTracking) {
-    const sink = output.sink;
+    const buffer = output.buffer;
     if (!output.reportsChanges) {
-      sink.write(statics[0]);
+      buffer.write(statics[0]);
       for (let i = 1; i < statics.length; i++) {
         this.dynamicToBuffer(
           node[i - 1],
@@ -499,16 +479,16 @@ export default class Rendered {
           output,
           changeTracking,
         );
-        sink.write(statics[i]);
+        buffer.write(statics[i]);
       }
       return;
     }
 
     for (let i = 0; i < statics.length - 1; i++) {
-      sink.write(statics[i]);
-      // The cursor is opaque here: the sink descends it and hands back the one
-      // for this dynamic, which we only carry back down.
-      const childDiff = sink.enter(diffNode, node, i, statics);
+      buffer.write(statics[i]);
+      // The cursor is opaque here: the buffer descends it and hands back the
+      // one for this dynamic, which we only carry back down.
+      const childDiff = buffer.enter(diffNode, node, i, statics);
       this.dynamicToBuffer(
         node[i],
         childDiff,
@@ -516,9 +496,9 @@ export default class Rendered {
         output,
         changeTracking,
       );
-      sink.exit();
+      buffer.exit();
     }
-    sink.write(statics[statics.length - 1]);
+    buffer.write(statics[statics.length - 1]);
   }
 
   comprehensionToBuffer(rendered, diffNode, templates, output, changeTracking) {
@@ -530,7 +510,9 @@ export default class Rendered {
     for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
       this.dynamicsToBuffer(
         rendered[KEYED][i],
-        output.reportsChanges ? output.sink.keyedEntry(diffNode, i) : undefined,
+        output.reportsChanges
+          ? output.buffer.keyedEntry(diffNode, i)
+          : undefined,
         statics,
         keyedTemplates,
         output,
@@ -561,7 +543,7 @@ export default class Rendered {
         rendered,
         output.onlyCids,
       );
-      output.sink.write(str);
+      output.buffer.write(str);
       output.streams = new Set([...output.streams, ...streams]);
     } else if (isObject(rendered)) {
       this.toOutputBuffer(
@@ -573,7 +555,7 @@ export default class Rendered {
         {},
       );
     } else {
-      output.sink.write(rendered);
+      output.buffer.write(rendered);
     }
   }
 
@@ -614,7 +596,7 @@ export default class Rendered {
         onlyCids,
         changeTracking,
         attrs,
-        this.componentDiffs && this.componentDiffs[cid],
+        cid,
       );
       // disable reset after we've rendered
       delete component.reset;
