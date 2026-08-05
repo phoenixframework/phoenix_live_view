@@ -234,6 +234,39 @@ describe("MarkingSink", () => {
     },
   );
 
+  test("drops markers recorded inside a root that was then skipped", () => {
+    // A single root function component with a call site inside it. Once it has
+    // rendered, a patch that leaves it alone lets LiveView skip it: the
+    // subtree is still walked, but the result is thrown away and the DOM keeps
+    // what it has. Anything the sink recorded during that walk points at
+    // content that never ships.
+    const rendered = new Rendered(
+      "123",
+      {
+        0: {
+          0: { 0: "inner", [STATIC]: ["<em>", "</em>"] },
+          [STATIC]: [`<div id="o">${callerAnnotation}`, "</div>"],
+          r: 1,
+        },
+        [STATIC]: ["", ""],
+      },
+      markingSink(),
+    );
+
+    const first = rendered.toString().buffer;
+    expect(first).toContain("<em>inner</em>");
+    expect(callerIDs(first)).toHaveLength(1);
+
+    const second = rendered.toString().buffer;
+
+    expect(second).toContain("data-phx-skip");
+    expect(second).not.toContain("<em>");
+    // The marker for the call site inside went with the discarded content,
+    // rather than being emitted at an offset that no longer means anything.
+    expect(callerIDs(second)).toEqual([]);
+    expect(second).not.toContain(DEBUG_ATTR);
+  });
+
   test("preserves caller IDs across unrelated LiveComponent diffs", () => {
     const rendered = new Rendered(
       "123",
@@ -466,7 +499,22 @@ class MarkingSink extends ReportingSink {
     super.endRoot(attrs, clearInnerHTML);
     this.roots.set(start, this.length);
 
-    // Anything inside a cleared root went away with the content.
+    // The base rewrote the span [start, lengthBefore) in place, so every
+    // position recorded inside it has moved. Two shapes, with real numbers:
+    //
+    //   attributes added to the start tag
+    //     before  '<main><div>hi</div>'                start=6, end=19
+    //     after   '<main><div data-phx-id="m1">hi</div>'      length=36
+    //     'hi' was at 11, is now at 28: delta = 36 - 19 = +17, and every
+    //     position past the root's start moves by it.
+    //
+    //   contents discarded too, when a root did not change and the DOM keeps
+    //   what it already has
+    //     before  '<main><div id="x">hi</div>'         start=6, end=26
+    //     after   '<main><div id="x" data-phx-skip></div>'    length=38
+    //     'hi' is gone. An edit pointing into it has nothing left to attach
+    //     to, so it is dropped rather than shifted; only edits at or before
+    //     the start, or at or after the old end, survive into the shift.
     if (clearInnerHTML) {
       this.edits = this.edits.filter(
         (e) => e.at <= start || e.at >= lengthBefore,
@@ -474,11 +522,14 @@ class MarkingSink extends ReportingSink {
     }
     const delta = this.length - lengthBefore;
     this.edits.forEach((e) => {
+      // `> start`, not `>=`: an edit sitting exactly at the root's start goes
+      // before the element and stays put.
       if (e.at > start) e.at += delta;
     });
-    this.frames.forEach((f: any) => {
-      if (f.start > start) f.start += delta;
-    });
+    // Open frames need no rebasing. beginRoot/endRoot bracket the whole of
+    // toOutputBuffer, so every frame opened inside this root has already
+    // exited by now, and the frame that encloses the root recorded the same
+    // offset `start` did.
   }
 
   toString(): string {
