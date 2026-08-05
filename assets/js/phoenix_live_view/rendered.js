@@ -123,6 +123,7 @@ const ALL_CHANGED = Symbol("all changed");
 // The renderer hands it an opaque cursor into the diff and this class walks it
 // alongside the tree, so no knowledge of the diff format is needed to write a
 // sink - or, for that matter, to read the renderer.
+/** @internal */
 export class ReportingSink extends StringSink {
   constructor() {
     super();
