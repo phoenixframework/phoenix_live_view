@@ -1,4 +1,4 @@
-import { modifyRoot } from "phoenix_live_view/rendered";
+import { modifyRoot } from "phoenix_live_view/rendered/modify_root";
 
 describe("modifyRoot stripping comments", () => {
   test("starting comments", () => {

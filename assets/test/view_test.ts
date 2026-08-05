@@ -4,7 +4,7 @@ import LiveSocket from "phoenix_live_view/live_socket";
 import DOM from "phoenix_live_view/dom";
 import View from "phoenix_live_view/view";
 import ViewHook, { HooksOptions } from "phoenix_live_view/view_hook";
-import { ReportingSink, StringSink } from "phoenix_live_view/rendered";
+import { ReportingSink, StringSink } from "phoenix_live_view/rendered/sink";
 
 import { version as liveview_version } from "../../package.json";
 

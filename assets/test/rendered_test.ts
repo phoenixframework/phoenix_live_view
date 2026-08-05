@@ -1,7 +1,5 @@
-import Rendered, {
-  ReportingSink,
-  SINK_STATE,
-} from "phoenix_live_view/rendered";
+import Rendered from "phoenix_live_view/rendered";
+import { ReportingSink, SINK_STATE } from "phoenix_live_view/rendered/sink";
 import {
   STATIC,
   COMPONENTS,

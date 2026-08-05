@@ -59,7 +59,7 @@ import View from "./view";
 import JS from "./js";
 import jsCommands, { EncodedJS, LiveSocketJSCommands } from "./js_commands";
 import { HooksOptions } from "./view_hook";
-import { ReportingSink, StringSink } from "./rendered";
+import { ReportingSink, StringSink } from "./rendered/sink";
 
 /**
  * Returns true if the given element was touched by a user.
