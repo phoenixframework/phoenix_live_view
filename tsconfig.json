@@ -10,7 +10,7 @@
     "noImplicitAny": false,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "stripInternal": true,
+    "stripInternal": false,
     "paths": {
       "*": ["./assets/js/*", "./assets/js/phoenix_live_view/*"]
     },
