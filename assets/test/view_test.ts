@@ -4,7 +4,7 @@ import LiveSocket from "phoenix_live_view/live_socket";
 import DOM from "phoenix_live_view/dom";
 import View from "phoenix_live_view/view";
 import ViewHook, { HooksOptions } from "phoenix_live_view/view_hook";
-import { StringSink } from "phoenix_live_view/rendered";
+import { ReportingSink, StringSink } from "phoenix_live_view/rendered";
 
 import { version as liveview_version } from "../../package.json";
 
@@ -68,35 +68,30 @@ describe("View + DOM", function () {
     // annotations itself, and marks the element a call site rendered.
     const ids = new Map<string, number>();
     let nextId = 0;
-    class MarkingSink extends StringSink {
-      stack: { start: number; node: any; index: number; callSite: boolean }[] =
-        [];
+    class MarkingSink extends ReportingSink {
       edits: { at: number; text: string }[] = [];
       roots = new Map<number, number>();
       rootStack: number[] = [];
 
-      enter(node, index, statics) {
-        this.stack.push({
-          start: this.length,
-          node,
-          index,
-          callSite: /<!-- @caller [^>]* -->$/.test(statics[index]),
-        });
+      onEnter(frame) {
+        frame.callSite = /<!-- @caller [^>]* -->$/.test(
+          frame.statics[frame.index],
+        );
+        frame.start = this.length;
       }
 
-      exit(changed) {
-        const span = this.stack.pop()!;
-        if (!span.callSite) return;
-        const state = (span.node.sinkState = span.node.sinkState || {});
-        const id = (state[span.index] = state[span.index] || `c${++nextId}`);
+      onExit(frame) {
+        if (!frame.callSite) return;
+        const state = (frame.node.sinkState = frame.node.sinkState || {});
+        const id = (state[frame.index] = state[frame.index] || `c${++nextId}`);
         const previous = ids.get(id);
         const bump =
-          previous === undefined ? 0 : changed ? previous + 1 : previous;
+          previous === undefined ? 0 : frame.changed ? previous + 1 : previous;
         ids.set(id, bump);
         // Single element span, so the id goes on its start tag.
-        if (this.roots.get(span.start) === this.length) {
+        if (this.roots.get(frame.start) === this.length) {
           this.edits.push({
-            at: this.html.indexOf(">", span.start),
+            at: this.html.indexOf(">", frame.start),
             text: ` phx-debug-id="${id}:${bump}"`,
           });
         }
@@ -116,8 +111,8 @@ describe("View + DOM", function () {
         this.edits.forEach((e) => {
           if (e.at > start) e.at += delta;
         });
-        this.stack.forEach((s) => {
-          if (s.start > start) s.start += delta;
+        this.frames.forEach((f: any) => {
+          if (f.start > start) f.start += delta;
         });
       }
 
@@ -183,6 +178,44 @@ describe("View + DOM", function () {
     nextId = 0;
     liveSocket.attachDebugSink(() => new MarkingSink());
     expect(debugId()).toMatch(/:0$/);
+
+    consoleLog.mockRestore();
+    liveSocket.disableDebug();
+  });
+
+  test("createReportingSink exposes the base class without an import", () => {
+    liveSocket = new LiveSocket("/live", Socket);
+    liveSocket.enableDebug();
+    const consoleLog = jest.spyOn(console, "log").mockImplementation(() => {});
+
+    // What tooling holding only a LiveSocket handle would do.
+    const Base = liveSocket.createReportingSink().constructor;
+    expect(Base).toBe(ReportingSink);
+    // A sink that overrides neither hook stays out of the render path.
+    expect(new Base().reportsChanges).toBe(false);
+
+    const seen: boolean[] = [];
+    class CountingSink extends Base {
+      onExit(frame) {
+        seen.push(frame.changed);
+      }
+    }
+    expect(new CountingSink().reportsChanges).toBe(true);
+
+    const view = new View(liveViewDOM(), liveSocket, null, null, null);
+    stubChannel(view);
+    liveSocket.roots[view.id] = view;
+    view.isConnected = () => true;
+    view.onJoin({
+      rendered: { 0: "a", 1: "b", s: ["<div>", "|", "</div>"] },
+      liveview_version,
+    });
+
+    liveSocket.attachDebugSink(() => new CountingSink());
+    seen.length = 0;
+    view.update({ 1: "changed" }, []);
+    // One frame per dynamic, and only the one the diff carried is changed.
+    expect(seen).toEqual([false, true]);
 
     consoleLog.mockRestore();
     liveSocket.disableDebug();

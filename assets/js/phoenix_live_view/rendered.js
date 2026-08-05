@@ -39,22 +39,6 @@ const VOID_TAGS = new Set([
 ]);
 const quoteChars = new Set(["'", '"']);
 
-// Diff cursor sentinel meaning "everything below here is new". Used when a
-// subtree arrives with fresh statics, so there is nothing to compare against.
-const ALL_CHANGED = Symbol("all changed");
-
-// Descends the diff cursor alongside the rendered tree. `undefined` means the
-// server sent nothing for this position, i.e. it did not change.
-const diffFor = (diffNode, key) => {
-  if (diffNode === undefined || diffNode === null) {
-    return undefined;
-  } else if (diffNode === ALL_CHANGED || diffNode[STATIC] !== undefined) {
-    return ALL_CHANGED;
-  } else {
-    return diffNode[key];
-  }
-};
-
 // Key reserved on rendered nodes for a sink to hang its own state on. It rides
 // along with the node through diff merges, and is dropped when a node is
 // rebuilt from another component's statics - which is exactly the lifetime a
@@ -126,6 +110,92 @@ export class StringSink {
   // `<!-- @caller file:line (app) -->` annotation, emitted when the server is
   // compiled with `debug_heex_annotations`. Recognising those, and the source
   // location they carry, is left to the sink.
+}
+
+// Sentinel cursor meaning "everything below here is new", used when a subtree
+// arrives with fresh statics so there is nothing to compare it against.
+const ALL_CHANGED = Symbol("all changed");
+
+// Base class for sinks that want to be told which parts of the page a patch
+// touched. Subclasses implement `onEnter`/`onExit`; everything else here is
+// the plumbing the renderer talks to.
+//
+// The renderer hands it an opaque cursor into the diff and this class walks it
+// alongside the tree, so no knowledge of the diff format is needed to write a
+// sink - or, for that matter, to read the renderer.
+export class ReportingSink extends StringSink {
+  constructor() {
+    super();
+    this.frames = [];
+    this.diff = undefined;
+  }
+
+  // Hooks for subclasses, called around every dynamic in the tree. `frame`
+  // carries the node holding the dynamic, its index into `statics`, and
+  // whether this patch touched it; a subclass may hang its own state on it and
+  // read it back in onExit, and reach enclosing dynamics through `frames`.
+  onEnter(_frame) {}
+  onExit(_frame) {}
+
+  // Extending this class without overriding either hook costs nothing: the
+  // renderer then skips the whole mechanism.
+  get reportsChanges() {
+    const base = ReportingSink.prototype;
+    return this.onEnter !== base.onEnter || this.onExit !== base.onExit;
+  }
+
+  // Called once before the render with its diff cursor, which is undefined for
+  // a render that has no diff to compare against - a join, or the first render
+  // after this sink was attached. Subclasses may override to reset state.
+  storeDiff(diff) {
+    this.diff = diff;
+  }
+
+  // Brackets the dynamic at statics[index] of `node`. Returns the cursor for
+  // that dynamic, which the renderer passes back down.
+  enter(parentDiff, node, index, statics) {
+    const diff = this.diffFor(parentDiff, index);
+    // The diff mirrors the tree, so the server having sent anything at this
+    // position means this patch touched something at or below it.
+    const frame = { node, index, statics, changed: diff !== undefined };
+    this.frames.push(frame);
+    this.onEnter(frame);
+    return diff;
+  }
+
+  exit() {
+    this.onExit(this.frames.pop());
+  }
+
+  // The cursor for one entry of a keyed comprehension. Entries are not
+  // bracketed by enter/exit, so the renderer asks for theirs directly.
+  keyedEntry(diffNode, index) {
+    const keyed = this.diffFor(diffNode, KEYED);
+    if (keyed === ALL_CHANGED || keyed === undefined) {
+      return keyed;
+    }
+    const entry = keyed[index];
+    if (Array.isArray(entry)) {
+      // [old_idx, diff] - moved, with a diff of its own
+      return entry[1];
+    } else if (typeof entry === "number") {
+      // moved without a diff; the move is a change of the comprehension, not
+      // of anything inside the entry
+      return undefined;
+    } else {
+      return entry;
+    }
+  }
+
+  diffFor(diffNode, key) {
+    if (diffNode === undefined || diffNode === null) {
+      return undefined;
+    } else if (diffNode === ALL_CHANGED || diffNode[STATIC] !== undefined) {
+      return ALL_CHANGED;
+    } else {
+      return diffNode[key];
+    }
+  }
 }
 
 export const modifyRoot = (html, attrs, clearInnerHTML) => {
@@ -234,8 +304,8 @@ export default class Rendered {
   useSink(createSink) {
     this.createSink = createSink;
     // Change reporting is only paid for when the installed sink asks for it.
-    const probe = /** @type {{enter?: unknown}} */ (createSink());
-    this.reportsChanges = typeof probe.enter === "function";
+    const probe = /** @type {{reportsChanges?: unknown}} */ (createSink());
+    this.reportsChanges = probe.reportsChanges === true;
     // diffCursor/componentDiffs hold a clone of the last diff, which the
     // render pass walks alongside the tree to tell the sink which dynamics
     // this patch touched; see captureDiffCursor.
@@ -292,8 +362,12 @@ export default class Rendered {
     diffNode,
   ) {
     onlyCids = onlyCids ? new Set(onlyCids) : null;
+    const sink = this.createSink();
+    if (this.reportsChanges) {
+      sink.storeDiff(diffNode);
+    }
     const output = {
-      sink: this.createSink(),
+      sink: sink,
       components: components,
       onlyCids: onlyCids,
       streams: new Set(),
@@ -307,7 +381,7 @@ export default class Rendered {
       changeTracking,
       rootAttrs,
     );
-    return { buffer: output.sink.toString(), streams: output.streams };
+    return { buffer: sink.toString(), streams: output.streams };
   }
 
   componentCIDs(diff) {
@@ -544,7 +618,6 @@ export default class Rendered {
     delete rendered.magicId;
     delete rendered.newRender;
     delete rendered[SINK_STATE];
-    delete rendered.keyedCount;
   }
 
   componentToString(cid) {
@@ -588,11 +661,8 @@ export default class Rendered {
   //
   // changeTracking controls if we can apply the PHX_SKIP optimization.
   //
-  // diffNode is the debug-only cursor into the last diff (see
-  // captureDiffCursor). The return value says whether this node changed in
-  // that diff, *excluding* changes that belong to a nested function component:
-  // those are reported against their own caller ID instead, so only the
-  // deepest component that actually changed gets named.
+  // diffNode is an opaque cursor into the last diff, carried down for the
+  // sink's benefit and never inspected here; see captureDiffCursor.
   toOutputBuffer(
     rendered,
     diffNode,
@@ -637,7 +707,7 @@ export default class Rendered {
       rendered.magicId = this.nextMagicID();
     }
 
-    const changed = this.dynamicsToBuffer(
+    this.dynamicsToBuffer(
       rendered,
       diffNode,
       statics,
@@ -669,15 +739,13 @@ export default class Rendered {
       output.sink.endRoot(attrs, skip);
       rendered.newRender = false;
     }
-    return changed;
   }
 
   // Emits `statics` interleaved with the dynamics held on `node`, which is
   // either a rendered struct or a single entry of a keyed comprehension.
   //
-  // Unless the sink implements `enter` this is the plain interleave: no diff
-  // cursor is consulted and the sink is not called, so change reporting
-  // costs nothing when nobody asked for it.
+  // Unless the sink reports changes this is the plain interleave, so it costs
+  // nothing extra when nobody asked for it.
   dynamicsToBuffer(node, diffNode, statics, templates, output, changeTracking) {
     const sink = output.sink;
     if (!output.reportsChanges) {
@@ -692,25 +760,24 @@ export default class Rendered {
         );
         sink.write(statics[i]);
       }
-      return false;
+      return;
     }
 
-    let changed = diffNode === ALL_CHANGED || diffNode?.[STATIC] !== undefined;
     for (let i = 0; i < statics.length - 1; i++) {
       sink.write(statics[i]);
-      sink.enter(node, i, statics);
-      const dynamicChanged = this.dynamicToBuffer(
+      // The cursor is opaque here: the sink descends it and hands back the one
+      // for this dynamic, which we only carry back down.
+      const childDiff = sink.enter(diffNode, node, i, statics);
+      this.dynamicToBuffer(
         node[i],
-        diffFor(diffNode, i),
+        childDiff,
         templates,
         output,
         changeTracking,
       );
-      sink.exit(dynamicChanged);
-      changed = dynamicChanged || changed;
+      sink.exit();
     }
     sink.write(statics[statics.length - 1]);
-    return changed;
   }
 
   comprehensionToBuffer(rendered, diffNode, templates, output, changeTracking) {
@@ -718,32 +785,16 @@ export default class Rendered {
     const statics = this.templateStatic(rendered[STATIC], templates);
     rendered[STATIC] = statics;
     delete rendered[TEMPLATES];
-    const count = rendered[KEYED][KEYED_COUNT];
 
-    let changed = false;
-    let keyedDiff;
-    if (output.reportsChanges) {
-      keyedDiff = diffFor(diffNode, KEYED);
-      // Reordering or dropping entries changes the comprehension itself even
-      // when no surviving entry carries a diff. The old count is not
-      // recoverable from the merged tree, so the last render records it.
-      changed =
-        keyedDiff === ALL_CHANGED ||
-        !!(keyedDiff && keyedDiff[KEYED_MOVED]) ||
-        (rendered.keyedCount !== undefined && rendered.keyedCount !== count);
-      rendered.keyedCount = count;
-    }
-
-    for (let i = 0; i < count; i++) {
-      changed =
-        this.dynamicsToBuffer(
-          rendered[KEYED][i],
-          this.keyedEntryDiff(keyedDiff, i),
-          statics,
-          keyedTemplates,
-          output,
-          changeTracking,
-        ) || changed;
+    for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
+      this.dynamicsToBuffer(
+        rendered[KEYED][i],
+        output.reportsChanges ? output.sink.keyedEntry(diffNode, i) : undefined,
+        statics,
+        keyedTemplates,
+        output,
+        changeTracking,
+      );
     }
     // we don't need to store the rendered tree for streams
     if (rendered[STREAM]) {
@@ -758,27 +809,7 @@ export default class Rendered {
           [KEYED_COUNT]: 0,
         };
         output.streams.add(stream);
-        changed = changed || diffNode !== undefined;
       }
-    }
-    return changed;
-  }
-
-  keyedEntryDiff(keyedDiff, i) {
-    if (keyedDiff === ALL_CHANGED) {
-      return ALL_CHANGED;
-    } else if (keyedDiff === undefined) {
-      return undefined;
-    }
-    const entry = keyedDiff[i];
-    if (Array.isArray(entry)) {
-      // [old_idx, diff] - moved with diff
-      return entry[1];
-    } else if (typeof entry === "number") {
-      // moved without diff; the move itself is reported on the comprehension
-      return undefined;
-    } else {
-      return entry;
     }
   }
 
@@ -791,11 +822,8 @@ export default class Rendered {
       );
       output.sink.write(str);
       output.streams = new Set([...output.streams, ...streams]);
-      // Only true when the cid reference itself changed; the component's own
-      // content is reported while rendering that component.
-      return diffNode !== undefined;
     } else if (isObject(rendered)) {
-      return this.toOutputBuffer(
+      this.toOutputBuffer(
         rendered,
         diffNode,
         templates,
@@ -805,19 +833,6 @@ export default class Rendered {
       );
     } else {
       output.sink.write(rendered);
-      return diffNode !== undefined;
-    }
-  }
-
-  // A component whose diff carries statics was either created or rebuilt from
-  // another cid's tree, so nothing in it can be compared against a previous
-  // render.
-  componentDiffCursor(cid) {
-    const cdiff = this.componentDiffs && this.componentDiffs[cid];
-    if (cdiff === undefined || cdiff === null) {
-      return undefined;
-    } else {
-      return cdiff[STATIC] !== undefined ? ALL_CHANGED : cdiff;
     }
   }
 
@@ -858,7 +873,7 @@ export default class Rendered {
         onlyCids,
         changeTracking,
         attrs,
-        this.componentDiffCursor(cid),
+        this.componentDiffs && this.componentDiffs[cid],
       );
       // disable reset after we've rendered
       delete component.reset;

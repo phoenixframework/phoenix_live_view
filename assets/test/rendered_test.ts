@@ -1,4 +1,7 @@
-import Rendered, { StringSink, SINK_STATE } from "phoenix_live_view/rendered";
+import Rendered, {
+  ReportingSink,
+  SINK_STATE,
+} from "phoenix_live_view/rendered";
 import {
   STATIC,
   COMPONENTS,
@@ -713,20 +716,9 @@ const callerAnnotation = "<!-- @caller example.ex:1 (app) -->";
 const DEBUG_ATTR = "phx-debug-id";
 const CALL_SITE = /<!-- @caller [^>]* -->$/;
 
-interface Span {
-  node: any;
-  index: number;
-  callSite: boolean;
-  start: number;
-  // Children whose subtree the diff touched, and how many of those changed on
-  // their own rather than only through a nested call site.
-  changedChildren: number;
-  contributingChildren: number;
-}
-
-// Reference sink, in the shape a debug tool would take. Core reports every
-// dynamic and whether the diff touched it; recognising which of those are
-// function component call sites, which spans are single elements, how to
+// Reference sink, in the shape a debug tool would take. The base class reports
+// every dynamic and whether the patch touched it; recognising which of those
+// are function component call sites, which spans are single elements, how to
 // attribute a change and how to mark it are all decided here.
 //
 // Marks each call site with a two part id: the stable half identifies the call
@@ -734,9 +726,8 @@ interface Span {
 // it re-rendered with changes. Single element components carry it as an
 // attribute, so they can be found with querySelector; anything else is
 // bracketed with comments.
-class MarkingSink extends StringSink {
+class MarkingSink extends ReportingSink {
   state: { nextId: number; bumps: Map<string, number> };
-  stack: Span[] = [];
   // Deferred, so positions recorded while building stay valid.
   edits: { at: number; text: string }[] = [];
   // Spans endRoot told us are a single element: start -> end.
@@ -748,36 +739,34 @@ class MarkingSink extends StringSink {
     this.state = state;
   }
 
-  enter(node: any, index: number, statics: string[]) {
-    this.stack.push({
-      node,
-      index,
-      callSite: CALL_SITE.test(statics[index]),
-      start: this.length,
-      changedChildren: 0,
-      contributingChildren: 0,
-    });
+  onEnter(frame: any) {
+    frame.callSite = CALL_SITE.test(frame.statics[frame.index]);
+    frame.start = this.length;
+    // Children whose subtree the patch touched, and how many of those changed
+    // on their own rather than only through a nested call site.
+    frame.changedChildren = 0;
+    frame.contributingChildren = 0;
   }
 
-  exit(changed: boolean) {
-    const span = this.stack.pop()!;
-    // Core reports a change at every level on the way up. Attribute it to the
+  onExit(frame: any) {
+    // A change is reported at every level on the way up. Attribute it to the
     // innermost call site: this span only counts as changed on its own if
     // nothing below it changed (so the change is its own dynamics, its
     // statics, or its comprehension), or if at least one child changed for a
     // reason other than a nested call site.
     const ownChange =
-      changed && (span.changedChildren === 0 || span.contributingChildren > 0);
+      frame.changed &&
+      (frame.changedChildren === 0 || frame.contributingChildren > 0);
 
-    const parent = this.stack[this.stack.length - 1];
+    const parent = this.frames[this.frames.length - 1] as any;
     if (parent) {
-      if (changed) parent.changedChildren++;
+      if (frame.changed) parent.changedChildren++;
       // A call site absorbs its own change rather than passing it on.
-      if (ownChange && !span.callSite) parent.contributingChildren++;
+      if (ownChange && !frame.callSite) parent.contributingChildren++;
     }
-    // Every call site carries a marker on every render; only the volatile
-    // half moves, and only when this component itself re-rendered.
-    if (span.callSite) this.mark(span, ownChange);
+    // Every call site carries a marker on every render; only the volatile half
+    // moves, and only when this component itself re-rendered.
+    if (frame.callSite) this.mark(frame, ownChange);
   }
 
   // Brackets a span that is a single element, which is how this sink knows an
@@ -805,8 +794,8 @@ class MarkingSink extends StringSink {
     this.edits.forEach((e) => {
       if (e.at > start) e.at += delta;
     });
-    this.stack.forEach((s) => {
-      if (s.start > start) s.start += delta;
+    this.frames.forEach((f: any) => {
+      if (f.start > start) f.start += delta;
     });
   }
 
@@ -821,22 +810,22 @@ class MarkingSink extends StringSink {
     return html;
   }
 
-  private mark(span: Span, changed: boolean) {
-    const id = this.idFor(span);
+  private mark(frame: any, changed: boolean) {
+    const id = this.idFor(frame);
     const previous = this.state.bumps.get(id);
     const bump = previous === undefined ? 0 : changed ? previous + 1 : previous;
     this.state.bumps.set(id, bump);
     const value = `${id}:${bump}`;
 
     const tagNameEnd =
-      this.roots.get(span.start) === this.length
-        ? this.tagNameEnd(span.start)
+      this.roots.get(frame.start) === this.length
+        ? this.tagNameEnd(frame.start)
         : -1;
     if (tagNameEnd !== -1) {
       this.edits.push({ at: tagNameEnd, text: ` ${DEBUG_ATTR}="${value}"` });
     } else {
       this.edits.push({
-        at: span.start,
+        at: frame.start,
         text: `<!-- ${DEBUG_ATTR}-${value} -->`,
       });
       this.edits.push({
@@ -868,12 +857,12 @@ class MarkingSink extends StringSink {
     return -1;
   }
 
-  private idFor(span: Span): string {
-    const state = (span.node[SINK_STATE] = span.node[SINK_STATE] || {});
-    if (!state[span.index]) {
-      state[span.index] = `c${++this.state.nextId}`;
+  private idFor(frame: any): string {
+    const state = (frame.node[SINK_STATE] = frame.node[SINK_STATE] || {});
+    if (!state[frame.index]) {
+      state[frame.index] = `c${++this.state.nextId}`;
     }
-    return state[span.index];
+    return state[frame.index];
   }
 }
 

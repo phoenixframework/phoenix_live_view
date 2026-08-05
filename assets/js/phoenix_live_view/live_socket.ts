@@ -59,7 +59,7 @@ import View from "./view";
 import JS from "./js";
 import jsCommands, { EncodedJS, LiveSocketJSCommands } from "./js_commands";
 import { HooksOptions } from "./view_hook";
-import { StringSink } from "./rendered";
+import { ReportingSink, StringSink } from "./rendered";
 
 /**
  * Returns true if the given element was touched by a user.
@@ -440,6 +440,29 @@ export default class LiveSocket {
   attachDebugSink(createSink: () => any): void {
     this.assertDebugEnabled();
     this.useSink(createSink);
+  }
+
+  /**
+   * Returns a new {@link ReportingSink}: the base class for sinks that want to
+   * be told which parts of the page a patch touched.
+   *
+   * This exists so tooling that only has a handle on the LiveSocket, such as a
+   * devtools panel that picked it up from the socket available event, can
+   * reach the class without importing the package:
+   *
+   *     const Base = liveSocket.createReportingSink().constructor;
+   *     class MySink extends Base {
+   *       onExit(frame) { if (frame.changed) ... }
+   *     }
+   *     liveSocket.attachDebugSink(() => new MySink())
+   *
+   * Not guarded by {@link enableDebug}, since it only constructs an object;
+   * {@link attachDebugSink} is where that check belongs.
+   *
+   * @internal
+   */
+  createReportingSink(): any {
+    return new ReportingSink();
   }
 
   /**
