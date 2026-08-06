@@ -131,10 +131,7 @@ describe("ReportingBuffer", () => {
       // reads off it has to survive subclassing.
       class MyBuffer extends ReportingBuffer {}
       expect(MyBuffer.observesDynamics).toBe(true);
-      expect(MyBuffer.preMerge({ 0: "a" })).toEqual({
-        root: { 0: "a" },
-        components: undefined,
-      });
+      expect(MyBuffer.preMerge({ 0: "a" })).toEqual({ 0: "a" });
     });
 
     test("a subclass can turn reporting off again", () => {
@@ -148,16 +145,9 @@ describe("ReportingBuffer", () => {
       expect(ReportingBuffer.observesDynamics).toBe(true);
     });
 
-    test("splits the diff into the root tree and the components", () => {
-      const preMerge = ReportingBuffer.preMerge({
-        0: "root",
-        [COMPONENTS]: { 1: { 0: "component" } },
-      });
-
-      expect(preMerge).toEqual({
-        root: { 0: "root" },
-        components: { 1: { 0: "component" } },
-      });
+    test("keeps the diff whole, components and all", () => {
+      const diff = { 0: "root", [COMPONENTS]: { 1: { 0: "component" } } };
+      expect(ReportingBuffer.preMerge(diff)).toEqual(diff);
     });
 
     test("copies deeply, since the merge adopts and then mutates the diff", () => {
@@ -167,7 +157,7 @@ describe("ReportingBuffer", () => {
       diff[0][1] = "after";
       delete diff[0];
 
-      expect(preMerge.root).toEqual({ 0: { 1: "before" } });
+      expect(preMerge).toEqual({ 0: { 1: "before" } });
     });
 
     test("leaves the diff itself untouched, components included", () => {

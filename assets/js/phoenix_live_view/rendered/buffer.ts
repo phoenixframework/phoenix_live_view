@@ -16,17 +16,6 @@ export type DiffCursor = any;
  * observe or annotate the output; to be told which parts of the page a patch
  * touched, extend {@link ReportingBuffer} rather than this class.
  *
- * Anything that has to outlive a single render therefore lives on the class:
- * either as the result of the static {@link preMerge}, which is handed to every
- * buffer built from the diff that produced it, or as a static of the subclass
- * itself. Statics are shared by every view and every LiveSocket rendering
- * through the class, so a subclass keeping state across renders — a WeakMap
- * keyed by the rendered nodes it saw, say — has to key it by view itself.
- *
- * Nothing may be hung on the rendered tree instead: the merge rebuilds nodes
- * rather than mutating them in places the tree does not control, so state kept
- * there would be copied where it should not be and lost where it should not be.
- *
  * The default does nothing at all and buffers into a string.
  *
  * @internal
@@ -149,14 +138,6 @@ export interface BufferFrame {
   [key: string]: any;
 }
 
-/** What {@link ReportingBuffer.preMerge} keeps of a diff. */
-interface MergedDiff {
-  /** The diff for the root tree, with the components split off. */
-  root: DiffCursor;
-  /** The diffs for each component, by cid. */
-  components: Record<number, DiffCursor> | undefined;
-}
-
 /**
  * The buffer that reports which parts of the page a patch touched. It keeps a
  * copy of each diff before it merges and walks it alongside the tree, so a
@@ -169,24 +150,20 @@ export class ReportingBuffer extends RenderedBuffer {
   static observesDynamics = true;
 
   // Cloning is not optional: the merge adopts diff subtrees into the rendered
-  // tree and then mutates them. Components are split off here, once, so that
-  // every buffer of this merge can be handed the same result and take only the
-  // cursor for the subtree it renders.
-  static preMerge(diff: any): MergedDiff {
-    const root = deepClone(diff);
-    const components = root[COMPONENTS];
-    delete root[COMPONENTS];
-    return { root, components };
+  // tree and then mutates them. The copy is shared by every buffer of the
+  // render that follows, so nothing here may consume it.
+  static preMerge(diff: any): DiffCursor {
+    return deepClone(diff);
   }
 
   /** The cursor into a merged diff for one subtree, as passed to `new`. */
-  static cursorFor(preMerge: MergedDiff | undefined, cid: number | null) {
+  static cursorFor(preMerge: DiffCursor, cid: number | null): DiffCursor {
     if (!preMerge) {
       return undefined;
     } else if (cid === null) {
-      return preMerge.root;
+      return preMerge;
     } else {
-      return preMerge.components && preMerge.components[cid];
+      return preMerge[COMPONENTS] && preMerge[COMPONENTS][cid];
     }
   }
 
@@ -199,7 +176,7 @@ export class ReportingBuffer extends RenderedBuffer {
   // reporting a change for one would mean reporting it twice.
   private cursors: DiffCursor[] = [];
 
-  constructor(preMerge: MergedDiff | undefined, cid: number | null) {
+  constructor(preMerge: DiffCursor, cid: number | null) {
     super(preMerge, cid);
     // Off the subclass, so overriding `cursorFor` alongside `preMerge` is
     // enough to keep something other than a diff in there.
