@@ -1,6 +1,9 @@
 import { Socket } from "phoenix";
 import { type LiveViewDiagnostic } from "phoenix_live_view/diagnostics";
-import { PHX_LV_DIAGNOSTIC_EVENT } from "phoenix_live_view/constants";
+import {
+  PHX_LV_DIAGNOSTIC_EVENT,
+  PHX_LV_BEFORE_RENDER_EVENT,
+} from "phoenix_live_view/constants";
 import LiveSocket from "phoenix_live_view/live_socket";
 import {
   Sink,
@@ -9,7 +12,14 @@ import {
   ReportingOutputBuffer,
 } from "phoenix_live_view/rendered/sink";
 import JS from "phoenix_live_view/js";
-import { simulateJoinedView, simulateVisibility } from "./test_helpers";
+import View from "phoenix_live_view/view";
+import { version as liveview_version } from "../../package.json";
+import {
+  liveViewDOM,
+  simulateJoinedView,
+  simulateVisibility,
+  stubChannel,
+} from "./test_helpers";
 
 const container = (num) => global.document.getElementById(`container${num}`);
 
@@ -763,5 +773,105 @@ describe("liveSocket debug sinks", () => {
     expect(() => liveSocket.attachDebugSink(() => new Sink())).toThrow(
       /require debugging to be enabled/,
     );
+  });
+});
+
+describe("phx:live-view:before-render", () => {
+  let liveSocket, listener, seen;
+  const listeners: (() => void)[] = [];
+
+  const listen = (fn) => {
+    window.addEventListener(PHX_LV_BEFORE_RENDER_EVENT, fn);
+    listeners.push(() =>
+      window.removeEventListener(PHX_LV_BEFORE_RENDER_EVENT, fn),
+    );
+  };
+
+  // A joined view rendering one dynamic, so an update has something to report.
+  const joinView = () => {
+    const view = new View(liveViewDOM(), liveSocket, null, null, null);
+    stubChannel(view);
+    liveSocket.roots[view.id] = view;
+    view.isConnected = () => true;
+    view.onJoin({
+      rendered: { 0: "first", s: ["<div>", "</div>"] },
+      liveview_version,
+    });
+    return view;
+  };
+
+  // Counts what a sink is shown, in the shape a debug tool would attach it:
+  // from inside the listener, once.
+  const attachOnce = () => {
+    const changed: boolean[] = [];
+    let attached = false;
+    class Buffer extends ReportingOutputBuffer {
+      onExit(frame) {
+        changed.push(frame.changed);
+      }
+    }
+    class MySink extends ReportingSink {
+      new(cid) {
+        return new Buffer(this, cid);
+      }
+    }
+    listen(({ detail }: any) => {
+      if (attached) {
+        return;
+      }
+      attached = true;
+      detail.liveSocket.attachDebugSink(() => new MySink());
+    });
+    return changed;
+  };
+
+  beforeEach(() => {
+    seen = [];
+    listener = (e) => seen.push(e.detail);
+    listen(listener);
+    liveSocket = new LiveSocket("/live", Socket);
+    liveSocket.enableDebug();
+  });
+
+  afterEach(() => {
+    listeners.splice(0).forEach((remove) => remove());
+    liveSocket?.disableDebug();
+    liveSocket?.destroyAllViews();
+  });
+
+  test("announces the join and every update, naming the view", () => {
+    const view = joinView();
+    expect(seen).toEqual([{ version: 1, liveSocket, viewId: view.id }]);
+
+    view.update({ 0: "second" }, []);
+    expect(seen).toHaveLength(2);
+  });
+
+  test("a sink attached while announcing the join renders that join", () => {
+    const changed = attachOnce();
+    joinView();
+
+    // The join has no diff to compare against, so nothing counts as changed.
+    expect(changed).toEqual([false]);
+  });
+
+  test("a sink attached while announcing an update is shown that update", () => {
+    // Dispatch is synchronous and the event comes before the merge, so the
+    // sink sees the update it was attached during, not the one after it.
+    const view = joinView();
+    const changed = attachOnce();
+
+    view.update({ 0: "second" }, []);
+    expect(changed).toEqual([true]);
+    expect(view.el.innerHTML).toContain("second");
+  });
+
+  test("leaves the default sink in place when nobody attaches one", () => {
+    const view = joinView();
+    view.update({ 0: "second" }, []);
+
+    const rendered = (view as any).rendered;
+    expect(rendered.sink).toBeInstanceOf(Sink);
+    expect(rendered.observesDynamics).toBe(false);
   });
 });
