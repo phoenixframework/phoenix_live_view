@@ -32,7 +32,6 @@ import {
   PHX_RUNTIME_HOOK,
   PHX_DROP_TARGET_ACTIVE_CLASS,
   PHX_TELEPORTED_SRC,
-  PHX_LV_SOCKET_AVAILABLE_EVENT,
 } from "./constants";
 
 import {
@@ -543,23 +542,6 @@ export default class LiveSocket {
   }
 
   /**
-   * Makes this LiveSocket discoverable by external development tooling.
-   *
-   * Both the global and the event are needed, because a tool may initialize
-   * either before or after `connect()`.
-   *
-   * @internal
-   */
-  private announceDebugSocket() {
-    (window as any).__LIVE_VIEW_SOCKET__ = this;
-    window.dispatchEvent(
-      new CustomEvent(PHX_LV_SOCKET_AVAILABLE_EVENT, {
-        detail: { liveSocket: this },
-      }),
-    );
-  }
-
-  /**
    * Enables latency simulation.
    *
    * When latency simulation is enabled, the LiveView client will add a delay to requests and responses from the server.
@@ -606,9 +588,6 @@ export default class LiveSocket {
       !this.isDebugDisabled()
     ) {
       this.enableDebug();
-    }
-    if (this.isDebugEnabled()) {
-      this.announceDebugSocket();
     }
     const doConnect = () => {
       this.resetReloadStatus();
