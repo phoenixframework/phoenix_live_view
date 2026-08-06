@@ -17,12 +17,8 @@ import { logError } from "./diagnostics";
 import type { EncodedJS } from "./js_commands";
 import type { Hook, HooksOptions, HookInterface } from "./view_hook";
 import LiveUploader from "./live_uploader";
-import {
-  Sink,
-  OutputBuffer,
-  ReportingSink,
-  ReportingOutputBuffer,
-} from "./rendered/sink";
+import { RenderedBuffer, ReportingBuffer } from "./rendered/buffer";
+import type { BufferFrame } from "./rendered/buffer";
 
 export type { LiveSocketOptions, HookInterface, HooksOptions, EncodedJS };
 
@@ -100,8 +96,8 @@ export {
   ViewHook,
   Hook,
   getFileURLForUpload,
-  Sink,
-  OutputBuffer,
-  ReportingSink,
-  ReportingOutputBuffer,
+  RenderedBuffer,
+  ReportingBuffer,
 };
+
+export type { BufferFrame };

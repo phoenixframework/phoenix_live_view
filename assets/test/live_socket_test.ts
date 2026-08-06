@@ -1,16 +1,11 @@
 import { Socket } from "phoenix";
 import { type LiveViewDiagnostic } from "phoenix_live_view/diagnostics";
-import {
-  PHX_LV_DIAGNOSTIC_EVENT,
-  PHX_LV_BEFORE_RENDER_EVENT,
-} from "phoenix_live_view/constants";
+import { PHX_LV_DIAGNOSTIC_EVENT } from "phoenix_live_view/constants";
 import LiveSocket from "phoenix_live_view/live_socket";
 import {
-  Sink,
-  OutputBuffer,
-  ReportingSink,
-  ReportingOutputBuffer,
-} from "phoenix_live_view/rendered/sink";
+  RenderedBuffer,
+  ReportingBuffer,
+} from "phoenix_live_view/rendered/buffer";
 import JS from "phoenix_live_view/js";
 import View from "phoenix_live_view/view";
 import { version as liveview_version } from "../../package.json";
@@ -743,49 +738,8 @@ describe("liveSocket.js()", () => {
   });
 });
 
-describe("liveSocket debug sinks", () => {
+describe("liveSocket debug buffers", () => {
   let liveSocket;
-
-  afterEach(() => {
-    liveSocket && liveSocket.destroyAllViews();
-  });
-
-  test("hands out the sink base classes without an import", () => {
-    liveSocket = new LiveSocket("/live", Socket);
-
-    // What tooling holding only a LiveSocket handle needs, since the classes
-    // are not otherwise reachable from a page it did not bundle.
-    expect(liveSocket.sinks).toEqual({
-      Sink,
-      OutputBuffer,
-      ReportingSink,
-      ReportingOutputBuffer,
-    });
-
-    const Base = liveSocket.sinks.ReportingSink;
-    class MySink extends Base {}
-    expect(new MySink().observesDynamics).toBe(true);
-    expect(new MySink().new(null)).toBeInstanceOf(ReportingOutputBuffer);
-  });
-
-  test("attachDebugSink requires debugging to be enabled", () => {
-    liveSocket = new LiveSocket("/live", Socket);
-    expect(() => liveSocket.attachDebugSink(() => new Sink())).toThrow(
-      /require debugging to be enabled/,
-    );
-  });
-});
-
-describe("phx:live-view:before-render", () => {
-  let liveSocket, listener, seen;
-  const listeners: (() => void)[] = [];
-
-  const listen = (fn) => {
-    window.addEventListener(PHX_LV_BEFORE_RENDER_EVENT, fn);
-    listeners.push(() =>
-      window.removeEventListener(PHX_LV_BEFORE_RENDER_EVENT, fn),
-    );
-  };
 
   // A joined view rendering one dynamic, so an update has something to report.
   const joinView = () => {
@@ -800,78 +754,69 @@ describe("phx:live-view:before-render", () => {
     return view;
   };
 
-  // Counts what a sink is shown, in the shape a debug tool would attach it:
-  // from inside the listener, once.
-  const attachOnce = () => {
+  // A buffer class in the shape a debug tool would install one, reporting what
+  // each render was told about the dynamic it wrote.
+  const recordingBuffer = () => {
     const changed: boolean[] = [];
-    let attached = false;
-    class Buffer extends ReportingOutputBuffer {
+    class Recording extends ReportingBuffer {
       onExit(frame) {
         changed.push(frame.changed);
       }
     }
-    class MySink extends ReportingSink {
-      new(cid) {
-        return new Buffer(this, cid);
-      }
-    }
-    listen(({ detail }: any) => {
-      if (attached) {
-        return;
-      }
-      attached = true;
-      detail.liveSocket.attachDebugSink(() => new MySink());
-    });
-    return changed;
+    return { Recording, changed };
   };
 
   beforeEach(() => {
-    seen = [];
-    listener = (e) => seen.push(e.detail);
-    listen(listener);
     liveSocket = new LiveSocket("/live", Socket);
-    liveSocket.enableDebug();
   });
 
   afterEach(() => {
-    listeners.splice(0).forEach((remove) => remove());
-    liveSocket?.disableDebug();
-    liveSocket?.destroyAllViews();
+    liveSocket && liveSocket.destroyAllViews();
   });
 
-  test("announces the join and every update, naming the view", () => {
-    const view = joinView();
-    expect(seen).toEqual([{ version: 1, liveSocket, viewId: view.id }]);
-
-    view.update({ 0: "second" }, []);
-    expect(seen).toHaveLength(2);
+  test("hands out the buffer base classes without an import", () => {
+    // What tooling holding only a LiveSocket handle needs, since the classes
+    // are not otherwise reachable from a page it did not bundle.
+    expect(liveSocket.buffers).toEqual({ RenderedBuffer, ReportingBuffer });
   });
 
-  test("a sink attached while announcing the join renders that join", () => {
-    const changed = attachOnce();
+  test("returns the class installed until now, to restore it with", () => {
+    const { Recording } = recordingBuffer();
+
+    expect(liveSocket.attachDebugBuffer(Recording)).toBe(RenderedBuffer);
+    expect(liveSocket.attachDebugBuffer(RenderedBuffer)).toBe(Recording);
+    expect(liveSocket.renderedBuffer).toBe(RenderedBuffer);
+  });
+
+  test("a buffer attached before a view joins renders that join", () => {
+    const { Recording, changed } = recordingBuffer();
+    liveSocket.attachDebugBuffer(Recording);
+
     joinView();
 
-    // The join has no diff to compare against, so nothing counts as changed.
+    // The join has no previous render to compare against, so nothing counts
+    // as changed.
     expect(changed).toEqual([false]);
   });
 
-  test("a sink attached while announcing an update is shown that update", () => {
-    // Dispatch is synchronous and the event comes before the merge, so the
-    // sink sees the update it was attached during, not the one after it.
+  test("a buffer attached after a view joined is shown its next update", () => {
+    // Nothing is re-rendered to install it, so it sees the page as later
+    // patches reach it — starting with this one.
     const view = joinView();
-    const changed = attachOnce();
+    const { Recording, changed } = recordingBuffer();
+    liveSocket.attachDebugBuffer(Recording);
 
     view.update({ 0: "second" }, []);
+
     expect(changed).toEqual([true]);
     expect(view.el.innerHTML).toContain("second");
   });
 
-  test("leaves the default sink in place when nobody attaches one", () => {
+  test("leaves the default buffer in place when nobody attaches one", () => {
     const view = joinView();
     view.update({ 0: "second" }, []);
 
-    const rendered = (view as any).rendered;
-    expect(rendered.sink).toBeInstanceOf(Sink);
-    expect(rendered.observesDynamics).toBe(false);
+    expect(liveSocket.renderedBuffer).toBe(RenderedBuffer);
+    expect((view as any).rendered.bufferClass()).toBe(RenderedBuffer);
   });
 });

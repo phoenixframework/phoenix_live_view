@@ -17,7 +17,7 @@ import {
 } from "./constants";
 
 import { isObject, isCid, deepClone } from "./utils";
-import { Sink } from "./rendered/sink";
+import { RenderedBuffer } from "./rendered/buffer";
 import { modifyRoot } from "./rendered/modify_root";
 import { logError } from "./diagnostics";
 
@@ -31,24 +31,18 @@ export default class Rendered {
     return { diff, title, reply: reply || null, events: events || [] };
   }
 
-  constructor(viewId, rendered, createSink = () => new Sink()) {
+  // The buffer class is read afresh on every merge and every render rather
+  // than held, so one installed after this tree mounted still takes effect —
+  // for the parts of the page the next patch renders, and no sooner.
+  constructor(viewId, rendered, bufferClass = () => RenderedBuffer) {
     this.viewId = viewId;
     this.rendered = {};
     this.magicId = 0;
-    this.setSink(createSink);
+    this.bufferClass = bufferClass;
     // The first merge is the join: everything is new, nothing is a change.
     this.initialMerge = true;
     this.mergeDiff(rendered);
     this.initialMerge = false;
-  }
-
-  // A sink is installed for the life of this tree. It sees every diff before
-  // it merges, and hands out one buffer per subtree render. Swapping it drops
-  // whatever the previous one kept, which lives on the sink and nowhere else.
-  setSink(createSink) {
-    this.sink = createSink();
-    // Change reporting is skipped if the sink does not need it.
-    this.observesDynamics = this.sink.observesDynamics === true;
   }
 
   parentViewId() {
@@ -67,7 +61,7 @@ export default class Rendered {
     return { buffer: str, streams: streams };
   }
 
-  // cid identifies the subtree being rendered to the sink: null for the root
+  // cid identifies the subtree being rendered to the buffer: null for the root
   // tree, a component id otherwise.
   recursiveToString(
     rendered,
@@ -78,13 +72,20 @@ export default class Rendered {
     cid,
   ) {
     onlyCids = onlyCids ? new Set(onlyCids) : null;
-    const buffer = this.sink.new(cid);
+    const bufferClass = this.bufferClass();
+    // Only what the class installed right now kept for itself: a class
+    // installed since the last merge has nothing of that diff to be handed.
+    const [mergedBy, preMerge] = this.bufferPreMerge;
+    const buffer = new bufferClass(
+      mergedBy === bufferClass ? preMerge : undefined,
+      cid,
+    );
     const output = {
       buffer,
       components: components,
       onlyCids: onlyCids,
       streams: new Set(),
-      observesDynamics: this.observesDynamics,
+      observesDynamics: bufferClass.observesDynamics === true,
     };
     this.toOutputBuffer(rendered, null, output, changeTracking, rootAttrs);
     return { buffer: buffer.toString(), streams: output.streams };
@@ -114,12 +115,18 @@ export default class Rendered {
   }
 
   mergeDiff(diff) {
-    // The sink has to copy anything it wants to keep before the merge adopts
-    // diff subtrees into the tree and mutates them. The join is skipped: there
-    // is no previous render to compare against.
-    if (!this.initialMerge) {
-      this.sink.preMerge(diff);
-    }
+    // Anything the buffer class wants to keep of this diff it has to copy now,
+    // before the merge below adopts diff subtrees into the tree and mutates
+    // them. What it keeps is tagged with the class that kept it, so a class
+    // installed afterwards is never handed the previous one's data. The join
+    // is skipped: there is no previous render to compare against.
+    const bufferClass = this.bufferClass();
+    this.bufferPreMerge = [
+      bufferClass,
+      !this.initialMerge && bufferClass.preMerge
+        ? bufferClass.preMerge(diff)
+        : undefined,
+    ];
     const newc = diff[COMPONENTS];
     const cache = {};
     delete diff[COMPONENTS];
@@ -416,7 +423,7 @@ export default class Rendered {
   // Emits `statics` interleaved with the dynamics held on `node`, which is
   // either a rendered struct or a single entry of a keyed comprehension.
   //
-  // Unless the sink observes dynamics this is the plain interleave, so it
+  // Unless the buffer observes dynamics this is the plain interleave, so it
   // costs nothing extra when nobody asked for it.
   dynamicsToBuffer(node, statics, templates, output, changeTracking) {
     const buffer = output.buffer;
@@ -430,7 +437,7 @@ export default class Rendered {
     }
 
     // We only call enter + exit when we need to. A benchmark showed ~5% slowdown
-    // when calling enter + exit on a noop sink.
+    // when calling enter + exit on a noop buffer.
     // (Overall render time in the ~100 microsecond range)
     for (let i = 0; i < statics.length - 1; i++) {
       buffer.write(statics[i]);

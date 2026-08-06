@@ -1,8 +1,5 @@
 import Rendered from "phoenix_live_view/rendered";
-import {
-  ReportingSink,
-  ReportingOutputBuffer,
-} from "phoenix_live_view/rendered/sink";
+import { ReportingBuffer } from "phoenix_live_view/rendered/buffer";
 import {
   STATIC,
   COMPONENTS,
@@ -360,36 +357,30 @@ describe("Rendered", () => {
       );
     });
 
-    test("leaves call sites alone unless a sink asks for them", () => {
+    test("leaves call sites alone unless a buffer asks for them", () => {
       const diff = {
         0: { [STATIC]: ["<span>child</span>"] },
         [STATIC]: [callerAnnotation, ""],
       };
 
-      // Default sink: statics are emitted verbatim, nothing is tracked.
+      // Default buffer: statics are emitted verbatim, nothing is tracked.
       const plain = new Rendered("123", diff);
       expect(plain.toString().buffer).toEqual(
         `${callerAnnotation}<span>child</span>`,
       );
-      expect(plain.observesDynamics).toBe(false);
     });
 
     test("brackets every dynamic and reports the ones a diff touched", () => {
       const seen: { index: number; changed: boolean }[] = [];
-      class CountingBuffer extends ReportingOutputBuffer {
+      class CountingBuffer extends ReportingBuffer {
         onExit(frame) {
           seen.push({ index: frame.index, changed: frame.changed });
-        }
-      }
-      class CountingSink extends ReportingSink {
-        new(cid) {
-          return new CountingBuffer(this, cid);
         }
       }
       const rendered = new Rendered(
         "123",
         { 0: "a", 1: "b", [STATIC]: ["<div>", "|", "</div>"] },
-        () => new CountingSink(),
+        () => CountingBuffer,
       );
 
       // The join has no previous render to compare against.
@@ -406,6 +397,29 @@ describe("Rendered", () => {
         { index: 0, changed: false },
         { index: 1, changed: true },
       ]);
+    });
+
+    test("hands a buffer installed since the last merge no diff at all", () => {
+      // What the previous class kept is not this one's to read, and need not
+      // even be a diff, so a class swapped in mid-flight starts empty.
+      const seen: boolean[] = [];
+      class Late extends ReportingBuffer {
+        onExit(frame) {
+          seen.push(frame.changed);
+        }
+      }
+      let bufferClass: any = ReportingBuffer;
+      const rendered = new Rendered(
+        "123",
+        { 0: "a", [STATIC]: ["<div>", "</div>"] },
+        () => bufferClass,
+      );
+
+      rendered.mergeDiff({ 0: "changed" });
+      bufferClass = Late;
+      rendered.toString();
+
+      expect(seen).toEqual([false]);
     });
 
     test("does not touch the diff when debugging is disabled", () => {
@@ -426,7 +440,7 @@ describe("Rendered", () => {
 
 // The server emits this before a function component call when compiled with
 // debug_heex_annotations. The renderer attaches no meaning to it; recognising
-// call sites is a sink's job, exercised in integration/marking_sink_test.ts.
+// call sites is a buffer's job.
 const callerAnnotation = "<!-- @caller example.ex:1 (app) -->";
 
 const simpleDiff1 = {

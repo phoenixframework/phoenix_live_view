@@ -4,77 +4,74 @@ import { modifyRoot, type RootAttrs } from "./modify_root";
 
 // A position in the diff the renderer is walking. Opaque: the renderer carries
 // it from one `enter` back into the next without ever inspecting it, and only
-// the reporting pair knows what is inside.
+// {@link ReportingBuffer} knows what is inside.
 export type DiffCursor = any;
 
 /**
- * What the renderer writes HTML through, for the life of a mounted view.
+ * What the renderer writes HTML through.
  *
- * A sink is installed once per {@link Rendered}. It is shown every diff before
- * it merges, and it hands out one {@link OutputBuffer} per subtree render — so
- * it is also where a sink keeps state that has to outlive a single render, such
- * as a WeakMap keyed by the rendered nodes it saw. The sink itself is never
- * written to.
+ * One buffer is constructed per subtree render and discarded once its HTML has
+ * been taken, so a buffer class — not a buffer instance — is what gets
+ * installed, with `liveSocket.attachDebugBuffer`. A tool can subclass this to
+ * observe or annotate the output; to be told which parts of the page a patch
+ * touched, extend {@link ReportingBuffer} rather than this class.
  *
- * Nothing a sink keeps may be hung on the rendered tree: the merge rebuilds
- * nodes rather than mutating them in places the tree does not control, so state
- * kept there would be copied where it should not be and lost where it should
- * not be.
+ * Anything that has to outlive a single render therefore lives on the class:
+ * either as the result of the static {@link preMerge}, which is handed to every
+ * buffer built from the diff that produced it, or as a static of the subclass
+ * itself. Statics are shared by every view and every LiveSocket rendering
+ * through the class, so a subclass keeping state across renders — a WeakMap
+ * keyed by the rendered nodes it saw, say — has to key it by view itself.
  *
- * The default does nothing at all and buffers into a string. A tool can install
- * its own with `liveSocket.attachDebugSink` to observe or annotate the output;
- * to be told which parts of the page a patch touched, extend
- * {@link ReportingSink} rather than this class.
+ * Nothing may be hung on the rendered tree instead: the merge rebuilds nodes
+ * rather than mutating them in places the tree does not control, so state kept
+ * there would be copied where it should not be and lost where it should not be.
+ *
+ * The default does nothing at all and buffers into a string.
  *
  * @internal
  */
-export class Sink {
+export class RenderedBuffer {
   /**
    * Whether the renderer should open and close every dynamic of the tree on
-   * this sink's buffers, which is how they are told which parts of the page a
+   * this class's buffers, which is how they are told which parts of the page a
    * patch touched. False here, since a plain buffer does nothing with them;
-   * {@link ReportingSink} overrides it.
+   * {@link ReportingBuffer} overrides it.
    */
-  get observesDynamics(): boolean {
-    return false;
-  }
+  static observesDynamics = false;
 
   /**
-   * Called before each diff merges into the rendered tree. Anything a sink
-   * wants to keep from the diff has to be copied here: the merge adopts diff
-   * subtrees into the tree and then mutates them.
+   * Called before each diff merges into the rendered tree, and skipped
+   * entirely by a class that does not define it. Whatever it returns is handed
+   * to the constructor of every buffer that renders from that diff.
+   *
+   * Anything a class wants to keep from the diff has to be copied here: the
+   * merge adopts diff subtrees into the tree and then mutates them.
    *
    * Not called for the join, which has no previous render to compare against.
    */
-  preMerge(_diff: any): void {}
+  static preMerge?(diff: any): unknown;
 
-  /**
-   * The cursor into the last diff for one subtree, where `cid` is null for the
-   * root tree and a component id otherwise.
-   */
-  cursorFor(_cid: number | null): DiffCursor {
-    return undefined;
-  }
-
-  /** A buffer for one subtree render. Same `cid` as {@link cursorFor}. */
-  new(_cid: number | null): OutputBuffer {
-    return new OutputBuffer();
-  }
-}
-
-/**
- * The buffer one subtree render writes through. Created by {@link Sink.new},
- * written to by the renderer, and discarded once its HTML has been taken.
- *
- * @internal
- */
-export class OutputBuffer {
   protected html = "";
   private pending: string[] = [];
   private base = 0;
 
+  constructor(
+    /**
+     * What this class's {@link preMerge} returned for the diff that last
+     * merged, or undefined if it defines none — or if nothing has merged since
+     * the class was installed, which includes the join.
+     */
+    _preMerge: unknown,
+    /**
+     * The subtree being rendered: null for the root tree, a component id
+     * otherwise.
+     */
+    _cid: number | null,
+  ) {}
+
   /**
-   * Characters written so far. A sink that records positions brackets spans
+   * Characters written so far. A buffer that records positions brackets spans
    * with this.
    */
   get length(): number {
@@ -115,7 +112,7 @@ export class OutputBuffer {
 
   /**
    * Brackets the dynamic at `statics[index]` of `node`. Only called when the
-   * sink observes dynamics; see {@link ReportingOutputBuffer}.
+   * class observes dynamics; see {@link ReportingBuffer}.
    */
   enter(_node: any, _index: number, _statics: string[]): void {}
 
@@ -135,12 +132,12 @@ export class OutputBuffer {
 const ALL_CHANGED = Symbol("all changed");
 
 /**
- * What a sink is told about one dynamic of the rendered tree.
+ * What a buffer is told about one dynamic of the rendered tree.
  *
  * Subclasses may hang their own state on a frame in `onEnter` and read it back
  * in `onExit`, which is why it carries an index signature.
  */
-export interface SinkFrame {
+export interface BufferFrame {
   /** The rendered node holding the dynamic. */
   node: any;
   /** Which dynamic of that node, i.e. the gap after `statics[index]`. */
@@ -152,60 +149,48 @@ export interface SinkFrame {
   [key: string]: any;
 }
 
-/**
- * The sink half of the pair that reports which parts of the page a patch
- * touched. It keeps a copy of the last diff and hands each buffer the cursor
- * into it for the subtree that buffer renders.
- *
- * Subclasses override the hooks on {@link ReportingOutputBuffer} and point
- * {@link new} at their own buffer class. State that has to survive a render
- * belongs here, on the sink.
- *
- * @internal
- */
-export class ReportingSink extends Sink {
-  private rootDiff: DiffCursor = undefined;
-  private componentDiffs: any = undefined;
-
-  get observesDynamics(): boolean {
-    return true;
-  }
-
-  // Cloning is not optional: the merge adopts diff subtrees into the rendered
-  // tree and then mutates them. Components are split off so each buffer can be
-  // handed only the cursor for the subtree it renders.
-  preMerge(diff: any): void {
-    const cloned = deepClone(diff);
-    this.componentDiffs = cloned[COMPONENTS];
-    delete cloned[COMPONENTS];
-    this.rootDiff = cloned;
-  }
-
-  cursorFor(cid: number | null): DiffCursor {
-    if (cid === null) {
-      return this.rootDiff;
-    }
-    return this.componentDiffs && this.componentDiffs[cid];
-  }
-
-  new(cid: number | null): ReportingOutputBuffer {
-    return new ReportingOutputBuffer(this, cid);
-  }
+/** What {@link ReportingBuffer.preMerge} keeps of a diff. */
+interface MergedDiff {
+  /** The diff for the root tree, with the components split off. */
+  root: DiffCursor;
+  /** The diffs for each component, by cid. */
+  components: Record<number, DiffCursor> | undefined;
 }
 
 /**
- * Base class for the buffers of a {@link ReportingSink}. Subclasses override
- * `onEnter`/`onExit`; everything else here is the plumbing the renderer talks
- * to.
- *
- * The renderer hands over an opaque cursor into the diff and this class walks
- * it alongside the tree, so no knowledge of the diff format is needed to write
- * a sink.
+ * The buffer that reports which parts of the page a patch touched. It keeps a
+ * copy of each diff before it merges and walks it alongside the tree, so a
+ * subclass needs no knowledge of the diff format: it overrides `onEnter` and
+ * `onExit` and reads {@link BufferFrame.changed}.
  *
  * @internal
  */
-export class ReportingOutputBuffer extends OutputBuffer {
-  protected frames: SinkFrame[] = [];
+export class ReportingBuffer extends RenderedBuffer {
+  static observesDynamics = true;
+
+  // Cloning is not optional: the merge adopts diff subtrees into the rendered
+  // tree and then mutates them. Components are split off here, once, so that
+  // every buffer of this merge can be handed the same result and take only the
+  // cursor for the subtree it renders.
+  static preMerge(diff: any): MergedDiff {
+    const root = deepClone(diff);
+    const components = root[COMPONENTS];
+    delete root[COMPONENTS];
+    return { root, components };
+  }
+
+  /** The cursor into a merged diff for one subtree, as passed to `new`. */
+  static cursorFor(preMerge: MergedDiff | undefined, cid: number | null) {
+    if (!preMerge) {
+      return undefined;
+    } else if (cid === null) {
+      return preMerge.root;
+    } else {
+      return preMerge.components && preMerge.components[cid];
+    }
+  }
+
+  protected frames: BufferFrame[] = [];
   /** The cursor for the subtree this buffer renders. */
   protected diff: DiffCursor;
   // Cursors for the dynamics and comprehension entries currently open, so the
@@ -214,14 +199,24 @@ export class ReportingOutputBuffer extends OutputBuffer {
   // reporting a change for one would mean reporting it twice.
   private cursors: DiffCursor[] = [];
 
-  constructor(
-    /** The sink that made this buffer, and the home of its lasting state. */
-    readonly sink: ReportingSink,
-    cid: number | null,
-  ) {
-    super();
-    this.diff = sink.cursorFor(cid);
+  constructor(preMerge: MergedDiff | undefined, cid: number | null) {
+    super(preMerge, cid);
+    // Off the subclass, so overriding `cursorFor` alongside `preMerge` is
+    // enough to keep something other than a diff in there.
+    this.diff = (this.constructor as typeof ReportingBuffer).cursorFor(
+      preMerge,
+      cid,
+    );
   }
+
+  /**
+   * Called around every dynamic in the tree. A change is reported at every
+   * level, so a dynamic containing a changed one is itself reported as
+   * changed; a buffer that wants to attribute a change to the innermost thing
+   * that changed applies that policy itself, walking `frames`.
+   */
+  onEnter(_frame: BufferFrame): void {}
+  onExit(_frame: BufferFrame): void {}
 
   /** Where in the diff the renderer currently is. */
   protected currentDiff(): DiffCursor {
@@ -230,20 +225,11 @@ export class ReportingOutputBuffer extends OutputBuffer {
       : this.diff;
   }
 
-  /**
-   * Called around every dynamic in the tree. A change is reported at every
-   * level, so a dynamic containing a changed one is itself reported as
-   * changed; a sink that wants to attribute a change to the innermost thing
-   * that changed applies that policy itself, walking `frames`.
-   */
-  onEnter(_frame: SinkFrame): void {}
-  onExit(_frame: SinkFrame): void {}
-
   enter(node: any, index: number, statics: string[]): void {
     const diff = this.diffFor(this.currentDiff(), index);
     // The diff mirrors the tree, so the server having sent anything at this
     // position means this patch touched something at or below it.
-    const frame: SinkFrame = {
+    const frame: BufferFrame = {
       node,
       index,
       statics,

@@ -44,8 +44,6 @@ import {
   PHX_PORTAL,
   PHX_TELEPORTED_REF,
   PHX_TELEPORTED_SRC,
-  PHX_LV_BEFORE_RENDER_EVENT,
-  PHX_LV_BEFORE_RENDER_VERSION,
 } from "./constants";
 
 import {
@@ -493,10 +491,11 @@ export default class View {
       CONSECUTIVE_RELOADS,
     );
     this.applyDiff("mount", rendered, ({ diff, events }) => {
-      // Read the factory after announcing, so a sink attached while announcing
-      // is the one this join renders through.
-      this.beforeRender();
-      this.rendered = new Rendered(this.id, diff, this.liveSocket.createSink);
+      this.rendered = new Rendered(
+        this.id,
+        diff,
+        () => this.liveSocket.renderedBuffer,
+      );
       const [html, streams] = this.renderContainer(null, "join");
       this.dropPendingRefs();
       this.joinCount++;
@@ -935,8 +934,6 @@ export default class View {
       return false;
     }
 
-    // A listener attaching here is installed on this tree before it merges.
-    this.beforeRender();
     this.rendered!.mergeDiff(diff);
     let phxChildrenAdded = false;
 
@@ -985,41 +982,6 @@ export default class View {
       const { buffer: html, streams } = this.rendered!.toString(cids);
       return [`<${tag}>${html}</${tag}>`, streams];
     });
-  }
-
-  /** @internal */
-  attachSink(createSink) {
-    if (!this.rendered || this.destroyed) {
-      return;
-    }
-    this.rendered.setSink(createSink);
-  }
-
-  // Announces the render about to happen, which is how external tooling finds
-  // a LiveSocket and gets a moment to install a sink on it. Dispatch is
-  // synchronous, so a listener calling liveSocket.attachDebugSink takes effect
-  // for this render: it is emitted before the diff merges.
-  //
-  // Nothing is re-rendered to install a sink, so it sees the rest of the page
-  // as later patches reach it.
-  beforeRender() {
-    DOM.dispatchEvent(window, PHX_LV_BEFORE_RENDER_EVENT, {
-      detail: {
-        version: PHX_LV_BEFORE_RENDER_VERSION,
-        liveSocket: this.liveSocket,
-        viewId: this.id,
-      },
-    });
-  }
-
-  /** @internal */
-  eachDescendent(callback: (view: View) => void) {
-    callback(this);
-    for (const parentId in this.root.children) {
-      for (const childId in this.root.children[parentId]) {
-        callback(this.root.children[parentId][childId]);
-      }
-    }
   }
 
   componentPatch(diff, cid) {

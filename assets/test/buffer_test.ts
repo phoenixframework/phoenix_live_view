@@ -1,10 +1,8 @@
 import {
-  Sink,
-  OutputBuffer,
-  ReportingSink,
-  ReportingOutputBuffer,
-  type SinkFrame,
-} from "phoenix_live_view/rendered/sink";
+  RenderedBuffer,
+  ReportingBuffer,
+  type BufferFrame,
+} from "phoenix_live_view/rendered/buffer";
 import {
   STATIC,
   KEYED,
@@ -14,26 +12,25 @@ import {
 
 // Drives a buffer the way the renderer does, so these test the contract the
 // renderer relies on rather than the renderer itself.
-class RecordingBuffer extends ReportingOutputBuffer {
-  seen: SinkFrame[] = [];
+class RecordingBuffer extends ReportingBuffer {
+  seen: BufferFrame[] = [];
 
-  onExit(frame: SinkFrame) {
+  onExit(frame: BufferFrame) {
     this.seen.push(frame);
   }
 }
 
-// A buffer for the root tree of a sink that has just merged `diff`. No diff at
-// all is a join, or a sink attached to a tree that is already rendered.
-const recording = (diff?: any): RecordingBuffer => {
-  const sink = new ReportingSink();
-  if (diff !== undefined) {
-    sink.preMerge(diff);
-  }
-  return new RecordingBuffer(sink, null);
-};
+// A buffer for one subtree, built the way the renderer builds it once `diff`
+// has merged. No diff at all is a join, or a class installed since the last
+// merge: either way there is nothing to compare the render against.
+const recording = (diff?: any, cid: number | null = null): RecordingBuffer =>
+  new RecordingBuffer(
+    diff === undefined ? undefined : RecordingBuffer.preMerge(diff),
+    cid,
+  );
 
 const enterExit = (
-  buffer: ReportingOutputBuffer,
+  buffer: ReportingBuffer,
   node: any,
   index: number,
   statics: string[] = ["", ""],
@@ -48,24 +45,19 @@ const changedAt = (buffer: RecordingBuffer, index: number): boolean => {
   return buffer.seen[buffer.seen.length - 1].changed;
 };
 
-describe("Sink", () => {
+describe("RenderedBuffer", () => {
   test("reports no changes, so the renderer skips that machinery", () => {
-    expect(new Sink().observesDynamics).toBe(false);
+    expect(RenderedBuffer.observesDynamics).toBe(false);
   });
 
-  test("keeps nothing from a merge and hands out plain buffers", () => {
-    const sink = new Sink();
-    sink.preMerge({ 0: "a" });
-
-    expect(sink.cursorFor(null)).toBeUndefined();
-    expect(sink.cursorFor(1)).toBeUndefined();
-    expect(sink.new(null)).toBeInstanceOf(OutputBuffer);
+  test("keeps nothing of a merge, so the renderer never copies a diff", () => {
+    // The renderer only calls preMerge where a class defines one, which is
+    // what keeps the default free of the clone ReportingBuffer pays for.
+    expect(RenderedBuffer.preMerge).toBeUndefined();
   });
-});
 
-describe("OutputBuffer", () => {
   test("accumulates writes", () => {
-    const buffer = new OutputBuffer();
+    const buffer = new RenderedBuffer(undefined, null);
     buffer.write("<div>");
     buffer.write("body");
     buffer.write("</div>");
@@ -75,7 +67,7 @@ describe("OutputBuffer", () => {
   });
 
   test("adds attributes to the start tag of a bracketed root", () => {
-    const buffer = new OutputBuffer();
+    const buffer = new RenderedBuffer(undefined, null);
     buffer.write("before");
     buffer.beginRoot();
     buffer.write("<div class='x'>body</div>");
@@ -87,7 +79,7 @@ describe("OutputBuffer", () => {
   });
 
   test("discards the contents of a cleared root, keeping its id", () => {
-    const buffer = new OutputBuffer();
+    const buffer = new RenderedBuffer(undefined, null);
     buffer.beginRoot();
     buffer.write(`<div id="keep" class="x">body</div>`);
     buffer.endRoot({ "data-phx-skip": true }, true);
@@ -96,7 +88,7 @@ describe("OutputBuffer", () => {
   });
 
   test("keeps length continuous across a root, including nested ones", () => {
-    const buffer = new OutputBuffer();
+    const buffer = new RenderedBuffer(undefined, null);
     buffer.write("ab");
     expect(buffer.length).toEqual(2);
 
@@ -116,9 +108,9 @@ describe("OutputBuffer", () => {
   });
 
   test("takes the bracketing calls and does nothing with them", () => {
-    // The renderer makes them where a sink reports changes; the plain buffer
+    // The renderer makes them where a buffer reports changes; the plain buffer
     // has nothing to report to.
-    const buffer = new OutputBuffer();
+    const buffer = new RenderedBuffer(undefined, null);
     buffer.beginKeyedEntry(0);
     buffer.enter({ 0: "a" }, 0, ["", ""]);
     buffer.exit();
@@ -128,78 +120,114 @@ describe("OutputBuffer", () => {
   });
 });
 
-describe("ReportingSink", () => {
-  test("reports changes, unlike the plain sink", () => {
-    expect(new ReportingSink().observesDynamics).toBe(true);
+describe("ReportingBuffer", () => {
+  describe("preMerge", () => {
+    test("reports changes, unlike the plain buffer", () => {
+      expect(ReportingBuffer.observesDynamics).toBe(true);
+    });
+
+    test("a subclass inherits both statics without restating them", () => {
+      // The class is the only identity a buffer has, so what the renderer
+      // reads off it has to survive subclassing.
+      class MyBuffer extends ReportingBuffer {}
+      expect(MyBuffer.observesDynamics).toBe(true);
+      expect(MyBuffer.preMerge({ 0: "a" })).toEqual({
+        root: { 0: "a" },
+        components: undefined,
+      });
+    });
+
+    test("a subclass can turn reporting off again", () => {
+      // A static, not an instance field: overriding it cannot be shadowed by
+      // the base class initializing its own, which would silently turn
+      // reporting off for every buffer.
+      class Quiet extends ReportingBuffer {
+        static observesDynamics = false;
+      }
+      expect(Quiet.observesDynamics).toBe(false);
+      expect(ReportingBuffer.observesDynamics).toBe(true);
+    });
+
+    test("splits the diff into the root tree and the components", () => {
+      const preMerge = ReportingBuffer.preMerge({
+        0: "root",
+        [COMPONENTS]: { 1: { 0: "component" } },
+      });
+
+      expect(preMerge).toEqual({
+        root: { 0: "root" },
+        components: { 1: { 0: "component" } },
+      });
+    });
+
+    test("copies deeply, since the merge adopts and then mutates the diff", () => {
+      const diff: any = { 0: { 1: "before" } };
+      const preMerge = ReportingBuffer.preMerge(diff);
+
+      diff[0][1] = "after";
+      delete diff[0];
+
+      expect(preMerge.root).toEqual({ 0: { 1: "before" } });
+    });
+
+    test("leaves the diff itself untouched, components included", () => {
+      // The merge reads COMPONENTS off the diff after this runs.
+      const diff: any = { 0: "root", [COMPONENTS]: { 1: { 0: "component" } } };
+      ReportingBuffer.preMerge(diff);
+
+      expect(diff).toEqual({
+        0: "root",
+        [COMPONENTS]: { 1: { 0: "component" } },
+      });
+    });
   });
 
-  test("is not shadowed by the base class declaring it", () => {
-    // Sink declares observesDynamics too. Were it a field rather than a getter it
-    // would define an own property on construction and shadow this one,
-    // silently turning reporting off for every sink.
-    expect(
-      Object.prototype.hasOwnProperty.call(
-        new ReportingSink(),
-        "observesDynamics",
-      ),
-    ).toBe(false);
+  describe("cursors", () => {
+    test("starts each buffer at the subtree it renders", () => {
+      const preMerge = ReportingBuffer.preMerge({
+        0: "root",
+        [COMPONENTS]: { 1: { 1: "component" } },
+      });
+
+      const root = new RecordingBuffer(preMerge, null);
+      const component = new RecordingBuffer(preMerge, 1);
+
+      // Each buffer sees only its own subtree of the diff: the root diff
+      // touched dynamic 0, the component diff dynamic 1.
+      expect([changedAt(root, 0), changedAt(root, 1)]).toEqual([true, false]);
+      expect([changedAt(component, 0), changedAt(component, 1)]).toEqual([
+        false,
+        true,
+      ]);
+    });
+
+    test("hands every buffer of one merge the same components", () => {
+      // One render builds a buffer per subtree from a single preMerge result,
+      // so a buffer may not consume what it is given: the component buffer
+      // here is built after the root one and still has to find its diff.
+      const preMerge = ReportingBuffer.preMerge({
+        [COMPONENTS]: { 1: { 0: "component" } },
+      });
+
+      new RecordingBuffer(preMerge, null);
+      const second = new RecordingBuffer(preMerge, 1);
+
+      expect(changedAt(second, 0)).toBe(true);
+    });
+
+    test("has no cursor for a component the diff did not carry", () => {
+      const preMerge = ReportingBuffer.preMerge({ 0: "root" });
+      expect(changedAt(new RecordingBuffer(preMerge, 2), 0)).toBe(false);
+    });
+
+    test("has no cursor without a merge", () => {
+      // A join, or a class installed on a tree that is already rendered:
+      // there is nothing to compare the next render against.
+      expect(ReportingBuffer.cursorFor(undefined, null)).toBeUndefined();
+      expect(ReportingBuffer.cursorFor(undefined, 1)).toBeUndefined();
+    });
   });
 
-  test("has no cursor before the first merge", () => {
-    // A join, or a sink attached to a tree that is already rendered: there is
-    // nothing to compare the next render against.
-    const sink = new ReportingSink();
-    expect(sink.cursorFor(null)).toBeUndefined();
-    expect(sink.cursorFor(1)).toBeUndefined();
-  });
-
-  test("keeps a copy of the merged diff, split by component", () => {
-    const sink = new ReportingSink();
-    sink.preMerge({ 0: "root", [COMPONENTS]: { 1: { 0: "component" } } });
-
-    expect(sink.cursorFor(null)).toEqual({ 0: "root" });
-    expect(sink.cursorFor(1)).toEqual({ 0: "component" });
-    expect(sink.cursorFor(2)).toBeUndefined();
-  });
-
-  test("copies deeply, since the merge adopts and then mutates the diff", () => {
-    const sink = new ReportingSink();
-    const diff: any = { 0: { 1: "before" } };
-    sink.preMerge(diff);
-
-    diff[0][1] = "after";
-    delete diff[0];
-
-    expect(sink.cursorFor(null)).toEqual({ 0: { 1: "before" } });
-  });
-
-  test("replaces the cursor on every merge", () => {
-    const sink = new ReportingSink();
-    sink.preMerge({ 0: "first" });
-    sink.preMerge({ 1: "second" });
-
-    expect(sink.cursorFor(null)).toEqual({ 1: "second" });
-  });
-
-  test("starts each buffer at the subtree it renders", () => {
-    const sink = new ReportingSink();
-    sink.preMerge({ 0: "root", [COMPONENTS]: { 1: { 1: "component" } } });
-
-    const root = new RecordingBuffer(sink, null);
-    const component = new RecordingBuffer(sink, 1);
-
-    expect(root.sink).toBe(sink);
-    // Each buffer sees only its own subtree of the diff: the root diff touched
-    // dynamic 0, the component diff dynamic 1.
-    expect([changedAt(root, 0), changedAt(root, 1)]).toEqual([true, false]);
-    expect([changedAt(component, 0), changedAt(component, 1)]).toEqual([
-      false,
-      true,
-    ]);
-  });
-});
-
-describe("ReportingOutputBuffer", () => {
   describe("frames", () => {
     test("carries the node, index and statics of the dynamic", () => {
       const buffer = recording({ 1: "changed" });
@@ -263,16 +291,16 @@ describe("ReportingOutputBuffer", () => {
     });
 
     test("state a subclass hangs on a frame survives to onExit", () => {
-      class Stateful extends ReportingOutputBuffer {
+      class Stateful extends ReportingBuffer {
         depths: number[] = [];
-        onEnter(frame: SinkFrame) {
+        onEnter(frame: BufferFrame) {
           frame.mark = this.frames.length;
         }
-        onExit(frame: SinkFrame) {
+        onExit(frame: BufferFrame) {
           this.depths.push(frame.mark);
         }
       }
-      const buffer = new Stateful(new ReportingSink(), null);
+      const buffer = new Stateful(undefined, null);
       const node = { 0: "a" };
 
       buffer.enter(node, 0, ["", ""]);

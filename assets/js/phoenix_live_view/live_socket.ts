@@ -58,19 +58,9 @@ import View from "./view";
 import JS from "./js";
 import jsCommands, { EncodedJS, LiveSocketJSCommands } from "./js_commands";
 import { HooksOptions } from "./view_hook";
-import {
-  Sink,
-  OutputBuffer,
-  ReportingSink,
-  ReportingOutputBuffer,
-} from "./rendered/sink";
+import { RenderedBuffer, ReportingBuffer } from "./rendered/buffer";
 
-const SINKS = Object.freeze({
-  Sink,
-  OutputBuffer,
-  ReportingSink,
-  ReportingOutputBuffer,
-});
+const BUFFERS = Object.freeze({ RenderedBuffer, ReportingBuffer });
 
 /**
  * Returns true if the given element was touched by a user.
@@ -78,9 +68,6 @@ const SINKS = Object.freeze({
  * @returns {boolean} True if the element was touched by a user, false otherwise.
  */
 export const isUsedInput = (el) => DOM.isUsedInput(el);
-
-const DEBUG_REQUIRED_ERROR =
-  "LiveView debug APIs require debugging to be enabled with liveSocket.enableDebug()";
 
 /**
  * Options for configuring the LiveSocket instance.
@@ -320,9 +307,14 @@ export default class LiveSocket {
   /** @internal */
   disconnectedTimeout: number;
   /** @internal */
-  createSink: () => any;
-  /** @internal */
-  readonly sinks = SINKS;
+  renderedBuffer: typeof RenderedBuffer;
+  /**
+   * The buffer base classes, for tooling holding only a LiveSocket handle:
+   * they are not otherwise reachable from a page it did not bundle.
+   *
+   * @internal
+   */
+  readonly buffers = BUFFERS;
 
   /**
    * Creates a new LiveSocket instance.
@@ -374,7 +366,7 @@ export default class LiveSocket {
     this.currentLocation = clone(window.location);
     this.hooks = opts.hooks || {};
     this.uploaders = opts.uploaders || {};
-    this.createSink = () => new Sink();
+    this.renderedBuffer = RenderedBuffer;
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT;
     this.disconnectedTimeout = opts.disconnectedTimeout || DISCONNECTED_TIMEOUT;
     /**
@@ -434,52 +426,28 @@ export default class LiveSocket {
   }
 
   /**
-   * Installs a sink: what the renderer writes rendered HTML through.
+   * Installs a rendered buffer: what the renderer writes rendered HTML through.
    *
-   * A sink can observe or annotate the output — for example to mark which HEEx
-   * function components re-rendered, for a debugging overlay. See {@link Sink}
-   * for the protocol a sink implements.
+   * A buffer can observe or annotate the output — for example to mark which
+   * HEEx function components re-rendered, for a debugging overlay. See
+   * {@link RenderedBuffer} for the protocol a buffer implements.
    *
-   * Takes a factory, since one sink is installed per mounted view. It applies
-   * to views that are already mounted as well as to views that join later.
+   * It applies to views that are already mounted as well as to views that join
+   * later, and nothing is re-rendered to install it: it sees each part of the
+   * page the next time a patch renders that part, so a buffer that annotates
+   * the output leaves whatever is already in the DOM untouched until then.
    *
-   * Nothing is re-rendered to install it: the new sink sees each part of the
-   * page the next time a patch renders that part, so a sink that annotates the
-   * output leaves whatever is already in the DOM untouched until then.
+   *     const previous = liveSocket.attachDebugBuffer(MyBuffer)
    *
-   *     liveSocket.attachDebugSink(() => new MySink())
-   *
-   * @param createSink - Returns a new sink instance.
-   *
-   * @internal
-   */
-  attachDebugSink(createSink: () => any): void {
-    this.assertDebugEnabled();
-    this.useSink(createSink);
-  }
-
-  /**
-   * Removes a sink installed with {@link attachDebugSink}, restoring the
-   * default one. As with attaching, nothing is re-rendered: whatever the sink
-   * added to the DOM stays until the next patch renders over it.
+   * @param bufferClass - a class extending {@link RenderedBuffer}.
+   * @returns The class installed until now, to restore it with.
    *
    * @internal
    */
-  clearDebugSink(): void {
-    this.useSink(() => new Sink());
-  }
-
-  private useSink(createSink: () => any): void {
-    this.createSink = createSink;
-    for (const id in this.roots) {
-      this.roots[id].eachDescendent((view) => view.attachSink(createSink));
-    }
-  }
-
-  private assertDebugEnabled() {
-    if (!this.isDebugEnabled()) {
-      throw new Error(DEBUG_REQUIRED_ERROR);
-    }
+  attachDebugBuffer(bufferClass: typeof RenderedBuffer): typeof RenderedBuffer {
+    const current = this.renderedBuffer;
+    this.renderedBuffer = bufferClass;
+    return current;
   }
 
   /**
