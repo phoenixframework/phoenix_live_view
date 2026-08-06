@@ -109,14 +109,7 @@ export default class Rendered {
       streams: new Set(),
       reportsChanges: this.reportsChanges,
     };
-    this.toOutputBuffer(
-      rendered,
-      this.sink.cursorFor(cid),
-      null,
-      output,
-      changeTracking,
-      rootAttrs,
-    );
+    this.toOutputBuffer(rendered, null, output, changeTracking, rootAttrs);
     return { buffer: buffer.toString(), streams: output.streams };
   }
 
@@ -381,21 +374,10 @@ export default class Rendered {
   // Converts rendered tree to output buffer.
   //
   // changeTracking controls if we can apply the PHX_SKIP optimization.
-  //
-  // diffNode is an opaque cursor into the last diff, carried down for the
-  // sink's benefit and never inspected here; see captureDiffCursor.
-  toOutputBuffer(
-    rendered,
-    diffNode,
-    templates,
-    output,
-    changeTracking,
-    rootAttrs = {},
-  ) {
+  toOutputBuffer(rendered, templates, output, changeTracking, rootAttrs = {}) {
     if (rendered[KEYED]) {
       return this.comprehensionToBuffer(
         rendered,
-        diffNode,
         templates,
         output,
         changeTracking,
@@ -428,14 +410,7 @@ export default class Rendered {
       rendered.magicId = this.nextMagicID();
     }
 
-    this.dynamicsToBuffer(
-      rendered,
-      diffNode,
-      statics,
-      templates,
-      output,
-      changeTracking,
-    );
+    this.dynamicsToBuffer(rendered, statics, templates, output, changeTracking);
 
     // Applies the root tag "skip" optimization if supported, which clears
     // the root tag attributes and innerHTML, and only maintains the magicId.
@@ -467,18 +442,12 @@ export default class Rendered {
   //
   // Unless the sink reports changes this is the plain interleave, so it costs
   // nothing extra when nobody asked for it.
-  dynamicsToBuffer(node, diffNode, statics, templates, output, changeTracking) {
+  dynamicsToBuffer(node, statics, templates, output, changeTracking) {
     const buffer = output.buffer;
     if (!output.reportsChanges) {
       buffer.write(statics[0]);
       for (let i = 1; i < statics.length; i++) {
-        this.dynamicToBuffer(
-          node[i - 1],
-          undefined,
-          templates,
-          output,
-          changeTracking,
-        );
+        this.dynamicToBuffer(node[i - 1], templates, output, changeTracking);
         buffer.write(statics[i]);
       }
       return;
@@ -486,38 +455,37 @@ export default class Rendered {
 
     for (let i = 0; i < statics.length - 1; i++) {
       buffer.write(statics[i]);
-      // The cursor is opaque here: the buffer descends it and hands back the
-      // one for this dynamic, which we only carry back down.
-      const childDiff = buffer.enter(diffNode, node, i, statics);
-      this.dynamicToBuffer(
-        node[i],
-        childDiff,
-        templates,
-        output,
-        changeTracking,
-      );
+      // The buffer tracks where in the diff this dynamic sits; the renderer
+      // only tells it when one opens and closes.
+      buffer.enter(node, i, statics);
+      this.dynamicToBuffer(node[i], templates, output, changeTracking);
       buffer.exit();
     }
     buffer.write(statics[statics.length - 1]);
   }
 
-  comprehensionToBuffer(rendered, diffNode, templates, output, changeTracking) {
+  comprehensionToBuffer(rendered, templates, output, changeTracking) {
     const keyedTemplates = templates || rendered[TEMPLATES];
     const statics = this.templateStatic(rendered[STATIC], templates);
     rendered[STATIC] = statics;
     delete rendered[TEMPLATES];
 
+    // Entries are not bracketed by enter/exit, so they are opened explicitly
+    // for the buffer to descend into the right part of the diff.
     for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
+      if (output.reportsChanges) {
+        output.buffer.beginKeyedEntry(i);
+      }
       this.dynamicsToBuffer(
         rendered[KEYED][i],
-        output.reportsChanges
-          ? output.buffer.keyedEntry(diffNode, i)
-          : undefined,
         statics,
         keyedTemplates,
         output,
         changeTracking,
       );
+      if (output.reportsChanges) {
+        output.buffer.endKeyedEntry();
+      }
     }
     // we don't need to store the rendered tree for streams
     if (rendered[STREAM]) {
@@ -536,7 +504,7 @@ export default class Rendered {
     }
   }
 
-  dynamicToBuffer(rendered, diffNode, templates, output, changeTracking) {
+  dynamicToBuffer(rendered, templates, output, changeTracking) {
     if (typeof rendered === "number") {
       const { buffer: str, streams } = this.recursiveCIDToString(
         output.components,
@@ -546,14 +514,7 @@ export default class Rendered {
       output.buffer.write(str);
       output.streams = new Set([...output.streams, ...streams]);
     } else if (isObject(rendered)) {
-      this.toOutputBuffer(
-        rendered,
-        diffNode,
-        templates,
-        output,
-        changeTracking,
-        {},
-      );
+      this.toOutputBuffer(rendered, templates, output, changeTracking, {});
     } else {
       output.buffer.write(rendered);
     }

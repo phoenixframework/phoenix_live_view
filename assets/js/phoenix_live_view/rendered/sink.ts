@@ -111,25 +111,20 @@ export class OutputBuffer {
   }
 
   /**
-   * Brackets the dynamic at `statics[index]` of `node`, returning the cursor
-   * for that dynamic, which the renderer passes back down. Only called when
-   * the sink reports changes; see {@link ReportingOutputBuffer}.
+   * Brackets the dynamic at `statics[index]` of `node`. Only called when the
+   * sink reports changes; see {@link ReportingOutputBuffer}.
    */
-  enter(
-    _parentDiff: DiffCursor,
-    _node: any,
-    _index: number,
-    _statics: string[],
-  ): DiffCursor {
-    return undefined;
-  }
+  enter(_node: any, _index: number, _statics: string[]): void {}
 
   exit(): void {}
 
-  /** The cursor for one entry of a keyed comprehension. */
-  keyedEntry(_diffNode: DiffCursor, _index: number): DiffCursor {
-    return undefined;
-  }
+  /**
+   * Brackets one entry of a keyed comprehension. Entries hold dynamics without
+   * being one themselves, so they are opened separately from `enter`.
+   */
+  beginKeyedEntry(_index: number): void {}
+
+  endKeyedEntry(): void {}
 }
 
 // Sentinel cursor meaning "everything below here is new", used when a subtree
@@ -210,6 +205,11 @@ export class ReportingOutputBuffer extends OutputBuffer {
   protected frames: SinkFrame[] = [];
   /** The cursor for the subtree this buffer renders. */
   protected diff: DiffCursor;
+  // Cursors for the dynamics and comprehension entries currently open, so the
+  // renderer only has to say when one begins and ends. Kept apart from
+  // `frames`: entries carry a cursor without being a dynamic themselves, and
+  // reporting a change for one would mean reporting it twice.
+  private cursors: DiffCursor[] = [];
 
   constructor(
     /** The sink that made this buffer, and the home of its lasting state. */
@@ -218,6 +218,13 @@ export class ReportingOutputBuffer extends OutputBuffer {
   ) {
     super();
     this.diff = sink.cursorFor(cid);
+  }
+
+  /** Where in the diff the renderer currently is. */
+  protected currentDiff(): DiffCursor {
+    return this.cursors.length > 0
+      ? this.cursors[this.cursors.length - 1]
+      : this.diff;
   }
 
   /**
@@ -229,13 +236,8 @@ export class ReportingOutputBuffer extends OutputBuffer {
   onEnter(_frame: SinkFrame): void {}
   onExit(_frame: SinkFrame): void {}
 
-  enter(
-    parentDiff: DiffCursor,
-    node: any,
-    index: number,
-    statics: string[],
-  ): DiffCursor {
-    const diff = this.diffFor(parentDiff, index);
+  enter(node: any, index: number, statics: string[]): void {
+    const diff = this.diffFor(this.currentDiff(), index);
     // The diff mirrors the tree, so the server having sent anything at this
     // position means this patch touched something at or below it.
     const frame: SinkFrame = {
@@ -244,20 +246,25 @@ export class ReportingOutputBuffer extends OutputBuffer {
       statics,
       changed: diff !== undefined,
     };
+    this.cursors.push(diff);
     this.frames.push(frame);
     this.onEnter(frame);
-    return diff;
   }
 
   exit(): void {
+    this.cursors.pop();
     this.onExit(this.frames.pop()!);
   }
 
-  /**
-   * Entries are not bracketed by enter/exit, so the renderer asks for theirs
-   * directly.
-   */
-  keyedEntry(diffNode: DiffCursor, index: number): DiffCursor {
+  beginKeyedEntry(index: number): void {
+    this.cursors.push(this.keyedEntry(this.currentDiff(), index));
+  }
+
+  endKeyedEntry(): void {
+    this.cursors.pop();
+  }
+
+  protected keyedEntry(diffNode: DiffCursor, index: number): DiffCursor {
     const keyed = this.diffFor(diffNode, KEYED);
     if (keyed === ALL_CHANGED || keyed === undefined) {
       return keyed;

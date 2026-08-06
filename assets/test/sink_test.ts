@@ -13,6 +13,42 @@ import {
   COMPONENTS,
 } from "phoenix_live_view/constants";
 
+// Drives a buffer the way the renderer does, so these test the contract the
+// renderer relies on rather than the renderer itself.
+class RecordingBuffer extends ReportingOutputBuffer {
+  seen: SinkFrame[] = [];
+
+  onExit(frame: SinkFrame) {
+    this.seen.push(frame);
+  }
+}
+
+// A buffer for the root tree of a sink that has just merged `diff`. No diff at
+// all is a join, or a sink attached to a tree that is already rendered.
+const recording = (diff?: any): RecordingBuffer => {
+  const sink = new ReportingSink();
+  if (diff !== undefined) {
+    sink.preMerge(diff);
+  }
+  return new RecordingBuffer(sink, null);
+};
+
+const enterExit = (
+  buffer: ReportingOutputBuffer,
+  node: any,
+  index: number,
+  statics: string[] = ["", ""],
+) => {
+  buffer.enter(node, index, statics);
+  buffer.exit();
+};
+
+// Whether the buffer reported the dynamic at `index` as touched by the patch.
+const changedAt = (buffer: RecordingBuffer, index: number): boolean => {
+  enterExit(buffer, { [index]: "value" }, index);
+  return buffer.seen[buffer.seen.length - 1].changed;
+};
+
 describe("Sink", () => {
   test("reports no changes, so the renderer skips that machinery", () => {
     expect(new Sink().reportsChanges).toBe(false);
@@ -80,11 +116,16 @@ describe("OutputBuffer", () => {
     expect(buffer.toString()).toEqual("ab<div><span>x</span></div>");
   });
 
-  test("reports nothing to a sink that does not ask for it", () => {
+  test("takes the bracketing calls and does nothing with them", () => {
+    // The renderer makes them where a sink reports changes; the plain buffer
+    // has nothing to report to.
     const buffer = new OutputBuffer();
-    expect(buffer.enter(undefined, {}, 0, ["", ""])).toBeUndefined();
-    expect(buffer.keyedEntry(undefined, 0)).toBeUndefined();
-    expect(() => buffer.exit()).not.toThrow();
+    buffer.beginKeyedEntry(0);
+    buffer.enter({ 0: "a" }, 0, ["", ""]);
+    buffer.exit();
+    buffer.endKeyedEntry();
+
+    expect(buffer.toString()).toEqual("");
   });
 });
 
@@ -141,92 +182,82 @@ describe("ReportingSink", () => {
     expect(sink.cursorFor(null)).toEqual({ 1: "second" });
   });
 
-  test("hands each buffer the cursor for the subtree it renders", () => {
+  test("starts each buffer at the subtree it renders", () => {
     const sink = new ReportingSink();
-    sink.preMerge({ 0: "root", [COMPONENTS]: { 1: { 0: "component" } } });
+    sink.preMerge({ 0: "root", [COMPONENTS]: { 1: { 1: "component" } } });
 
-    const root = sink.new(null);
-    const component = sink.new(1);
+    const root = new RecordingBuffer(sink, null);
+    const component = new RecordingBuffer(sink, 1);
 
-    expect(root).toBeInstanceOf(ReportingOutputBuffer);
     expect(root.sink).toBe(sink);
-    // The cursor decides what the buffer reports as changed.
-    expect(root.enter(sink.cursorFor(null), {}, 0, ["", ""])).toEqual("root");
-    expect(component.enter(sink.cursorFor(1), {}, 0, ["", ""])).toEqual(
-      "component",
-    );
+    // Each buffer sees only its own subtree of the diff: the root diff touched
+    // dynamic 0, the component diff dynamic 1.
+    expect([changedAt(root, 0), changedAt(root, 1)]).toEqual([true, false]);
+    expect([changedAt(component, 0), changedAt(component, 1)]).toEqual([
+      false,
+      true,
+    ]);
   });
 });
 
 describe("ReportingOutputBuffer", () => {
-  // Drives a buffer the way the renderer does, so these test the contract the
-  // renderer relies on rather than the renderer itself.
-  class RecordingBuffer extends ReportingOutputBuffer {
-    seen: SinkFrame[] = [];
-
-    onExit(frame: SinkFrame) {
-      this.seen.push(frame);
-    }
-  }
-
-  const recording = () => new RecordingBuffer(new ReportingSink(), null);
-  const reporting = () => new ReportingOutputBuffer(new ReportingSink(), null);
-
-  const enterExit = (
-    buffer: ReportingOutputBuffer,
-    parentDiff: any,
-    node: any,
-    index: number,
-    statics: string[] = ["", ""],
-  ) => {
-    const childDiff = buffer.enter(parentDiff, node, index, statics);
-    buffer.exit();
-    return childDiff;
-  };
-
   describe("frames", () => {
     test("carries the node, index and statics of the dynamic", () => {
-      const buffer = recording();
+      const buffer = recording({ 1: "changed" });
       const node = { 0: "a", 1: "b" };
       const statics = ["<i>", "|", "</i>"];
 
-      enterExit(buffer, { 1: "changed" }, node, 1, statics);
+      enterExit(buffer, node, 1, statics);
 
       expect(buffer.seen).toHaveLength(1);
       expect(buffer.seen[0]).toMatchObject({ node, index: 1, statics });
     });
 
     test("reports changed only where the diff carried something", () => {
-      const buffer = recording();
+      const buffer = recording({ 1: "changed" });
       const node = { 0: "a", 1: "b" };
 
-      enterExit(buffer, { 1: "changed" }, node, 0);
-      enterExit(buffer, { 1: "changed" }, node, 1);
+      enterExit(buffer, node, 0);
+      enterExit(buffer, node, 1);
 
       expect(buffer.seen.map((f) => f.changed)).toEqual([false, true]);
     });
 
     test("reports nothing as changed when there is no diff", () => {
       const buffer = recording();
-      enterExit(buffer, undefined, { 0: "a" }, 0);
+      enterExit(buffer, { 0: "a" }, 0);
       expect(buffer.seen[0].changed).toBe(false);
     });
 
     test("reports a falsy but present diff value as changed", () => {
-      const buffer = recording();
-      enterExit(buffer, { 0: "" }, { 0: "a" }, 0);
+      const buffer = recording({ 0: "" });
+      enterExit(buffer, { 0: "a" }, 0);
       expect(buffer.seen[0].changed).toBe(true);
     });
 
+    test("descends the diff alongside the tree", () => {
+      const buffer = recording({ 0: { 1: "changed" } });
+      const node = { 0: { 0: "a", 1: "b" } };
+
+      buffer.enter(node, 0, ["", ""]);
+      enterExit(buffer, node[0], 0);
+      enterExit(buffer, node[0], 1);
+      buffer.exit();
+
+      // Only the dynamic the diff named, and the one containing it. Innermost
+      // exits first, so the enclosing dynamic is reported last.
+      expect(buffer.seen.map((f) => f.changed)).toEqual([false, true, true]);
+    });
+
     test("treats a subtree with new statics as changed throughout", () => {
-      const buffer = recording();
       const replaced = { [STATIC]: ["<div>", "</div>"], 0: "x" };
+      const buffer = recording({ 0: replaced });
 
       // Everything below a static replacement is new, so every position
       // counts as changed even though the diff names none of them.
-      const child = buffer.enter({ 0: replaced }, { 0: replaced }, 0, ["", ""]);
-      enterExit(buffer, child, replaced, 0);
-      enterExit(buffer, child, replaced, 1);
+      buffer.enter({ 0: replaced }, 0, ["", ""]);
+      enterExit(buffer, replaced, 0);
+      enterExit(buffer, replaced, 1);
       buffer.exit();
 
       expect(buffer.seen.map((f) => f.changed)).toEqual([true, true, true]);
@@ -245,8 +276,8 @@ describe("ReportingOutputBuffer", () => {
       const buffer = new Stateful(new ReportingSink(), null);
       const node = { 0: "a" };
 
-      buffer.enter(undefined, node, 0, ["", ""]);
-      buffer.enter(undefined, node, 0, ["", ""]);
+      buffer.enter(node, 0, ["", ""]);
+      buffer.enter(node, 0, ["", ""]);
       buffer.exit();
       buffer.exit();
 
@@ -255,44 +286,64 @@ describe("ReportingOutputBuffer", () => {
     });
   });
 
-  describe("keyedEntry", () => {
+  describe("keyed entries", () => {
     const comprehension = (entries: any) => ({ [KEYED]: entries });
 
-    test("returns the diff of an entry at a stable position", () => {
-      const buffer = reporting();
-      const diff = comprehension({ 0: { 0: "updated" }, [KEYED_COUNT]: 2 });
-      expect(buffer.keyedEntry(diff, 0)).toEqual({ 0: "updated" });
+    // Opens entry `index` of a comprehension at the root of the buffer and
+    // reports whether its first dynamic was touched.
+    const entryChanged = (buffer: RecordingBuffer, index: number): boolean => {
+      buffer.beginKeyedEntry(index);
+      enterExit(buffer, { 0: "a" }, 0);
+      buffer.endKeyedEntry();
+      return buffer.seen[buffer.seen.length - 1].changed;
+    };
+
+    test("descends into the diff of an entry at a stable position", () => {
+      const buffer = recording(
+        comprehension({ 0: { 0: "updated" }, [KEYED_COUNT]: 2 }),
+      );
+      expect([entryChanged(buffer, 0), entryChanged(buffer, 1)]).toEqual([
+        true,
+        false,
+      ]);
     });
 
     test("unwraps the diff of an entry that moved with one", () => {
-      const buffer = reporting();
-      const diff = comprehension({ 0: [1, { 0: "updated" }] });
-      expect(buffer.keyedEntry(diff, 0)).toEqual({ 0: "updated" });
+      const buffer = recording(comprehension({ 0: [1, { 0: "updated" }] }));
+      expect(entryChanged(buffer, 0)).toBe(true);
     });
 
     test("reports no content change for an entry that only moved", () => {
-      const buffer = reporting();
       // A bare index means "moved from there, unchanged"; the move itself is a
       // change of the comprehension, not of anything inside the entry.
-      expect(buffer.keyedEntry(comprehension({ 0: 1 }), 0)).toBeUndefined();
+      const buffer = recording(comprehension({ 0: 1 }));
+      expect(entryChanged(buffer, 0)).toBe(false);
     });
 
-    test("reports no change for an untouched entry or comprehension", () => {
-      const buffer = reporting();
-      expect(
-        buffer.keyedEntry(comprehension({ 1: { 0: "x" } }), 0),
-      ).toBeUndefined();
-      expect(buffer.keyedEntry(undefined, 0)).toBeUndefined();
+    test("reports no change for an untouched comprehension", () => {
+      const buffer = recording();
+      expect(entryChanged(buffer, 0)).toBe(false);
     });
 
     test("treats every entry of a restatic'd comprehension as new", () => {
-      const buffer = recording();
-      const diff = { [STATIC]: ["<li>", "</li>"], [KEYED]: {} };
+      const buffer = recording({ [STATIC]: ["<li>", "</li>"], [KEYED]: {} });
+      expect(entryChanged(buffer, 0)).toBe(true);
+    });
 
-      const entry = buffer.keyedEntry(diff, 0);
-      enterExit(buffer, entry, { 0: "a" }, 0);
+    test("leaves the surrounding cursor intact", () => {
+      const buffer = recording({
+        0: { [KEYED]: { 0: { 0: "x" } } },
+        1: "also",
+      });
+      const node = { 0: {}, 1: "b" };
 
-      expect(buffer.seen[0].changed).toBe(true);
+      buffer.enter(node, 0, ["", ""]);
+      expect(entryChanged(buffer, 0)).toBe(true);
+      buffer.exit();
+      // Back out at the level above, where dynamic 1 also changed.
+      enterExit(buffer, node, 1);
+
+      expect(buffer.seen[buffer.seen.length - 1].changed).toBe(true);
     });
   });
 
