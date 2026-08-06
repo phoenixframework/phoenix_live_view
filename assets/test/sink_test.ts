@@ -3,7 +3,6 @@ import {
   OutputBuffer,
   ReportingSink,
   ReportingOutputBuffer,
-  SINK_STATE,
   type SinkFrame,
 } from "phoenix_live_view/rendered/sink";
 import {
@@ -51,7 +50,7 @@ const changedAt = (buffer: RecordingBuffer, index: number): boolean => {
 
 describe("Sink", () => {
   test("reports no changes, so the renderer skips that machinery", () => {
-    expect(new Sink().reportsChanges).toBe(false);
+    expect(new Sink().observesDynamics).toBe(false);
   });
 
   test("keeps nothing from a merge and hands out plain buffers", () => {
@@ -131,17 +130,17 @@ describe("OutputBuffer", () => {
 
 describe("ReportingSink", () => {
   test("reports changes, unlike the plain sink", () => {
-    expect(new ReportingSink().reportsChanges).toBe(true);
+    expect(new ReportingSink().observesDynamics).toBe(true);
   });
 
   test("is not shadowed by the base class declaring it", () => {
-    // Sink declares reportsChanges too. Were it a field rather than a getter it
+    // Sink declares observesDynamics too. Were it a field rather than a getter it
     // would define an own property on construction and shadow this one,
     // silently turning reporting off for every sink.
     expect(
       Object.prototype.hasOwnProperty.call(
         new ReportingSink(),
-        "reportsChanges",
+        "observesDynamics",
       ),
     ).toBe(false);
   });
@@ -345,11 +344,5 @@ describe("ReportingOutputBuffer", () => {
 
       expect(buffer.seen[buffer.seen.length - 1].changed).toBe(true);
     });
-  });
-
-  test("SINK_STATE is the key reserved for per-node state", () => {
-    const node: any = {};
-    node[SINK_STATE] = { 0: "id" };
-    expect(node.sinkState).toEqual({ 0: "id" });
   });
 });

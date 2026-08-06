@@ -371,7 +371,7 @@ describe("Rendered", () => {
       expect(plain.toString().buffer).toEqual(
         `${callerAnnotation}<span>child</span>`,
       );
-      expect(plain.reportsChanges).toBe(false);
+      expect(plain.observesDynamics).toBe(false);
     });
 
     test("brackets every dynamic and reports the ones a diff touched", () => {

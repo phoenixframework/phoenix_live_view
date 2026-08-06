@@ -754,7 +754,7 @@ describe("liveSocket debug sinks", () => {
 
     const Base = liveSocket.sinks.ReportingSink;
     class MySink extends Base {}
-    expect(new MySink().reportsChanges).toBe(true);
+    expect(new MySink().observesDynamics).toBe(true);
     expect(new MySink().new(null)).toBeInstanceOf(ReportingOutputBuffer);
   });
 

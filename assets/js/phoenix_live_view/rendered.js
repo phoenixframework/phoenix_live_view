@@ -17,7 +17,7 @@ import {
 } from "./constants";
 
 import { isObject, isCid, deepClone } from "./utils";
-import { Sink, SINK_STATE } from "./rendered/sink";
+import { Sink } from "./rendered/sink";
 import { modifyRoot } from "./rendered/modify_root";
 import { logError } from "./diagnostics";
 
@@ -35,55 +35,32 @@ export default class Rendered {
     this.viewId = viewId;
     this.rendered = {};
     this.magicId = 0;
-    this.useSink(createSink);
+    this.setSink(createSink);
     // The first merge is the join: everything is new, nothing is a change.
     this.initialMerge = true;
     this.mergeDiff(rendered);
     this.initialMerge = false;
   }
 
-  // One sink is installed for the life of this tree. It sees every diff before
-  // it merges, and hands out one buffer per subtree render.
-  useSink(createSink) {
-    this.sink = createSink();
-    // Change reporting is only paid for when the installed sink asks for it.
-    this.reportsChanges = this.sink.reportsChanges === true;
-  }
-
-  // Swaps the sink on a tree that has already been rendered. State the
-  // previous sink kept on the tree is dropped, since it means nothing to its
-  // replacement, and every component is marked for a full re-render so the new
-  // sink is shown the whole tree rather than only what changes next.
+  // A sink is installed for the life of this tree. It sees every diff before
+  // it merges, and hands out one buffer per subtree render. Swapping it drops
+  // whatever the previous one kept, which lives on the sink and nowhere else.
   setSink(createSink) {
-    this.useSink(createSink);
-    this.clearSinkState(this.rendered);
-    const components = this.rendered[COMPONENTS] || {};
-    for (const cid in components) {
-      components[cid].reset = true;
-    }
-  }
-
-  clearSinkState(node) {
-    delete node[SINK_STATE];
-    for (const key in node) {
-      if (isObject(node[key])) {
-        this.clearSinkState(node[key]);
-      }
-    }
+    this.sink = createSink();
+    // Change reporting is skipped if the sink does not need it.
+    this.observesDynamics = this.sink.observesDynamics === true;
   }
 
   parentViewId() {
     return this.viewId;
   }
 
-  // changeTracking false forces every root to be re-rendered instead of
-  // reusing what is already in the DOM; see the PHX_SKIP optimization.
-  toString(onlyCids, changeTracking = true) {
+  toString(onlyCids) {
     const { buffer: str, streams: streams } = this.recursiveToString(
       this.rendered,
       this.rendered[COMPONENTS],
       onlyCids,
-      changeTracking,
+      true,
       {},
       null,
     );
@@ -103,11 +80,11 @@ export default class Rendered {
     onlyCids = onlyCids ? new Set(onlyCids) : null;
     const buffer = this.sink.new(cid);
     const output = {
-      buffer: buffer,
+      buffer,
       components: components,
       onlyCids: onlyCids,
       streams: new Set(),
-      reportsChanges: this.reportsChanges,
+      observesDynamics: this.observesDynamics,
     };
     this.toOutputBuffer(rendered, null, output, changeTracking, rootAttrs);
     return { buffer: buffer.toString(), streams: output.streams };
@@ -316,9 +293,9 @@ export default class Rendered {
   }
 
   // A component sharing statics with another cid is cloned from that cid's
-  // tree, which would otherwise carry that cid's magic IDs and sink state
-  // along. Both identify the node they came from, so a duplicate would be
-  // wrong for as long as the clone lives.
+  // tree, which would otherwise carry that cid's magic IDs along. They identify
+  // the node they came from, so a duplicate would be wrong for as long as the
+  // clone lives.
   pruneInternalIds(rendered) {
     for (const key in rendered) {
       if (isObject(rendered[key])) {
@@ -331,7 +308,6 @@ export default class Rendered {
   deleteInternalIds(rendered) {
     delete rendered.magicId;
     delete rendered.newRender;
-    delete rendered[SINK_STATE];
   }
 
   componentToString(cid) {
@@ -440,11 +416,11 @@ export default class Rendered {
   // Emits `statics` interleaved with the dynamics held on `node`, which is
   // either a rendered struct or a single entry of a keyed comprehension.
   //
-  // Unless the sink reports changes this is the plain interleave, so it costs
-  // nothing extra when nobody asked for it.
+  // Unless the sink observes dynamics this is the plain interleave, so it
+  // costs nothing extra when nobody asked for it.
   dynamicsToBuffer(node, statics, templates, output, changeTracking) {
     const buffer = output.buffer;
-    if (!output.reportsChanges) {
+    if (!output.observesDynamics) {
       buffer.write(statics[0]);
       for (let i = 1; i < statics.length; i++) {
         this.dynamicToBuffer(node[i - 1], templates, output, changeTracking);
@@ -453,10 +429,11 @@ export default class Rendered {
       return;
     }
 
+    // We only call enter + exit when we need to. A benchmark showed ~5% slowdown
+    // when calling enter + exit on a noop sink.
+    // (Overall render time in the ~100 microsecond range)
     for (let i = 0; i < statics.length - 1; i++) {
       buffer.write(statics[i]);
-      // The buffer tracks where in the diff this dynamic sits; the renderer
-      // only tells it when one opens and closes.
       buffer.enter(node, i, statics);
       this.dynamicToBuffer(node[i], templates, output, changeTracking);
       buffer.exit();
@@ -473,7 +450,7 @@ export default class Rendered {
     // Entries are not bracketed by enter/exit, so they are opened explicitly
     // for the buffer to descend into the right part of the diff.
     for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
-      if (output.reportsChanges) {
+      if (output.observesDynamics) {
         output.buffer.beginKeyedEntry(i);
       }
       this.dynamicsToBuffer(
@@ -483,7 +460,7 @@ export default class Rendered {
         output,
         changeTracking,
       );
-      if (output.reportsChanges) {
+      if (output.observesDynamics) {
         output.buffer.endKeyedEntry();
       }
     }

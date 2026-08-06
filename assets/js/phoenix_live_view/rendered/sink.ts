@@ -2,10 +2,6 @@ import { COMPONENTS, KEYED, STATIC } from "../constants";
 import { deepClone } from "../utils";
 import { modifyRoot, type RootAttrs } from "./modify_root";
 
-// Key reserved on rendered nodes for a sink to hang its own state on. It rides
-// along with the node through diff merges.
-export const SINK_STATE = "sinkState";
-
 // A position in the diff the renderer is walking. Opaque: the renderer carries
 // it from one `enter` back into the next without ever inspecting it, and only
 // the reporting pair knows what is inside.
@@ -16,8 +12,14 @@ export type DiffCursor = any;
  *
  * A sink is installed once per {@link Rendered}. It is shown every diff before
  * it merges, and it hands out one {@link OutputBuffer} per subtree render — so
- * it is also where a sink keeps state that has to outlive a single render.
- * The sink itself is never written to.
+ * it is also where a sink keeps state that has to outlive a single render, such
+ * as a WeakMap keyed by the rendered nodes it saw. The sink itself is never
+ * written to.
+ *
+ * Nothing a sink keeps may be hung on the rendered tree: the merge rebuilds
+ * nodes rather than mutating them in places the tree does not control, so state
+ * kept there would be copied where it should not be and lost where it should
+ * not be.
  *
  * The default does nothing at all and buffers into a string. A tool can install
  * its own with `liveSocket.attachDebugSink` to observe or annotate the output;
@@ -28,11 +30,12 @@ export type DiffCursor = any;
  */
 export class Sink {
   /**
-   * Whether the renderer should report which parts of the page a patch
-   * touched. False here, since a plain buffer has nothing to report it to;
+   * Whether the renderer should open and close every dynamic of the tree on
+   * this sink's buffers, which is how they are told which parts of the page a
+   * patch touched. False here, since a plain buffer does nothing with them;
    * {@link ReportingSink} overrides it.
    */
-  get reportsChanges(): boolean {
+  get observesDynamics(): boolean {
     return false;
   }
 
@@ -112,7 +115,7 @@ export class OutputBuffer {
 
   /**
    * Brackets the dynamic at `statics[index]` of `node`. Only called when the
-   * sink reports changes; see {@link ReportingOutputBuffer}.
+   * sink observes dynamics; see {@link ReportingOutputBuffer}.
    */
   enter(_node: any, _index: number, _statics: string[]): void {}
 
@@ -164,7 +167,7 @@ export class ReportingSink extends Sink {
   private rootDiff: DiffCursor = undefined;
   private componentDiffs: any = undefined;
 
-  get reportsChanges(): boolean {
+  get observesDynamics(): boolean {
     return true;
   }
 

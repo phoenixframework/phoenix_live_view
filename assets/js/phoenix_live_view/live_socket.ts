@@ -321,22 +321,7 @@ export default class LiveSocket {
   disconnectedTimeout: number;
   /** @internal */
   createSink: () => any;
-  /**
-   * The sink base classes, for tooling that only holds a LiveSocket handle —
-   * a devtools panel that picked it up from the socket available event, say —
-   * and so cannot import them from the package:
-   *
-   *     const { ReportingSink, ReportingOutputBuffer } = liveSocket.sinks;
-   *     class MyBuffer extends ReportingOutputBuffer {
-   *       onExit(frame) { if (frame.changed) ... }
-   *     }
-   *     class MySink extends ReportingSink {
-   *       new(cid) { return new MyBuffer(this, cid) }
-   *     }
-   *     liveSocket.attachDebugSink(() => new MySink())
-   *
-   * @internal
-   */
+  /** @internal */
   readonly sinks = SINKS;
 
   /**
@@ -456,8 +441,11 @@ export default class LiveSocket {
    * for the protocol a sink implements.
    *
    * Takes a factory, since one sink is installed per mounted view. It applies
-   * to views that are already mounted, which are re-rendered in full so the
-   * new sink is shown the whole page, as well as to views that join later.
+   * to views that are already mounted as well as to views that join later.
+   *
+   * Nothing is re-rendered to install it: the new sink sees each part of the
+   * page the next time a patch renders that part, so a sink that annotates the
+   * output leaves whatever is already in the DOM untouched until then.
    *
    *     liveSocket.attachDebugSink(() => new MySink())
    *
@@ -472,8 +460,8 @@ export default class LiveSocket {
 
   /**
    * Removes a sink installed with {@link attachDebugSink}, restoring the
-   * default one. Mounted views are re-rendered in full, dropping whatever the
-   * sink had added to the DOM.
+   * default one. As with attaching, nothing is re-rendered: whatever the sink
+   * added to the DOM stays until the next patch renders over it.
    *
    * @internal
    */
