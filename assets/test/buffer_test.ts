@@ -46,10 +46,6 @@ const changedAt = (buffer: RecordingBuffer, index: number): boolean => {
 };
 
 describe("RenderedBuffer", () => {
-  test("reports no changes, so the renderer skips that machinery", () => {
-    expect(RenderedBuffer.observesDynamics).toBe(false);
-  });
-
   test("keeps nothing of a merge, so the renderer never copies a diff", () => {
     // The renderer only calls preMerge where a class defines one, which is
     // what keeps the default free of the clone ReportingBuffer pays for.
@@ -122,27 +118,11 @@ describe("RenderedBuffer", () => {
 
 describe("ReportingBuffer", () => {
   describe("preMerge", () => {
-    test("reports changes, unlike the plain buffer", () => {
-      expect(ReportingBuffer.observesDynamics).toBe(true);
-    });
-
-    test("a subclass inherits both statics without restating them", () => {
+    test("a subclass inherits it without restating it", () => {
       // The class is the only identity a buffer has, so what the renderer
       // reads off it has to survive subclassing.
       class MyBuffer extends ReportingBuffer {}
-      expect(MyBuffer.observesDynamics).toBe(true);
       expect(MyBuffer.preMerge({ 0: "a" })).toEqual({ 0: "a" });
-    });
-
-    test("a subclass can turn reporting off again", () => {
-      // A static, not an instance field: overriding it cannot be shadowed by
-      // the base class initializing its own, which would silently turn
-      // reporting off for every buffer.
-      class Quiet extends ReportingBuffer {
-        static observesDynamics = false;
-      }
-      expect(Quiet.observesDynamics).toBe(false);
-      expect(ReportingBuffer.observesDynamics).toBe(true);
     });
 
     test("keeps the diff whole, components and all", () => {

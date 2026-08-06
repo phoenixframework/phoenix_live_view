@@ -85,7 +85,6 @@ export default class Rendered {
       components: components,
       onlyCids: onlyCids,
       streams: new Set(),
-      observesDynamics: bufferClass.observesDynamics === true,
     };
     this.toOutputBuffer(rendered, null, output, changeTracking, rootAttrs);
     return { buffer: buffer.toString(), streams: output.streams };
@@ -423,22 +422,13 @@ export default class Rendered {
   // Emits `statics` interleaved with the dynamics held on `node`, which is
   // either a rendered struct or a single entry of a keyed comprehension.
   //
-  // Unless the buffer observes dynamics this is the plain interleave, so it
-  // costs nothing extra when nobody asked for it.
+  // Every dynamic is opened and closed on the buffer, whether or not the buffer
+  // does anything with it. Skipping that for buffers that do not care was worth
+  // ~4-6% of render on component-heavy trees and nothing on any other shape,
+  // which is under 1% of a patch once the DOM work around it is counted — not
+  // worth a capability flag a buffer can forget to set.
   dynamicsToBuffer(node, statics, templates, output, changeTracking) {
     const buffer = output.buffer;
-    if (!output.observesDynamics) {
-      buffer.write(statics[0]);
-      for (let i = 1; i < statics.length; i++) {
-        this.dynamicToBuffer(node[i - 1], templates, output, changeTracking);
-        buffer.write(statics[i]);
-      }
-      return;
-    }
-
-    // We only call enter + exit when we need to. A benchmark showed ~5% slowdown
-    // when calling enter + exit on a noop buffer.
-    // (Overall render time in the ~100 microsecond range)
     for (let i = 0; i < statics.length - 1; i++) {
       buffer.write(statics[i]);
       buffer.enter(node, i, statics);
@@ -457,9 +447,7 @@ export default class Rendered {
     // Entries are not bracketed by enter/exit, so they are opened explicitly
     // for the buffer to descend into the right part of the diff.
     for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
-      if (output.observesDynamics) {
-        output.buffer.beginKeyedEntry(i);
-      }
+      output.buffer.beginKeyedEntry(i);
       this.dynamicsToBuffer(
         rendered[KEYED][i],
         statics,
@@ -467,9 +455,7 @@ export default class Rendered {
         output,
         changeTracking,
       );
-      if (output.observesDynamics) {
-        output.buffer.endKeyedEntry();
-      }
+      output.buffer.endKeyedEntry();
     }
     // we don't need to store the rendered tree for streams
     if (rendered[STREAM]) {

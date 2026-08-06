@@ -1,5 +1,8 @@
 import Rendered from "phoenix_live_view/rendered";
-import { ReportingBuffer } from "phoenix_live_view/rendered/buffer";
+import {
+  RenderedBuffer,
+  ReportingBuffer,
+} from "phoenix_live_view/rendered/buffer";
 import {
   STATIC,
   COMPONENTS,
@@ -396,6 +399,48 @@ describe("Rendered", () => {
       expect(seen).toEqual([
         { index: 0, changed: false },
         { index: 1, changed: true },
+      ]);
+    });
+
+    test("brackets dynamics and keyed entries on a plain buffer too", () => {
+      // There is no capability flag to set: a buffer that overrides these is
+      // called, whether or not it also tracks what the diff touched.
+      const calls: string[] = [];
+      class Bracketing extends RenderedBuffer {
+        enter(_node, index) {
+          calls.push(`enter:${index}`);
+        }
+        exit() {
+          calls.push("exit");
+        }
+        beginKeyedEntry(index) {
+          calls.push(`beginEntry:${index}`);
+        }
+        endKeyedEntry() {
+          calls.push("endEntry");
+        }
+      }
+      const rendered = new Rendered(
+        "123",
+        {
+          0: {
+            [KEYED]: { 0: { 0: "a" }, [KEYED_COUNT]: 1 },
+            [STATIC]: ["<li>", "</li>"],
+          },
+          [STATIC]: ["<ul>", "</ul>"],
+        },
+        () => Bracketing,
+      );
+
+      rendered.toString();
+
+      expect(calls).toEqual([
+        "enter:0",
+        "beginEntry:0",
+        "enter:0",
+        "exit",
+        "endEntry",
+        "exit",
       ]);
     });
 

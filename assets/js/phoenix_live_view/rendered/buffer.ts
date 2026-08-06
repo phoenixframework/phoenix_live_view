@@ -22,14 +22,6 @@ export type DiffCursor = any;
  */
 export class RenderedBuffer {
   /**
-   * Whether the renderer should open and close every dynamic of the tree on
-   * this class's buffers, which is how they are told which parts of the page a
-   * patch touched. False here, since a plain buffer does nothing with them;
-   * {@link ReportingBuffer} overrides it.
-   */
-  static observesDynamics = false;
-
-  /**
    * Called before each diff merges into the rendered tree, and skipped
    * entirely by a class that does not define it. Whatever it returns is handed
    * to the constructor of every buffer that renders from that diff.
@@ -43,7 +35,6 @@ export class RenderedBuffer {
 
   protected html = "";
   private pending: string[] = [];
-  private base = 0;
 
   constructor(
     /**
@@ -60,11 +51,19 @@ export class RenderedBuffer {
   ) {}
 
   /**
-   * Characters written so far. A buffer that records positions brackets spans
-   * with this.
+   * Characters written so far, counting what an open root was split off from.
+   * A buffer that records positions brackets spans with this.
+   *
+   * Summed on read rather than tracked on write: only a buffer that records
+   * positions ever asks, and tracking it charged every render that never does.
+   * Roots nest shallowly, so the walk is short.
    */
   get length(): number {
-    return this.base + this.html.length;
+    let total = this.html.length;
+    for (let i = 0; i < this.pending.length; i++) {
+      total += this.pending[i].length;
+    }
+    return total;
   }
 
   write(str: string): void {
@@ -88,20 +87,18 @@ export class RenderedBuffer {
    */
   beginRoot(): void {
     this.pending.push(this.html);
-    this.base += this.html.length;
     this.html = "";
   }
 
   endRoot(attrs: RootAttrs, clearInnerHTML?: boolean): void {
     const [root, before, after] = modifyRoot(this.html, attrs, clearInnerHTML);
-    const prefix = this.pending.pop()!;
-    this.base -= prefix.length;
-    this.html = prefix + before + root + after;
+    this.html = this.pending.pop()! + before + root + after;
   }
 
   /**
-   * Brackets the dynamic at `statics[index]` of `node`. Only called when the
-   * class observes dynamics; see {@link ReportingBuffer}.
+   * Brackets the dynamic at `statics[index]` of `node`. Called around every
+   * dynamic of every render, so the default has to be cheap; see
+   * {@link ReportingBuffer} for what a buffer can do with it.
    */
   enter(_node: any, _index: number, _statics: string[]): void {}
 
@@ -147,8 +144,6 @@ export interface BufferFrame {
  * @internal
  */
 export class ReportingBuffer extends RenderedBuffer {
-  static observesDynamics = true;
-
   // Cloning is not optional: the merge adopts diff subtrees into the rendered
   // tree and then mutates them. The copy is shared by every buffer of the
   // render that follows, so nothing here may consume it.
