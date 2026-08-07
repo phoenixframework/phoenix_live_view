@@ -241,13 +241,7 @@ defmodule Phoenix.LiveView.Upload do
         :error -> []
       end
 
-    Enum.reduce(entries, {[], []}, fn entry, {done, in_progress} ->
-      if entry.done? do
-        {[entry | done], in_progress}
-      else
-        {done, [entry | in_progress]}
-      end
-    end)
+    Enum.split_with(entries, & &1.done?)
   end
 
   @doc """
