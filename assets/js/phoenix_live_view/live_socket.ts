@@ -58,9 +58,9 @@ import View from "./view";
 import JS from "./js";
 import jsCommands, { EncodedJS, LiveSocketJSCommands } from "./js_commands";
 import { HooksOptions } from "./view_hook";
-import { RenderedBuffer, ReportingBuffer } from "./rendered/buffer";
+import { RenderingBuffer, ReportingBuffer } from "./rendered/buffer";
 
-const BUFFERS = Object.freeze({ RenderedBuffer, ReportingBuffer });
+const BUFFERS = Object.freeze({ RenderingBuffer, ReportingBuffer });
 
 /**
  * Returns true if the given element was touched by a user.
@@ -307,7 +307,7 @@ export default class LiveSocket {
   /** @internal */
   disconnectedTimeout: number;
   /** @internal */
-  renderedBuffer: typeof RenderedBuffer;
+  RenderingBuffer: typeof RenderingBuffer;
   /**
    * The buffer base classes, for tooling holding only a LiveSocket handle:
    * they are not otherwise reachable from a page it did not bundle.
@@ -366,7 +366,7 @@ export default class LiveSocket {
     this.currentLocation = clone(window.location);
     this.hooks = opts.hooks || {};
     this.uploaders = opts.uploaders || {};
-    this.renderedBuffer = RenderedBuffer;
+    this.RenderingBuffer = RenderingBuffer;
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT;
     this.disconnectedTimeout = opts.disconnectedTimeout || DISCONNECTED_TIMEOUT;
     /**
@@ -430,7 +430,7 @@ export default class LiveSocket {
    *
    * A buffer can observe or annotate the output — for example to mark which
    * HEEx function components re-rendered, for a debugging overlay. See
-   * {@link RenderedBuffer} for the protocol a buffer implements.
+   * {@link RenderingBuffer} for the protocol a buffer implements.
    *
    * It applies to views that are already mounted as well as to views that join
    * later, and nothing is re-rendered to install it: it sees each part of the
@@ -439,14 +439,14 @@ export default class LiveSocket {
    *
    *     const previous = liveSocket.attachDebugBuffer(MyBuffer)
    *
-   * @param bufferClass - a class extending {@link RenderedBuffer}.
+   * @param bufferClass - a class extending {@link RenderingBuffer}.
    * @returns The class installed until now, to restore it with.
    *
    * @internal
    */
-  attachDebugBuffer(bufferClass: typeof RenderedBuffer): typeof RenderedBuffer {
-    const current = this.renderedBuffer;
-    this.renderedBuffer = bufferClass;
+  attachDebugBuffer(bufferClass: typeof RenderingBuffer): typeof RenderingBuffer {
+    const current = this.RenderingBuffer;
+    this.RenderingBuffer = bufferClass;
     return current;
   }
 

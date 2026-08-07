@@ -20,7 +20,7 @@ export type DiffCursor = any;
  *
  * @internal
  */
-export class RenderedBuffer {
+export class RenderingBuffer {
   /**
    * Called before each diff merges into the rendered tree, and skipped
    * entirely by a class that does not define it. Whatever it returns is handed
@@ -143,7 +143,7 @@ export interface BufferFrame {
  *
  * @internal
  */
-export class ReportingBuffer extends RenderedBuffer {
+export class ReportingBuffer extends RenderingBuffer {
   // Cloning is not optional: the merge adopts diff subtrees into the rendered
   // tree and then mutates them. The copy is shared by every buffer of the
   // render that follows, so nothing here may consume it.

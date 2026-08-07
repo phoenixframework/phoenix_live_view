@@ -1,5 +1,5 @@
 import {
-  RenderedBuffer,
+  RenderingBuffer,
   ReportingBuffer,
   type BufferFrame,
 } from "phoenix_live_view/rendered/buffer";
@@ -45,15 +45,15 @@ const changedAt = (buffer: RecordingBuffer, index: number): boolean => {
   return buffer.seen[buffer.seen.length - 1].changed;
 };
 
-describe("RenderedBuffer", () => {
+describe("RenderingBuffer", () => {
   test("keeps nothing of a merge, so the renderer never copies a diff", () => {
     // The renderer only calls preMerge where a class defines one, which is
     // what keeps the default free of the clone ReportingBuffer pays for.
-    expect(RenderedBuffer.preMerge).toBeUndefined();
+    expect(RenderingBuffer.preMerge).toBeUndefined();
   });
 
   test("accumulates writes", () => {
-    const buffer = new RenderedBuffer(undefined, null);
+    const buffer = new RenderingBuffer(undefined, null);
     buffer.write("<div>");
     buffer.write("body");
     buffer.write("</div>");
@@ -63,7 +63,7 @@ describe("RenderedBuffer", () => {
   });
 
   test("adds attributes to the start tag of a bracketed root", () => {
-    const buffer = new RenderedBuffer(undefined, null);
+    const buffer = new RenderingBuffer(undefined, null);
     buffer.write("before");
     buffer.beginRoot();
     buffer.write("<div class='x'>body</div>");
@@ -75,7 +75,7 @@ describe("RenderedBuffer", () => {
   });
 
   test("discards the contents of a cleared root, keeping its id", () => {
-    const buffer = new RenderedBuffer(undefined, null);
+    const buffer = new RenderingBuffer(undefined, null);
     buffer.beginRoot();
     buffer.write(`<div id="keep" class="x">body</div>`);
     buffer.endRoot({ "data-phx-skip": true }, true);
@@ -84,7 +84,7 @@ describe("RenderedBuffer", () => {
   });
 
   test("keeps length continuous across a root, including nested ones", () => {
-    const buffer = new RenderedBuffer(undefined, null);
+    const buffer = new RenderingBuffer(undefined, null);
     buffer.write("ab");
     expect(buffer.length).toEqual(2);
 
@@ -106,7 +106,7 @@ describe("RenderedBuffer", () => {
   test("takes the bracketing calls and does nothing with them", () => {
     // The renderer makes them where a buffer reports changes; the plain buffer
     // has nothing to report to.
-    const buffer = new RenderedBuffer(undefined, null);
+    const buffer = new RenderingBuffer(undefined, null);
     buffer.beginKeyedEntry(0);
     buffer.enter({ 0: "a" }, 0, ["", ""]);
     buffer.exit();

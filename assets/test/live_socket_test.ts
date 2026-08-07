@@ -3,7 +3,7 @@ import { type LiveViewDiagnostic } from "phoenix_live_view/diagnostics";
 import { PHX_LV_DIAGNOSTIC_EVENT } from "phoenix_live_view/constants";
 import LiveSocket from "phoenix_live_view/live_socket";
 import {
-  RenderedBuffer,
+  RenderingBuffer,
   ReportingBuffer,
 } from "phoenix_live_view/rendered/buffer";
 import JS from "phoenix_live_view/js";
@@ -777,15 +777,15 @@ describe("liveSocket debug buffers", () => {
   test("hands out the buffer base classes without an import", () => {
     // What tooling holding only a LiveSocket handle needs, since the classes
     // are not otherwise reachable from a page it did not bundle.
-    expect(liveSocket.buffers).toEqual({ RenderedBuffer, ReportingBuffer });
+    expect(liveSocket.buffers).toEqual({ RenderingBuffer, ReportingBuffer });
   });
 
   test("returns the class installed until now, to restore it with", () => {
     const { Recording } = recordingBuffer();
 
-    expect(liveSocket.attachDebugBuffer(Recording)).toBe(RenderedBuffer);
-    expect(liveSocket.attachDebugBuffer(RenderedBuffer)).toBe(Recording);
-    expect(liveSocket.renderedBuffer).toBe(RenderedBuffer);
+    expect(liveSocket.attachDebugBuffer(Recording)).toBe(RenderingBuffer);
+    expect(liveSocket.attachDebugBuffer(RenderingBuffer)).toBe(Recording);
+    expect(liveSocket.RenderingBuffer).toBe(RenderingBuffer);
   });
 
   test("a buffer attached before a view joins renders that join", () => {
@@ -816,7 +816,7 @@ describe("liveSocket debug buffers", () => {
     const view = joinView();
     view.update({ 0: "second" }, []);
 
-    expect(liveSocket.renderedBuffer).toBe(RenderedBuffer);
-    expect((view as any).rendered.bufferClass()).toBe(RenderedBuffer);
+    expect(liveSocket.RenderingBuffer).toBe(RenderingBuffer);
+    expect((view as any).rendered.bufferClass()).toBe(RenderingBuffer);
   });
 });

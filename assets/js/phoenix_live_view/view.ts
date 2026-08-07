@@ -494,7 +494,7 @@ export default class View {
       this.rendered = new Rendered(
         this.id,
         diff,
-        () => this.liveSocket.renderedBuffer,
+        () => this.liveSocket.RenderingBuffer,
       );
       const [html, streams] = this.renderContainer(null, "join");
       this.dropPendingRefs();

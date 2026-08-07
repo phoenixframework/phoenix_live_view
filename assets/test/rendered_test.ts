@@ -1,6 +1,6 @@
 import Rendered from "phoenix_live_view/rendered";
 import {
-  RenderedBuffer,
+  RenderingBuffer,
   ReportingBuffer,
 } from "phoenix_live_view/rendered/buffer";
 import {
@@ -406,7 +406,7 @@ describe("Rendered", () => {
       // There is no capability flag to set: a buffer that overrides these is
       // called, whether or not it also tracks what the diff touched.
       const calls: string[] = [];
-      class Bracketing extends RenderedBuffer {
+      class Bracketing extends RenderingBuffer {
         enter(_node, index) {
           calls.push(`enter:${index}`);
         }

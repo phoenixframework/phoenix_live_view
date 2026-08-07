@@ -17,7 +17,7 @@ import {
 } from "./constants";
 
 import { isObject, isCid, deepClone } from "./utils";
-import { RenderedBuffer } from "./rendered/buffer";
+import { RenderingBuffer } from "./rendered/buffer";
 import { modifyRoot } from "./rendered/modify_root";
 import { logError } from "./diagnostics";
 
@@ -34,7 +34,7 @@ export default class Rendered {
   // The buffer class is read afresh on every merge and every render rather
   // than held, so one installed after this tree mounted still takes effect —
   // for the parts of the page the next patch renders, and no sooner.
-  constructor(viewId, rendered, bufferClass = () => RenderedBuffer) {
+  constructor(viewId, rendered, bufferClass = () => RenderingBuffer) {
     this.viewId = viewId;
     this.rendered = {};
     this.magicId = 0;
