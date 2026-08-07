@@ -151,17 +151,6 @@ export class ReportingBuffer extends RenderedBuffer {
     return deepClone(diff);
   }
 
-  /** The cursor into a merged diff for one subtree, as passed to `new`. */
-  static cursorFor(preMerge: DiffCursor, cid: number | null): DiffCursor {
-    if (!preMerge) {
-      return undefined;
-    } else if (cid === null) {
-      return preMerge;
-    } else {
-      return preMerge[COMPONENTS] && preMerge[COMPONENTS][cid];
-    }
-  }
-
   protected frames: BufferFrame[] = [];
   /** The cursor for the subtree this buffer renders. */
   protected diff: DiffCursor;
@@ -175,10 +164,17 @@ export class ReportingBuffer extends RenderedBuffer {
     super(preMerge, cid);
     // Off the subclass, so overriding `cursorFor` alongside `preMerge` is
     // enough to keep something other than a diff in there.
-    this.diff = (this.constructor as typeof ReportingBuffer).cursorFor(
-      preMerge,
-      cid,
-    );
+    this.diff = this.cursorFor(preMerge, cid);
+  }
+
+  private cursorFor(preMerge: DiffCursor, cid: number | null): DiffCursor {
+    if (!preMerge) {
+      return undefined;
+    } else if (cid === null) {
+      return preMerge;
+    } else {
+      return preMerge[COMPONENTS] && preMerge[COMPONENTS][cid];
+    }
   }
 
   /**

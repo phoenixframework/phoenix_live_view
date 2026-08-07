@@ -189,13 +189,6 @@ describe("ReportingBuffer", () => {
       const preMerge = ReportingBuffer.preMerge({ 0: "root" });
       expect(changedAt(new RecordingBuffer(preMerge, 2), 0)).toBe(false);
     });
-
-    test("has no cursor without a merge", () => {
-      // A join, or a class installed on a tree that is already rendered:
-      // there is nothing to compare the next render against.
-      expect(ReportingBuffer.cursorFor(undefined, null)).toBeUndefined();
-      expect(ReportingBuffer.cursorFor(undefined, 1)).toBeUndefined();
-    });
   });
 
   describe("frames", () => {
