@@ -444,7 +444,9 @@ export default class LiveSocket {
    *
    * @internal
    */
-  attachDebugBuffer(bufferClass: typeof RenderingBuffer): typeof RenderingBuffer {
+  attachDebugBuffer(
+    bufferClass: typeof RenderingBuffer,
+  ): typeof RenderingBuffer {
     const current = this.RenderingBuffer;
     this.RenderingBuffer = bufferClass;
     return current;
