@@ -1,0 +1,16 @@
+import { type LogError } from "./diagnostics";
+export declare const ensureSameOrigin: (href: string, kind: "patch" | "navigate") => void;
+export declare const isCid: (cid: any) => cid is number | string;
+export declare function detectDuplicateIds(reportError?: LogError): void;
+export declare function detectInvalidStreamInserts(inserts: any, reportError?: LogError): void;
+export declare const debug: (view: any, kind: any, msg: any, obj: any) => void;
+export declare const closure: (val?: any) => any;
+export declare const clone: (obj: any) => any;
+export declare const deepClone: (obj: any) => any;
+export declare const closestPhxBinding: (startEl: Element, binding: string, borderEl?: Element) => Element;
+export declare const isObject: (obj: any) => boolean;
+export declare const isEqualObj: (obj1: any, obj2: any) => boolean;
+export declare const isEmpty: (obj: any) => boolean;
+export declare const maybe: (el: any, callback: any) => any;
+export declare const channelUploader: (entries: any, onError: any, resp: any, liveSocket: any) => void;
+export declare const eventContainsFiles: (e: any) => boolean;

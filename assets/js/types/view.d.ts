@@ -1,0 +1,177 @@
+import { LiveViewDiagnosticContext, LiveViewDiagnosticLevel, LiveViewDiagnosticMetadata } from "./diagnostics";
+import { QueryableNode } from "./dom";
+import { ViewHook } from "./view_hook";
+import LiveSocket from "./live_socket";
+export declare const prependFormDataKey: (key: any, prefix: any) => any;
+/** @internal */
+export default class View {
+    static closestView(el: any): any;
+    liveSocket: LiveSocket;
+    id: string;
+    el: Element;
+    isDead: boolean;
+    root: View;
+    portalElementIds: Set<string>;
+    private channel;
+    private rendered;
+    private flash;
+    private parent;
+    private ref;
+    private lastAckRef;
+    private childJoins;
+    private loaderTimer;
+    private disconnectedTimer;
+    private pendingDiffs;
+    private redirect;
+    private href;
+    private joinCount;
+    private joinAttempts;
+    private joinPending;
+    private destroyed;
+    private joinCallback;
+    private stopCallback;
+    private pendingJoinOps;
+    private viewHooks;
+    private formSubmits;
+    private children;
+    private pendingForms;
+    private formsForRecovery;
+    constructor(el: Element, liveSocket: LiveSocket, parentView: View | null, flash?: string | null, liveReferer?: string | null);
+    setHref(href: any): void;
+    setRedirect(href: any): void;
+    isMain(): boolean;
+    connectParams(liveReferer: any): Record<string, unknown>;
+    isConnected(): any;
+    getSession(): string;
+    getStatic(): string | null;
+    destroy(callback?: () => void): void;
+    setContainerClasses(...classes: any[]): void;
+    showLoader(timeout?: number): void;
+    execAll(binding: any): void;
+    hideLoader(): void;
+    triggerReconnected(): void;
+    log(kind: string, msgCallback: () => [string, unknown] | [string], diagnostic?: {
+        code: string;
+        level?: LiveViewDiagnosticLevel;
+        metadata?: () => LiveViewDiagnosticMetadata;
+        context?: LiveViewDiagnosticContext;
+    }): void;
+    logError(code: string, message: string, metadata: Record<string, unknown>, context?: LiveViewDiagnosticContext): void;
+    transition(time: any, onStart: any, onDone?: () => void): void;
+    withinTargets(phxTarget: any, callback: any, dom?: QueryableNode): any;
+    applyDiff(type: "mount" | "update", rawDiff: any, callback: any): void;
+    onJoin(resp: any): void;
+    dropPendingRefs(): void;
+    onJoinComplete({ live_patch }: {
+        live_patch: any;
+    }, html: any, streams: any, events: any): void;
+    attachTrueDocEl(): void;
+    execNewMounted(parent?: Document): void;
+    all(parent: any, selector: any, callback: any): void;
+    applyJoinPatch(live_patch: any, html: any, streams: any, events: any): void;
+    triggerBeforeUpdateHook(fromEl: any, toEl: any): ViewHook<HTMLElement>;
+    maybeMounted(el: any): void;
+    maybeAddNewHook(el: any): void;
+    performPatch(patch: any, pruneCids: any, isJoinPatch?: boolean): boolean;
+    afterElementsRemoved(elements: any, pruneCids: any): void;
+    joinNewChildren(): void;
+    maybeRecoverForms(html: any, callback: any): any;
+    getChildById(id: any): View;
+    getDescendentByEl(el: any): View;
+    destroyDescendent(id: any): void;
+    joinChild(el: any): boolean;
+    isJoinPending(): boolean;
+    ackJoin(_child: any): void;
+    onAllChildJoinsComplete(): void;
+    update(diff: any, events: any, isPending?: boolean): boolean;
+    renderContainer(diff: any, kind: any): any;
+    componentPatch(diff: any, cid: any): boolean;
+    getHook(el: any): ViewHook<HTMLElement>;
+    addHook(el: any): any;
+    destroyHook(hook: any): void;
+    applyPendingUpdates(): void;
+    eachChild(callback: any): void;
+    onChannel(event: any, cb: any): void;
+    bindChannel(): void;
+    destroyAllChildren(): void;
+    onLiveRedirect(redir: any): void;
+    onLivePatch(redir: any): void;
+    expandURL(to: any): any;
+    onRedirect({ to, flash, reloadToken, }: {
+        to: string;
+        flash?: string | null;
+        reloadToken?: string;
+    }): void;
+    isDestroyed(): boolean;
+    joinDead(): void;
+    join(callback?: any): void;
+    onJoinError(resp: any): void;
+    onClose(reason: any): void;
+    onError(reason: any): void;
+    displayError(classes: any, details?: {}): void;
+    delayedDisconnected(): void;
+    wrapPush(callerPush: any, receives: any): void;
+    pushWithReply(refGenerator: any, event: any, payload: any): Promise<{
+        type: "ok";
+        resp: any;
+        reply: any;
+        ref: number | null;
+    } | {
+        type: "error";
+        error: string;
+        context: LiveViewDiagnosticContext;
+    }>;
+    undoRefs(ref: any, phxEvent: any, onlyEls?: any): void;
+    undoElRef(el: any, ref: any, phxEvent: any): void;
+    refSrc(): string;
+    putRef(elements: Array<{
+        el: Element;
+        lock: boolean;
+        loading: boolean;
+    }>, phxEvent: string | null, eventType: string, opts?: {
+        [key: string]: any;
+    }): (number | Element[] | {
+        [key: string]: any;
+    })[];
+    isAcked(ref: any): boolean;
+    componentID(el: any): number | null;
+    targetComponentID(target: any, targetCtx: any, opts?: {
+        [key: string]: any;
+    }): any;
+    closestComponentID(targetCtx: any): any;
+    pushHookEvent(el: any, targetCtx: any, event: any, payload: any): Promise<{
+        reply: any;
+        ref: number;
+    }>;
+    extractMeta(el: any, meta: any, value: any): any;
+    serializeForm(form: HTMLFormElement, opts?: {
+        [key: string]: any;
+    }, onlyNames?: string[]): string;
+    pushEvent(type: any, el: any, targetCtx: any, phxEvent: any, meta: any, opts?: {
+        [key: string]: any;
+    }, onReply?: any): void;
+    pushFileProgress(fileEl: any, entryRef: any, progress: any, onReply?: () => void): void;
+    pushInput(inputEl: any, targetCtx: any, forceCid: any, phxEvent: any, opts: any, callback?: any): void;
+    triggerAwaitingSubmit(formEl: any, phxEvent: any): void;
+    getScheduledSubmit(formEl: any): any;
+    scheduleSubmit(formEl: any, ref: any, opts: any, callback: any): boolean;
+    cancelSubmit(formEl: any, phxEvent: any): void;
+    disableForm(formEl: HTMLFormElement, phxEvent: string, opts?: {}): (number | Element[] | {
+        [key: string]: any;
+    })[];
+    pushFormSubmit(formEl: any, targetCtx: any, phxEvent: any, submitter: any, opts: any, onReply: any): boolean;
+    uploadFiles(formEl: any, phxEvent: any, targetCtx: any, ref: any, cid: any, onComplete: any): void;
+    handleFailedEntryPreflight(uploadRef: any, reason: any, uploader: any): void;
+    dispatchUploads(targetCtx: any, name: any, filesOrBlobs: any): void;
+    targetCtxElement(targetCtx: any): any;
+    pushFormRecovery(oldForm: HTMLFormElement, newForm: HTMLFormElement, templateDom: Element | DocumentFragment, callback: () => void): void;
+    pushLinkPatch(e: any, href: any, targetEl: any, callback: any): void;
+    getFormsForRecovery(): {};
+    maybePushComponentsDestroyed(destroyedCIDs: any): void;
+    ownsElement(el: any): boolean;
+    submitForm(form: any, targetCtx: any, phxEvent: any, submitter: any, opts?: {}): void;
+    binding(kind: any): string;
+    pushPortalElementId(id: any): void;
+    dropPortalElementId(id: any): void;
+    destroyPortalElements(): void;
+}
