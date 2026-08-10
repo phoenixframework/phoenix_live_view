@@ -112,6 +112,12 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
+## 1.0.19 (2026-08-10)
+
+### Security fixes
+
+* [CVE-2026-64941](https://github.com/phoenixframework/phoenix_live_view/security/advisories/GHSA-36m4-rm57-3prf): Fix open redirect in `redirect/2` via ASCII tab, LF and CR
+
 ## 1.0.18 (2025-08-20)
 
 ### Bug fixes
