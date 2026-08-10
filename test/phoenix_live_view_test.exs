@@ -242,6 +242,42 @@ defmodule Phoenix.LiveViewUnitTest do
       assert redirect(@socket, to: "/foo").redirected == {:redirect, %{to: "/foo", status: 302}}
     end
 
+    test "rejects scheme-relative paths obscured by whitespace" do
+      for to <- ["/%09/example.com", "/\t/example.com"] do
+        assert_raise ArgumentError, ~r/unsafe characters detected for redirect\/2/, fn ->
+          redirect(@socket, to: to)
+        end
+
+        # Navigate + Patch also prepend the current host, so it wouldn't be
+        # an issue, but they also go through the same validation, so we check it too.
+        assert_raise ArgumentError, ~r/unsafe characters detected for push_navigate\/2/, fn ->
+          push_navigate(@socket, to: to)
+        end
+
+        assert_raise ArgumentError, ~r/unsafe characters detected for push_patch\/2/, fn ->
+          push_patch(@socket, to: to)
+        end
+      end
+    end
+
+    test "rejects newlines" do
+      # newlines are rejected in the header by Phoenix,
+      # so we reject them no matter where they occur in the URL
+      for to <- ["/example.com/\n", "/example.com\r"] do
+        assert_raise ArgumentError, ~r/unsafe characters detected for redirect\/2/, fn ->
+          redirect(@socket, to: to)
+        end
+
+        assert_raise ArgumentError, ~r/unsafe characters detected for push_navigate\/2/, fn ->
+          push_navigate(@socket, to: to)
+        end
+
+        assert_raise ArgumentError, ~r/unsafe characters detected for push_patch\/2/, fn ->
+          push_patch(@socket, to: to)
+        end
+      end
+    end
+
     test "accepts a custom redirect status for local / external paths" do
       assert redirect(@socket, to: "/foo", status: 301).redirected ==
                {:redirect, %{to: "/foo", status: 301}}

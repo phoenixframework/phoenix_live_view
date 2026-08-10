@@ -1206,7 +1206,8 @@ defmodule Phoenix.LiveView do
     raise ArgumentError, "socket already prepared to redirect with #{inspect(to)}"
   end
 
-  @invalid_local_url_chars ["\\"]
+  # We add \r and \n since those are checked on Phoenix at the header level
+  @invalid_local_url_chars ["\\", "/%09", "/\t", "\n", "\r"]
 
   defp validate_local_url!("//" <> _ = to, where) do
     raise_invalid_local_url!(to, where)
