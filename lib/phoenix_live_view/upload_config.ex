@@ -473,7 +473,7 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   @doc false
   def uploaded_entries(%UploadConfig{} = conf) do
-    Enum.filter(conf.entries, fn %UploadEntry{} = entry -> entry.progress == 100 end)
+    Enum.filter(conf.entries, fn %UploadEntry{} = entry -> entry.done? end)
   end
 
   @doc false
