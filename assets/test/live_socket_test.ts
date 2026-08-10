@@ -2,8 +2,19 @@ import { Socket } from "phoenix";
 import { type LiveViewDiagnostic } from "phoenix_live_view/diagnostics";
 import { PHX_LV_DIAGNOSTIC_EVENT } from "phoenix_live_view/constants";
 import LiveSocket from "phoenix_live_view/live_socket";
+import {
+  RenderingBuffer,
+  ReportingBuffer,
+} from "phoenix_live_view/rendered/buffer";
 import JS from "phoenix_live_view/js";
-import { simulateJoinedView, simulateVisibility } from "./test_helpers";
+import View from "phoenix_live_view/view";
+import { version as liveview_version } from "../../package.json";
+import {
+  liveViewDOM,
+  simulateJoinedView,
+  simulateVisibility,
+  stubChannel,
+} from "./test_helpers";
 
 const container = (num) => global.document.getElementById(`container${num}`);
 
@@ -724,5 +735,88 @@ describe("liveSocket.js()", () => {
     );
 
     liveSocket.pushHistoryPatch = originalPushHistoryPatch;
+  });
+});
+
+describe("liveSocket debug buffers", () => {
+  let liveSocket;
+
+  // A joined view rendering one dynamic, so an update has something to report.
+  const joinView = () => {
+    const view = new View(liveViewDOM(), liveSocket, null, null, null);
+    stubChannel(view);
+    liveSocket.roots[view.id] = view;
+    view.isConnected = () => true;
+    view.onJoin({
+      rendered: { 0: "first", s: ["<div>", "</div>"] },
+      liveview_version,
+    });
+    return view;
+  };
+
+  // A buffer class in the shape a debug tool would install one, reporting what
+  // each render was told about the dynamic it wrote.
+  const recordingBuffer = () => {
+    const changed: boolean[] = [];
+    class Recording extends ReportingBuffer {
+      onExit(frame) {
+        changed.push(frame.changed);
+      }
+    }
+    return { Recording, changed };
+  };
+
+  beforeEach(() => {
+    liveSocket = new LiveSocket("/live", Socket);
+  });
+
+  afterEach(() => {
+    liveSocket && liveSocket.destroyAllViews();
+  });
+
+  test("hands out the buffer base classes without an import", () => {
+    // What tooling holding only a LiveSocket handle needs, since the classes
+    // are not otherwise reachable from a page it did not bundle.
+    expect(liveSocket.buffers).toEqual({ RenderingBuffer, ReportingBuffer });
+  });
+
+  test("returns the class installed until now, to restore it with", () => {
+    const { Recording } = recordingBuffer();
+
+    expect(liveSocket.attachDebugBuffer(Recording)).toBe(RenderingBuffer);
+    expect(liveSocket.attachDebugBuffer(RenderingBuffer)).toBe(Recording);
+    expect(liveSocket.RenderingBuffer).toBe(RenderingBuffer);
+  });
+
+  test("a buffer attached before a view joins renders that join", () => {
+    const { Recording, changed } = recordingBuffer();
+    liveSocket.attachDebugBuffer(Recording);
+
+    joinView();
+
+    // The join has no previous render to compare against, so nothing counts
+    // as changed.
+    expect(changed).toEqual([false]);
+  });
+
+  test("a buffer attached after a view joined is shown its next update", () => {
+    // Nothing is re-rendered to install it, so it sees the page as later
+    // patches reach it — starting with this one.
+    const view = joinView();
+    const { Recording, changed } = recordingBuffer();
+    liveSocket.attachDebugBuffer(Recording);
+
+    view.update({ 0: "second" }, []);
+
+    expect(changed).toEqual([true]);
+    expect(view.el.innerHTML).toContain("second");
+  });
+
+  test("leaves the default buffer in place when nobody attaches one", () => {
+    const view = joinView();
+    view.update({ 0: "second" }, []);
+
+    expect(liveSocket.RenderingBuffer).toBe(RenderingBuffer);
+    expect((view as any).rendered.bufferClass()).toBe(RenderingBuffer);
   });
 });

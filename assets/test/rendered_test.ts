@@ -1,5 +1,9 @@
 import Rendered from "phoenix_live_view/rendered";
 import {
+  RenderingBuffer,
+  ReportingBuffer,
+} from "phoenix_live_view/rendered/buffer";
+import {
   STATIC,
   COMPONENTS,
   KEYED,
@@ -355,8 +359,134 @@ describe("Rendered", () => {
 </div>`.trim(),
       );
     });
+
+    test("leaves call sites alone unless a buffer asks for them", () => {
+      const diff = {
+        0: { [STATIC]: ["<span>child</span>"] },
+        [STATIC]: [callerAnnotation, ""],
+      };
+
+      // Default buffer: statics are emitted verbatim, nothing is tracked.
+      const plain = new Rendered("123", diff);
+      expect(plain.toString().buffer).toEqual(
+        `${callerAnnotation}<span>child</span>`,
+      );
+    });
+
+    test("brackets every dynamic and reports the ones a diff touched", () => {
+      const seen: { index: number; changed: boolean }[] = [];
+      class CountingBuffer extends ReportingBuffer {
+        onExit(frame) {
+          seen.push({ index: frame.index, changed: frame.changed });
+        }
+      }
+      const rendered = new Rendered(
+        "123",
+        { 0: "a", 1: "b", [STATIC]: ["<div>", "|", "</div>"] },
+        () => CountingBuffer,
+      );
+
+      // The join has no previous render to compare against.
+      rendered.toString();
+      expect(seen).toEqual([
+        { index: 0, changed: false },
+        { index: 1, changed: false },
+      ]);
+
+      seen.length = 0;
+      rendered.mergeDiff({ 1: "changed" });
+      rendered.toString();
+      expect(seen).toEqual([
+        { index: 0, changed: false },
+        { index: 1, changed: true },
+      ]);
+    });
+
+    test("brackets dynamics and keyed entries on a plain buffer too", () => {
+      // There is no capability flag to set: a buffer that overrides these is
+      // called, whether or not it also tracks what the diff touched.
+      const calls: string[] = [];
+      class Bracketing extends RenderingBuffer {
+        enter(_node, index) {
+          calls.push(`enter:${index}`);
+        }
+        exit() {
+          calls.push("exit");
+        }
+        beginKeyedEntry(index) {
+          calls.push(`beginEntry:${index}`);
+        }
+        endKeyedEntry() {
+          calls.push("endEntry");
+        }
+      }
+      const rendered = new Rendered(
+        "123",
+        {
+          0: {
+            [KEYED]: { 0: { 0: "a" }, [KEYED_COUNT]: 1 },
+            [STATIC]: ["<li>", "</li>"],
+          },
+          [STATIC]: ["<ul>", "</ul>"],
+        },
+        () => Bracketing,
+      );
+
+      rendered.toString();
+
+      expect(calls).toEqual([
+        "enter:0",
+        "beginEntry:0",
+        "enter:0",
+        "exit",
+        "endEntry",
+        "exit",
+      ]);
+    });
+
+    test("hands a buffer installed since the last merge no diff at all", () => {
+      // What the previous class kept is not this one's to read, and need not
+      // even be a diff, so a class swapped in mid-flight starts empty.
+      const seen: boolean[] = [];
+      class Late extends ReportingBuffer {
+        onExit(frame) {
+          seen.push(frame.changed);
+        }
+      }
+      let bufferClass: any = ReportingBuffer;
+      const rendered = new Rendered(
+        "123",
+        { 0: "a", [STATIC]: ["<div>", "</div>"] },
+        () => bufferClass,
+      );
+
+      rendered.mergeDiff({ 0: "changed" });
+      bufferClass = Late;
+      rendered.toString();
+
+      expect(seen).toEqual([false]);
+    });
+
+    test("does not touch the diff when debugging is disabled", () => {
+      const rendered = new Rendered("123", {
+        0: { 0: "one", [STATIC]: ["<span>", "</span>"] },
+        [STATIC]: [callerAnnotation, ""],
+      });
+      const clone = jest.spyOn(rendered, "clone");
+
+      const diff = { 0: { 0: "two" } };
+      rendered.mergeDiff(diff);
+
+      expect(clone).not.toHaveBeenCalled();
+      expect(diff).toEqual({ 0: { 0: "two" } });
+    });
   });
 });
+
+// The server emits this before a function component call when compiled with
+// debug_heex_annotations. The renderer attaches no meaning to it; recognising
+// call sites is a buffer's job.
+const callerAnnotation = "<!-- @caller example.ex:1 (app) -->";
 
 const simpleDiff1 = {
   "0": "cooling",

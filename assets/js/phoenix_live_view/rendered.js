@@ -16,110 +16,10 @@ import {
   KEYED_MOVED,
 } from "./constants";
 
-import { isObject, isCid } from "./utils";
+import { isObject, isCid, deepClone } from "./utils";
+import { RenderingBuffer } from "./rendered/buffer";
+import { modifyRoot } from "./rendered/modify_root";
 import { logError } from "./diagnostics";
-
-const VOID_TAGS = new Set([
-  "area",
-  "base",
-  "br",
-  "col",
-  "command",
-  "embed",
-  "hr",
-  "img",
-  "input",
-  "keygen",
-  "link",
-  "meta",
-  "param",
-  "source",
-  "track",
-  "wbr",
-]);
-const quoteChars = new Set(["'", '"']);
-
-export const modifyRoot = (html, attrs, clearInnerHTML) => {
-  let i;
-  let insideComment;
-  let beforeTag, afterTag, tag, tagNameEndsAt, id, newHTML;
-
-  const lookahead = html.match(/^(\s*(?:<!--.*?-->\s*)*)<([^\s\/>]+)/);
-  if (lookahead === null) {
-    throw new Error(`malformed html ${html}`);
-  }
-
-  i = lookahead[0].length;
-  beforeTag = lookahead[1];
-  tag = lookahead[2];
-  tagNameEndsAt = i;
-
-  // Scan the opening tag for id, if there is any
-  for (i; i < html.length; i++) {
-    if (html.charAt(i) === ">") {
-      break;
-    }
-    if (html.charAt(i) === "=") {
-      const isId = html.slice(i - 3, i) === " id";
-      i++;
-      const char = html.charAt(i);
-      if (quoteChars.has(char)) {
-        const attrStartsAt = i;
-        i++;
-        for (i; i < html.length; i++) {
-          if (html.charAt(i) === char) {
-            break;
-          }
-        }
-        if (isId) {
-          id = html.slice(attrStartsAt + 1, i);
-          break;
-        }
-      }
-    }
-  }
-
-  let closeAt = html.length - 1;
-  insideComment = false;
-  while (closeAt >= beforeTag.length + tag.length) {
-    const char = html.charAt(closeAt);
-    if (insideComment) {
-      if (char === "-" && html.slice(closeAt - 3, closeAt) === "<!-") {
-        insideComment = false;
-        closeAt -= 4;
-      } else {
-        closeAt -= 1;
-      }
-    } else if (char === ">" && html.slice(closeAt - 2, closeAt) === "--") {
-      insideComment = true;
-      closeAt -= 3;
-    } else if (char === ">") {
-      break;
-    } else {
-      closeAt -= 1;
-    }
-  }
-  afterTag = html.slice(closeAt + 1, html.length);
-
-  const attrsStr = Object.keys(attrs)
-    .map((attr) => (attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`))
-    .join(" ");
-
-  if (clearInnerHTML) {
-    // Keep the id if any
-    const idAttrStr = id ? ` id="${id}"` : "";
-    if (VOID_TAGS.has(tag)) {
-      newHTML = `<${tag}${idAttrStr}${attrsStr === "" ? "" : " "}${attrsStr}/>`;
-    } else {
-      newHTML = `<${tag}${idAttrStr}${attrsStr === "" ? "" : " "}${attrsStr}></${tag}>`;
-    }
-  } else {
-    const rest = html.slice(tagNameEndsAt, closeAt + 1);
-    newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}${rest}`;
-  }
-
-  return [newHTML, beforeTag, afterTag];
-};
 
 /** @internal */
 export default class Rendered {
@@ -131,11 +31,18 @@ export default class Rendered {
     return { diff, title, reply: reply || null, events: events || [] };
   }
 
-  constructor(viewId, rendered) {
+  // The buffer class is read afresh on every merge and every render rather
+  // than held, so one installed after this tree mounted still takes effect —
+  // for the parts of the page the next patch renders, and no sooner.
+  constructor(viewId, rendered, bufferClass = () => RenderingBuffer) {
     this.viewId = viewId;
     this.rendered = {};
     this.magicId = 0;
+    this.bufferClass = bufferClass;
+    // The first merge is the join: everything is new, nothing is a change.
+    this.initialMerge = true;
     this.mergeDiff(rendered);
+    this.initialMerge = false;
   }
 
   parentViewId() {
@@ -149,26 +56,38 @@ export default class Rendered {
       onlyCids,
       true,
       {},
+      null,
     );
     return { buffer: str, streams: streams };
   }
 
+  // cid identifies the subtree being rendered to the buffer: null for the root
+  // tree, a component id otherwise.
   recursiveToString(
     rendered,
     components = rendered[COMPONENTS],
     onlyCids,
     changeTracking,
     rootAttrs,
+    cid,
   ) {
     onlyCids = onlyCids ? new Set(onlyCids) : null;
+    const bufferClass = this.bufferClass();
+    // Only what the class installed right now kept for itself: a class
+    // installed since the last merge has nothing of that diff to be handed.
+    const [mergedBy, preMerge] = this.bufferPreMerge;
+    const buffer = new bufferClass(
+      mergedBy === bufferClass ? preMerge : undefined,
+      cid,
+    );
     const output = {
-      buffer: "",
+      buffer,
       components: components,
       onlyCids: onlyCids,
       streams: new Set(),
     };
     this.toOutputBuffer(rendered, null, output, changeTracking, rootAttrs);
-    return { buffer: output.buffer, streams: output.streams };
+    return { buffer: buffer.toString(), streams: output.streams };
   }
 
   componentCIDs(diff) {
@@ -195,6 +114,18 @@ export default class Rendered {
   }
 
   mergeDiff(diff) {
+    // Anything the buffer class wants to keep of this diff it has to copy now,
+    // before the merge below adopts diff subtrees into the tree and mutates
+    // them. What it keeps is tagged with the class that kept it, so a class
+    // installed afterwards is never handed the previous one's data. The join
+    // is skipped: there is no previous render to compare against.
+    const bufferClass = this.bufferClass();
+    this.bufferPreMerge = [
+      bufferClass,
+      !this.initialMerge && bufferClass.preMerge
+        ? bufferClass.preMerge(diff)
+        : undefined,
+    ];
     const newc = diff[COMPONENTS];
     const cache = {};
     delete diff[COMPONENTS];
@@ -279,12 +210,7 @@ export default class Rendered {
   }
 
   clone(diff) {
-    if ("structuredClone" in window) {
-      return structuredClone(diff);
-    } else {
-      // fallback for jest
-      return JSON.parse(JSON.stringify(diff));
-    }
+    return deepClone(diff);
   }
 
   // keyed comprehensions
@@ -347,6 +273,11 @@ export default class Rendered {
     if (source[KEYED]) {
       merged = this.clone(target);
       this.mergeKeyed(merged, source);
+      // The non-keyed branch below prunes as it recurses; the keyed clone has
+      // to be walked separately.
+      if (pruneMagicId) {
+        this.pruneInternalIds(merged);
+      }
     } else {
       merged = { ...target, ...source };
       for (const key in merged) {
@@ -360,12 +291,29 @@ export default class Rendered {
       }
     }
     if (pruneMagicId) {
-      delete merged.magicId;
-      delete merged.newRender;
+      this.deleteInternalIds(merged);
     } else if (target[ROOT]) {
       merged.newRender = true;
     }
     return merged;
+  }
+
+  // A component sharing statics with another cid is cloned from that cid's
+  // tree, which would otherwise carry that cid's magic IDs along. They identify
+  // the node they came from, so a duplicate would be wrong for as long as the
+  // clone lives.
+  pruneInternalIds(rendered) {
+    for (const key in rendered) {
+      if (isObject(rendered[key])) {
+        this.pruneInternalIds(rendered[key]);
+      }
+    }
+    this.deleteInternalIds(rendered);
+  }
+
+  deleteInternalIds(rendered) {
+    delete rendered.magicId;
+    delete rendered.newRender;
   }
 
   componentToString(cid) {
@@ -433,9 +381,8 @@ export default class Rendered {
     statics = this.templateStatic(statics, templates);
     rendered[STATIC] = statics;
     const isRoot = rendered[ROOT];
-    const prevBuffer = output.buffer;
     if (isRoot) {
-      output.buffer = "";
+      output.buffer.beginRoot();
     }
 
     // this condition is called when first rendering an optimizable function component.
@@ -445,11 +392,7 @@ export default class Rendered {
       rendered.magicId = this.nextMagicID();
     }
 
-    output.buffer += statics[0];
-    for (let i = 1; i < statics.length; i++) {
-      this.dynamicToBuffer(rendered[i - 1], templates, output, changeTracking);
-      output.buffer += statics[i];
-    }
+    this.dynamicsToBuffer(rendered, statics, templates, output, changeTracking);
 
     // Applies the root tag "skip" optimization if supported, which clears
     // the root tag attributes and innerHTML, and only maintains the magicId.
@@ -471,14 +414,28 @@ export default class Rendered {
       if (skip) {
         attrs[PHX_SKIP] = true;
       }
-      const [newRoot, commentBefore, commentAfter] = modifyRoot(
-        output.buffer,
-        attrs,
-        skip,
-      );
+      output.buffer.endRoot(attrs, skip);
       rendered.newRender = false;
-      output.buffer = prevBuffer + commentBefore + newRoot + commentAfter;
     }
+  }
+
+  // Emits `statics` interleaved with the dynamics held on `node`, which is
+  // either a rendered struct or a single entry of a keyed comprehension.
+  //
+  // Every dynamic is opened and closed on the buffer, whether or not the buffer
+  // does anything with it. Skipping that for buffers that do not care was worth
+  // ~4-6% of render on component-heavy trees and nothing on any other shape,
+  // which is under 1% of a patch once the DOM work around it is counted — not
+  // worth a capability flag a buffer can forget to set.
+  dynamicsToBuffer(node, statics, templates, output, changeTracking) {
+    const buffer = output.buffer;
+    for (let i = 0; i < statics.length - 1; i++) {
+      buffer.write(statics[i]);
+      buffer.enter(node, i, statics);
+      this.dynamicToBuffer(node[i], templates, output, changeTracking);
+      buffer.exit();
+    }
+    buffer.write(statics[statics.length - 1]);
   }
 
   comprehensionToBuffer(rendered, templates, output, changeTracking) {
@@ -486,17 +443,19 @@ export default class Rendered {
     const statics = this.templateStatic(rendered[STATIC], templates);
     rendered[STATIC] = statics;
     delete rendered[TEMPLATES];
+
+    // Entries are not bracketed by enter/exit, so they are opened explicitly
+    // for the buffer to descend into the right part of the diff.
     for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
-      output.buffer += statics[0];
-      for (let j = 1; j < statics.length; j++) {
-        this.dynamicToBuffer(
-          rendered[KEYED][i][j - 1],
-          keyedTemplates,
-          output,
-          changeTracking,
-        );
-        output.buffer += statics[j];
-      }
+      output.buffer.beginKeyedEntry(i);
+      this.dynamicsToBuffer(
+        rendered[KEYED][i],
+        statics,
+        keyedTemplates,
+        output,
+        changeTracking,
+      );
+      output.buffer.endKeyedEntry();
     }
     // we don't need to store the rendered tree for streams
     if (rendered[STREAM]) {
@@ -522,12 +481,12 @@ export default class Rendered {
         rendered,
         output.onlyCids,
       );
-      output.buffer += str;
+      output.buffer.write(str);
       output.streams = new Set([...output.streams, ...streams]);
     } else if (isObject(rendered)) {
       this.toOutputBuffer(rendered, templates, output, changeTracking, {});
     } else {
-      output.buffer += rendered;
+      output.buffer.write(rendered);
     }
   }
 
@@ -568,6 +527,7 @@ export default class Rendered {
         onlyCids,
         changeTracking,
         attrs,
+        cid,
       );
       // disable reset after we've rendered
       delete component.reset;
