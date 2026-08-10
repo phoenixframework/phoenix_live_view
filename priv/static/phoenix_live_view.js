@@ -38,6 +38,8 @@ var LiveView = (() => {
   var phoenix_live_view_exports = {};
   __export(phoenix_live_view_exports, {
     LiveSocket: () => LiveSocket,
+    RenderingBuffer: () => RenderingBuffer,
+    ReportingBuffer: () => ReportingBuffer,
     ViewHook: () => ViewHook,
     createHook: () => createHook,
     getFileURLForUpload: () => getFileURLForUpload,
@@ -327,6 +329,13 @@ var LiveView = (() => {
   };
   var clone = (obj) => {
     return JSON.parse(JSON.stringify(obj));
+  };
+  var deepClone = (obj) => {
+    if ("structuredClone" in window) {
+      return structuredClone(obj);
+    } else {
+      return JSON.parse(JSON.stringify(obj));
+    }
   };
   var closestPhxBinding = (startEl, binding, borderEl) => {
     let el = startEl;
@@ -3035,7 +3044,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     }
   };
 
-  // js/phoenix_live_view/rendered.js
+  // js/phoenix_live_view/rendered/modify_root.ts
   var VOID_TAGS = /* @__PURE__ */ new Set([
     "area",
     "base",
@@ -3125,6 +3134,160 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     }
     return [newHTML, beforeTag, afterTag];
   };
+
+  // js/phoenix_live_view/rendered/buffer.ts
+  var RenderingBuffer = class {
+    constructor(_preMerge, _cid) {
+      this.html = "";
+      this.pending = [];
+    }
+    /**
+     * Characters written so far, counting what an open root was split off from.
+     * A buffer that records positions brackets spans with this.
+     *
+     * Summed on read rather than tracked on write: only a buffer that records
+     * positions ever asks, and tracking it charged every render that never does.
+     * Roots nest shallowly, so the walk is short.
+     */
+    get length() {
+      let total = this.html.length;
+      for (let i = 0; i < this.pending.length; i++) {
+        total += this.pending[i].length;
+      }
+      return total;
+    }
+    write(str) {
+      this.html += str;
+    }
+    toString() {
+      return this.html;
+    }
+    /**
+     * Brackets a root element: everything written in between is a single
+     * element, `attrs` are added to its start tag, and `clearInnerHTML`
+     * additionally discards its contents (LiveView skips re-rendering a root
+     * that did not change and reuses what is already in the DOM).
+     *
+     * The default isolates the element so it can rewrite it without touching
+     * what came before. A buffer that records positions overrides both, keeping
+     * it continuous and applying its edits at the end instead; `length` stays
+     * continuous across the pair either way.
+     */
+    beginRoot() {
+      this.pending.push(this.html);
+      this.html = "";
+    }
+    endRoot(attrs, clearInnerHTML) {
+      const [root, before, after] = modifyRoot(this.html, attrs, clearInnerHTML);
+      this.html = this.pending.pop() + before + root + after;
+    }
+    /**
+     * Brackets the dynamic at `statics[index]` of `node`. Called around every
+     * dynamic of every render, so the default has to be cheap; see
+     * {@link ReportingBuffer} for what a buffer can do with it.
+     */
+    enter(_node, _index, _statics) {
+    }
+    exit() {
+    }
+    /**
+     * Brackets one entry of a keyed comprehension. Entries hold dynamics without
+     * being one themselves, so they are opened separately from `enter`.
+     */
+    beginKeyedEntry(_index) {
+    }
+    endKeyedEntry() {
+    }
+  };
+  var ALL_CHANGED = Symbol("all changed");
+  var ReportingBuffer = class extends RenderingBuffer {
+    constructor(preMerge, cid) {
+      super(preMerge, cid);
+      this.frames = [];
+      // Cursors for the dynamics and comprehension entries currently open, so the
+      // renderer only has to say when one begins and ends. Kept apart from
+      // `frames`: entries carry a cursor without being a dynamic themselves, and
+      // reporting a change for one would mean reporting it twice.
+      this.cursors = [];
+      this.diff = this.cursorFor(preMerge, cid);
+    }
+    // Cloning is not optional: the merge adopts diff subtrees into the rendered
+    // tree and then mutates them. The copy is shared by every buffer of the
+    // render that follows, so nothing here may consume it.
+    static preMerge(diff) {
+      return deepClone(diff);
+    }
+    cursorFor(preMerge, cid) {
+      if (!preMerge) {
+        return void 0;
+      } else if (cid === null) {
+        return preMerge;
+      } else {
+        return preMerge[COMPONENTS] && preMerge[COMPONENTS][cid];
+      }
+    }
+    /**
+     * Called around every dynamic in the tree. A change is reported at every
+     * level, so a dynamic containing a changed one is itself reported as
+     * changed; a buffer that wants to attribute a change to the innermost thing
+     * that changed applies that policy itself, walking `frames`.
+     */
+    onEnter(_frame) {
+    }
+    onExit(_frame) {
+    }
+    /** Where in the diff the renderer currently is. */
+    currentDiff() {
+      return this.cursors.length > 0 ? this.cursors[this.cursors.length - 1] : this.diff;
+    }
+    enter(node, index, statics) {
+      const diff = this.diffFor(this.currentDiff(), index);
+      const frame = {
+        node,
+        index,
+        statics,
+        changed: diff !== void 0
+      };
+      this.cursors.push(diff);
+      this.frames.push(frame);
+      this.onEnter(frame);
+    }
+    exit() {
+      this.cursors.pop();
+      this.onExit(this.frames.pop());
+    }
+    beginKeyedEntry(index) {
+      this.cursors.push(this.keyedEntry(this.currentDiff(), index));
+    }
+    endKeyedEntry() {
+      this.cursors.pop();
+    }
+    keyedEntry(diffNode, index) {
+      const keyed = this.diffFor(diffNode, KEYED);
+      if (keyed === ALL_CHANGED || keyed === void 0) {
+        return keyed;
+      }
+      const entry = keyed[index];
+      if (Array.isArray(entry)) {
+        return entry[1];
+      } else if (typeof entry === "number") {
+        return void 0;
+      } else {
+        return entry;
+      }
+    }
+    diffFor(diffNode, key) {
+      if (diffNode === void 0 || diffNode === null) {
+        return void 0;
+      } else if (diffNode === ALL_CHANGED || diffNode[STATIC] !== void 0) {
+        return ALL_CHANGED;
+      } else {
+        return diffNode[key];
+      }
+    }
+  };
+
+  // js/phoenix_live_view/rendered.js
   var Rendered = class {
     static extract(diff) {
       const { [REPLY]: reply, [EVENTS]: events, [TITLE]: title } = diff;
@@ -3133,11 +3296,17 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       delete diff[TITLE];
       return { diff, title, reply: reply || null, events: events || [] };
     }
-    constructor(viewId, rendered) {
+    // The buffer class is read afresh on every merge and every render rather
+    // than held, so one installed after this tree mounted still takes effect —
+    // for the parts of the page the next patch renders, and no sooner.
+    constructor(viewId, rendered, bufferClass = () => RenderingBuffer) {
       this.viewId = viewId;
       this.rendered = {};
       this.magicId = 0;
+      this.bufferClass = bufferClass;
+      this.initialMerge = true;
       this.mergeDiff(rendered);
+      this.initialMerge = false;
     }
     parentViewId() {
       return this.viewId;
@@ -3148,20 +3317,29 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         this.rendered[COMPONENTS],
         onlyCids,
         true,
-        {}
+        {},
+        null
       );
       return { buffer: str, streams };
     }
-    recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids, changeTracking, rootAttrs) {
+    // cid identifies the subtree being rendered to the buffer: null for the root
+    // tree, a component id otherwise.
+    recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids, changeTracking, rootAttrs, cid) {
       onlyCids = onlyCids ? new Set(onlyCids) : null;
+      const bufferClass = this.bufferClass();
+      const [mergedBy, preMerge] = this.bufferPreMerge;
+      const buffer = new bufferClass(
+        mergedBy === bufferClass ? preMerge : void 0,
+        cid
+      );
       const output = {
-        buffer: "",
+        buffer,
         components,
         onlyCids,
         streams: /* @__PURE__ */ new Set()
       };
       this.toOutputBuffer(rendered, null, output, changeTracking, rootAttrs);
-      return { buffer: output.buffer, streams: output.streams };
+      return { buffer: buffer.toString(), streams: output.streams };
     }
     componentCIDs(diff) {
       return Object.keys(diff[COMPONENTS] || {}).map((i) => parseInt(i));
@@ -3181,6 +3359,11 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       }
     }
     mergeDiff(diff) {
+      const bufferClass = this.bufferClass();
+      this.bufferPreMerge = [
+        bufferClass,
+        !this.initialMerge && bufferClass.preMerge ? bufferClass.preMerge(diff) : void 0
+      ];
       const newc = diff[COMPONENTS];
       const cache = {};
       delete diff[COMPONENTS];
@@ -3247,11 +3430,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       }
     }
     clone(diff) {
-      if ("structuredClone" in window) {
-        return structuredClone(diff);
-      } else {
-        return JSON.parse(JSON.stringify(diff));
-      }
+      return deepClone(diff);
     }
     // keyed comprehensions
     mergeKeyed(target, source) {
@@ -3300,6 +3479,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       if (source[KEYED]) {
         merged = this.clone(target);
         this.mergeKeyed(merged, source);
+        if (pruneMagicId) {
+          this.pruneInternalIds(merged);
+        }
       } else {
         merged = __spreadValues(__spreadValues({}, target), source);
         for (const key in merged) {
@@ -3313,12 +3495,27 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         }
       }
       if (pruneMagicId) {
-        delete merged.magicId;
-        delete merged.newRender;
+        this.deleteInternalIds(merged);
       } else if (target[ROOT]) {
         merged.newRender = true;
       }
       return merged;
+    }
+    // A component sharing statics with another cid is cloned from that cid's
+    // tree, which would otherwise carry that cid's magic IDs along. They identify
+    // the node they came from, so a duplicate would be wrong for as long as the
+    // clone lives.
+    pruneInternalIds(rendered) {
+      for (const key in rendered) {
+        if (isObject(rendered[key])) {
+          this.pruneInternalIds(rendered[key]);
+        }
+      }
+      this.deleteInternalIds(rendered);
+    }
+    deleteInternalIds(rendered) {
+      delete rendered.magicId;
+      delete rendered.newRender;
     }
     componentToString(cid) {
       const { buffer: str, streams } = this.recursiveCIDToString(
@@ -3370,19 +3567,14 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       statics = this.templateStatic(statics, templates);
       rendered[STATIC] = statics;
       const isRoot = rendered[ROOT];
-      const prevBuffer = output.buffer;
       if (isRoot) {
-        output.buffer = "";
+        output.buffer.beginRoot();
       }
       if (changeTracking && isRoot && !rendered.magicId) {
         rendered.newRender = true;
         rendered.magicId = this.nextMagicID();
       }
-      output.buffer += statics[0];
-      for (let i = 1; i < statics.length; i++) {
-        this.dynamicToBuffer(rendered[i - 1], templates, output, changeTracking);
-        output.buffer += statics[i];
-      }
+      this.dynamicsToBuffer(rendered, statics, templates, output, changeTracking);
       if (isRoot) {
         let skip = false;
         let attrs;
@@ -3395,14 +3587,27 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         if (skip) {
           attrs[PHX_SKIP] = true;
         }
-        const [newRoot, commentBefore, commentAfter] = modifyRoot(
-          output.buffer,
-          attrs,
-          skip
-        );
+        output.buffer.endRoot(attrs, skip);
         rendered.newRender = false;
-        output.buffer = prevBuffer + commentBefore + newRoot + commentAfter;
       }
+    }
+    // Emits `statics` interleaved with the dynamics held on `node`, which is
+    // either a rendered struct or a single entry of a keyed comprehension.
+    //
+    // Every dynamic is opened and closed on the buffer, whether or not the buffer
+    // does anything with it. Skipping that for buffers that do not care was worth
+    // ~4-6% of render on component-heavy trees and nothing on any other shape,
+    // which is under 1% of a patch once the DOM work around it is counted — not
+    // worth a capability flag a buffer can forget to set.
+    dynamicsToBuffer(node, statics, templates, output, changeTracking) {
+      const buffer = output.buffer;
+      for (let i = 0; i < statics.length - 1; i++) {
+        buffer.write(statics[i]);
+        buffer.enter(node, i, statics);
+        this.dynamicToBuffer(node[i], templates, output, changeTracking);
+        buffer.exit();
+      }
+      buffer.write(statics[statics.length - 1]);
     }
     comprehensionToBuffer(rendered, templates, output, changeTracking) {
       const keyedTemplates = templates || rendered[TEMPLATES];
@@ -3410,16 +3615,15 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       rendered[STATIC] = statics;
       delete rendered[TEMPLATES];
       for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
-        output.buffer += statics[0];
-        for (let j = 1; j < statics.length; j++) {
-          this.dynamicToBuffer(
-            rendered[KEYED][i][j - 1],
-            keyedTemplates,
-            output,
-            changeTracking
-          );
-          output.buffer += statics[j];
-        }
+        output.buffer.beginKeyedEntry(i);
+        this.dynamicsToBuffer(
+          rendered[KEYED][i],
+          statics,
+          keyedTemplates,
+          output,
+          changeTracking
+        );
+        output.buffer.endKeyedEntry();
       }
       if (rendered[STREAM]) {
         const stream = rendered[STREAM];
@@ -3440,12 +3644,12 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           rendered,
           output.onlyCids
         );
-        output.buffer += str;
+        output.buffer.write(str);
         output.streams = /* @__PURE__ */ new Set([...output.streams, ...streams]);
       } else if (isObject(rendered)) {
         this.toOutputBuffer(rendered, templates, output, changeTracking, {});
       } else {
-        output.buffer += rendered;
+        output.buffer.write(rendered);
       }
     }
     recursiveCIDToString(components, cid, onlyCids) {
@@ -3461,7 +3665,8 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           components,
           onlyCids,
           changeTracking,
-          attrs
+          attrs,
+          cid
         );
         delete component.reset;
         return { buffer: html, streams };
@@ -4631,7 +4836,11 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         CONSECUTIVE_RELOADS
       );
       this.applyDiff("mount", rendered, ({ diff, events }) => {
-        this.rendered = new Rendered(this.id, diff);
+        this.rendered = new Rendered(
+          this.id,
+          diff,
+          () => this.liveSocket.RenderingBuffer
+        );
         const [html, streams] = this.renderContainer(null, "join");
         this.dropPendingRefs();
         this.joinCount++;
@@ -6386,6 +6595,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
   };
 
   // js/phoenix_live_view/live_socket.ts
+  var BUFFERS = Object.freeze({ RenderingBuffer, ReportingBuffer });
   var isUsedInput = (el) => dom_default.isUsedInput(el);
   var LiveSocket = class {
     /**
@@ -6394,6 +6604,13 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     constructor(url, phxSocket, opts = {}) {
       /** @internal */
       this.unloaded = false;
+      /**
+       * The buffer base classes, for tooling holding only a LiveSocket handle:
+       * they are not otherwise reachable from a page it did not bundle.
+       *
+       * @internal
+       */
+      this.buffers = BUFFERS;
       if (!phxSocket || phxSocket.constructor.name === "Object") {
         throw new Error(`
       a phoenix Socket must be provided as the second argument to the LiveSocket constructor. For example:
@@ -6421,6 +6638,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       this.currentLocation = clone(window.location);
       this.hooks = opts.hooks || {};
       this.uploaders = opts.uploaders || {};
+      this.RenderingBuffer = RenderingBuffer;
       this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT;
       this.disconnectedTimeout = opts.disconnectedTimeout || DISCONNECTED_TIMEOUT;
       this.reloadWithJitterTimer = null;
@@ -6467,6 +6685,30 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
      */
     isProfileEnabled() {
       return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
+    }
+    /**
+     * Installs a rendered buffer: what the renderer writes rendered HTML through.
+     *
+     * A buffer can observe or annotate the output — for example to mark which
+     * HEEx function components re-rendered, for a debugging overlay. See
+     * {@link RenderingBuffer} for the protocol a buffer implements.
+     *
+     * It applies to views that are already mounted as well as to views that join
+     * later, and nothing is re-rendered to install it: it sees each part of the
+     * page the next time a patch renders that part, so a buffer that annotates
+     * the output leaves whatever is already in the DOM untouched until then.
+     *
+     *     const previous = liveSocket.attachDebugBuffer(MyBuffer)
+     *
+     * @param bufferClass - a class extending {@link RenderingBuffer}.
+     * @returns The class installed until now, to restore it with.
+     *
+     * @internal
+     */
+    attachDebugBuffer(bufferClass) {
+      const current = this.RenderingBuffer;
+      this.RenderingBuffer = bufferClass;
+      return current;
     }
     /**
      * Returns true if debugging is enabled. See {@link enableDebug} and {@link disableDebug}.
