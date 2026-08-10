@@ -115,6 +115,21 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.9 (2026-08-10)
+
+### Security fixes
+
+* [CVE-2026-64941](https://github.com/phoenixframework/phoenix_live_view/security/advisories/GHSA-36m4-rm57-3prf): Fix open redirect in `redirect/2` via ASCII tab, LF and CR
+
+### Bug fixes
+
+* Fix live components being wrongly destroyed in some rare cases ([#4350](https://github.com/phoenixframework/phoenix_live_view/issues/4350))
+* Ensure parent navigation succeeds with a blocked child ([#4359](https://github.com/phoenixframework/phoenix_live_view/issues/4359))
+
+### Enhancements
+
+* Add internal debug tooling to customize clientside rendering ([#4364](https://github.com/phoenixframework/phoenix_live_view/pull/4364))
+
 ## v1.2.8 (2026-07-27)
 
 ### Enhancements
@@ -136,7 +151,8 @@ See the module documentation or `Phoenix.LiveViewTest` for more information.
 ## v1.2.7 (2026-07-13)
 
 ### Security fixes
-- [CVE-2026-58228](https://github.com/phoenixframework/phoenix_live_view/security/advisories/GHSA-5cgh-g58j-m9cq): Fix scheme validation bypass in `Phoenix.LiveView.Utils`
+
+* [CVE-2026-58228](https://github.com/phoenixframework/phoenix_live_view/security/advisories/GHSA-5cgh-g58j-m9cq): Fix scheme validation bypass in `Phoenix.LiveView.Utils`
 
 ## v1.2.6 (2026-07-07)
 
