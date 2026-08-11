@@ -705,6 +705,11 @@ defmodule Phoenix.LiveView.UploadConfig do
   end
 
   @doc false
+  def drop_entry_errors(%UploadConfig{} = conf, entry_ref) do
+    %{conf | errors: Enum.reject(conf.errors, fn {ref, _reason} -> ref == entry_ref end)}
+  end
+
+  @doc false
   def drop_entry(%UploadConfig{} = conf, %UploadEntry{ref: ref}) do
     new_entries = for entry <- conf.entries, entry.ref != ref, do: entry
     new_errors = Enum.filter(conf.errors, fn {error_ref, _} -> error_ref != ref end)

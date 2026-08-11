@@ -71,6 +71,16 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     {CloseErrorWriter, :test_writer}
   end
 
+  def build_writer_failing_for(
+        _name,
+        %Phoenix.LiveView.UploadEntry{} = entry,
+        %Phoenix.LiveView.Socket{}
+      ) do
+    if entry.client_name == "bad.jpeg",
+      do: {CloseErrorWriter, :test_writer},
+      else: {TestWriter, :test_writer}
+  end
+
   def valid_token(lv_pid, ref) do
     LiveView.Static.sign_token(@endpoint, %{pid: lv_pid, ref: ref})
   end
@@ -162,6 +172,49 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       end
 
     {:noreply, socket}
+  end
+
+  # consume_uploaded_entries/3 raises while any entry is in progress, so a callback
+  # using it can only consume once every entry has settled
+  def consume_when_settled(%LiveView.UploadEntry{}, socket) do
+    case Phoenix.LiveView.uploaded_entries(socket, :avatar) do
+      {[_ | _], []} ->
+        names =
+          Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn _meta, entry ->
+            {:ok, entry.client_name}
+          end)
+
+        {:noreply,
+         Phoenix.Component.update(socket, :consumed, fn consumed -> names ++ consumed end)}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  # an entry no longer in the config is one this callback was invoked for as it
+  # ended, rather than as it progressed
+  def record_end_reason(%LiveView.UploadEntry{} = entry, socket) do
+    conf = socket.assigns.uploads.avatar
+
+    if Enum.any?(conf.entries, &(&1.ref == entry.ref)) do
+      {:noreply, socket}
+    else
+      reasons = Component.upload_errors(conf, entry)
+
+      {:noreply,
+       Phoenix.Component.update(socket, :consumed, fn consumed ->
+         [inspect(reasons) | consumed]
+       end)}
+    end
+  end
+
+  def cancel_while_in_progress(%LiveView.UploadEntry{} = entry, socket) do
+    if entry.done? do
+      {:noreply, socket}
+    else
+      {:noreply, Phoenix.LiveView.cancel_upload(socket, :avatar, entry.ref)}
+    end
   end
 
   setup_all do
@@ -1003,6 +1056,210 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
         # the failed entry is dropped and the LiveView is still alive
         assert get_uploaded_entries(lv, :avatar) == {[], []}
+      end
+
+      # separate file_input/4 calls: entries from one share an UploadClient, whose
+      # death would take the sibling's channel down for a reason no browser produces
+      @tag allow: [
+             max_entries: 2,
+             chunk_size: 5,
+             accept: :any,
+             progress: :consume_when_settled,
+             writer: &__MODULE__.build_writer_failing_for/3
+           ]
+      test "writer failure invokes the progress callback so completed entries are consumed",
+           %{lv: lv} do
+        Process.register(self(), :test_writer)
+
+        good =
+          file_input(lv, "form", :avatar, [
+            %{name: "good.jpeg", content: String.duplicate("0", 100)}
+          ])
+
+        bad =
+          file_input(lv, "form", :avatar, [
+            %{name: "bad.jpeg", content: String.duplicate("0", 100)}
+          ])
+
+        # hold the doomed entry mid-upload so the good one completes while the
+        # batch gate is still closed
+        render_upload(bad, "bad.jpeg", 40)
+        render_upload(good, "good.jpeg")
+        refute render(lv) =~ "consumed:good.jpeg"
+
+        assert %{"bad.jpeg" => bad_pid} = UploadClient.channel_pids(bad)
+        unlink(bad_pid, lv, bad)
+        Process.monitor(bad_pid)
+
+        # finishing the doomed entry fails close(:done), which drops it
+        render_upload(bad, "bad.jpeg", 60)
+        assert_receive {:DOWN, _ref, :process, ^bad_pid, {:shutdown, :closed}}, 1000
+
+        assert render(lv) =~ "consumed:good.jpeg"
+      end
+
+      @tag allow: [
+             max_entries: 2,
+             chunk_size: 5,
+             accept: :any,
+             progress: :consume_when_settled,
+             writer: &__MODULE__.build_writer/3
+           ]
+      test "writer write_chunk/2 error settles completed entries", %{lv: lv} do
+        Process.register(self(), :test_writer)
+
+        good =
+          file_input(lv, "form", :avatar, [
+            %{name: "good.jpeg", content: String.duplicate("0", 100)}
+          ])
+
+        # the second chunk is "error", which TestWriter fails to write
+        bad = file_input(lv, "form", :avatar, [%{name: "bad.jpeg", content: "00000error"}])
+
+        render_upload(bad, "bad.jpeg", 50)
+        render_upload(good, "good.jpeg")
+        refute render(lv) =~ "consumed:good.jpeg"
+
+        assert %{"bad.jpeg" => bad_pid} = UploadClient.channel_pids(bad)
+        unlink(bad_pid, lv, bad)
+        Process.monitor(bad_pid)
+
+        render_upload(bad, "bad.jpeg", 50)
+        assert_receive {:DOWN, _ref, :process, ^bad_pid, {:shutdown, :closed}}, 1000
+
+        assert render(lv) =~ "consumed:good.jpeg"
+      end
+
+      @tag allow: [
+             max_entries: 2,
+             chunk_size: 5,
+             accept: :any,
+             progress: :consume_when_settled,
+             writer: &__MODULE__.build_writer/3
+           ]
+      test "oversized chunk settles completed entries", %{lv: lv} do
+        Process.register(self(), :test_writer)
+
+        good =
+          file_input(lv, "form", :avatar, [
+            %{name: "good.jpeg", content: String.duplicate("0", 100)}
+          ])
+
+        bad =
+          file_input(lv, "form", :avatar, [
+            %{name: "bad.jpeg", content: String.duplicate("0", 100)}
+          ])
+
+        render_upload(bad, "bad.jpeg", 40)
+        render_upload(good, "good.jpeg")
+        refute render(lv) =~ "consumed:good.jpeg"
+
+        assert %{"bad.jpeg" => bad_pid} = UploadClient.channel_pids(bad)
+        unlink(bad_pid, lv, bad)
+        Process.monitor(bad_pid)
+
+        # the channel caps each entry at its declared client_size, not :max_file_size
+        assert UploadClient.simulate_attacker_chunk(
+                 bad,
+                 "bad.jpeg",
+                 String.duplicate("0", 1000)
+               ) == {:error, %{limit: 100, reason: :file_size_limit_exceeded}}
+
+        assert_receive {:DOWN, _ref, :process, ^bad_pid, {:shutdown, :closed}}, 1000
+
+        assert render(lv) =~ "consumed:good.jpeg"
+      end
+
+      # a cancellation is the app's own doing and is not reported back: re-entering
+      # this callback with the just-removed entry would crash on cancel_upload/3
+      @tag allow: [
+             max_entries: 1,
+             chunk_size: 5,
+             accept: :any,
+             progress: :cancel_while_in_progress,
+             writer: &__MODULE__.build_writer/3
+           ]
+      test "progress callback cancelling its own entry does not bring down the LiveView",
+           %{lv: lv} do
+        Process.register(self(), :test_writer)
+
+        avatar =
+          file_input(lv, "form", :avatar, [
+            %{name: "foo.jpeg", content: String.duplicate("0", 100)}
+          ])
+
+        try do
+          render_upload(avatar, "foo.jpeg", 40)
+        catch
+          :exit, _ -> :ok
+        end
+
+        assert Process.alive?(lv.pid)
+        assert get_uploaded_entries(lv, :avatar) == {[], []}
+      end
+
+      @tag allow: [
+             max_entries: 1,
+             chunk_size: 5,
+             accept: :any,
+             progress: :record_end_reason,
+             writer: &__MODULE__.build_close_error_writer/3
+           ]
+      test "progress callback reads why the entry ended, and the error does not linger",
+           %{lv: lv} do
+        Process.register(self(), :test_writer)
+
+        avatar =
+          file_input(lv, "form", :avatar, [
+            %{name: "bad.jpeg", content: String.duplicate("0", 100)}
+          ])
+
+        render_upload(avatar, "bad.jpeg", 40)
+        assert %{"bad.jpeg" => bad_pid} = UploadClient.channel_pids(avatar)
+        unlink(bad_pid, lv, avatar)
+        Process.monitor(bad_pid)
+
+        render_upload(avatar, "bad.jpeg", 60)
+        assert_receive {:DOWN, _ref, :process, ^bad_pid, {:shutdown, :closed}}, 1000
+
+        assert render(lv) =~ "writer_failure"
+
+        assert UploadLive.run(lv, fn socket ->
+                 {:reply, socket.assigns.uploads.avatar.errors, socket}
+               end) == []
+      end
+
+      # control for the tests above: same shape, nothing ends early, pinning their
+      # assertions to the entry ending rather than to upload ordering
+      @tag allow: [
+             max_entries: 2,
+             chunk_size: 5,
+             accept: :any,
+             progress: :consume_when_settled,
+             writer: &__MODULE__.build_writer/3
+           ]
+      test "entries are consumed once settled when no writer fails", %{lv: lv} do
+        Process.register(self(), :test_writer)
+
+        good =
+          file_input(lv, "form", :avatar, [
+            %{name: "good.jpeg", content: String.duplicate("0", 100)}
+          ])
+
+        other =
+          file_input(lv, "form", :avatar, [
+            %{name: "bad.jpeg", content: String.duplicate("0", 100)}
+          ])
+
+        render_upload(other, "bad.jpeg", 40)
+        render_upload(good, "good.jpeg")
+        refute render(lv) =~ "consumed:good.jpeg"
+
+        render_upload(other, "bad.jpeg", 60)
+
+        html = render(lv)
+        assert html =~ "consumed:good.jpeg"
+        assert html =~ "consumed:bad.jpeg"
       end
     end
   end

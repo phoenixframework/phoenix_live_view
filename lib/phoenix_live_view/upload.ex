@@ -178,6 +178,16 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc """
+  Removes any errors recorded for a given entry.
+  """
+  def drop_upload_entry_errors(%Socket{} = socket, conf_name, entry_ref) do
+    socket.assigns.uploads
+    |> Map.fetch!(conf_name)
+    |> UploadConfig.drop_entry_errors(entry_ref)
+    |> update_uploads(socket)
+  end
+
+  @doc """
   Populates the errors for a given entry.
   """
   def put_upload_error(%Socket{} = socket, conf_name, entry_ref, reason) do

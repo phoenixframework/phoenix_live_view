@@ -10,6 +10,7 @@ defmodule Phoenix.LiveView.Channel do
     Diff,
     Upload,
     UploadConfig,
+    UploadEntry,
     Route,
     Session,
     Lifecycle,
@@ -714,8 +715,8 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  # Invoked as an entry progresses. Returns the socket unchanged when there is no
-  # callback, or when the entry is already gone.
+  # Invoked as an entry progresses and when one ends without completing. Returns the
+  # socket unchanged when there is no callback, or when the entry is already gone.
   defp run_progress_event(%UploadConfig{} = upload_conf, entry, %Socket{} = socket) do
     if event = entry && upload_conf.progress_event do
       case event.(upload_conf.name, entry, socket) do
@@ -750,8 +751,38 @@ defmodule Phoenix.LiveView.Channel do
           _ -> state
         end
 
-      {Upload.unregister_completed_entry_upload(socket, conf, entry_ref), {:ok, nil, new_state}}
+      # An entry still in progress here ended without completing: a writer failure,
+      # a chunk timeout, an oversized chunk. Dropping it below first opens the settle
+      # gate. Entries the app cancelled itself are excluded, since re-entering its
+      # callback with a just-removed entry can crash it.
+      ended_entry =
+        case UploadConfig.get_entry_by_ref(conf, entry_ref) do
+          %UploadEntry{done?: false, cancelled?: false} = entry -> entry
+          _ -> nil
+        end
+
+      new_socket = Upload.unregister_completed_entry_upload(socket, conf, entry_ref)
+
+      {report_ended_entry(new_socket, conf, ended_entry), {:ok, nil, new_state}}
     end)
+  end
+
+  defp report_ended_entry(%Socket{} = socket, _conf, nil), do: socket
+
+  defp report_ended_entry(%Socket{} = socket, conf, %UploadEntry{ref: entry_ref} = entry) do
+    # the drop took the entry's errors with it; restore them so the callback can
+    # learn why it ended, this being the only point where that is possible
+    reasons = for {^entry_ref, reason} <- conf.errors, do: reason
+
+    socket =
+      Enum.reduce(reasons, socket, fn reason, acc ->
+        Upload.put_upload_error(acc, conf.name, entry_ref, reason)
+      end)
+
+    new_socket =
+      run_progress_event(Upload.get_upload_by_ref!(socket, conf.ref), entry, socket)
+
+    Upload.drop_upload_entry_errors(new_socket, conf.name, entry_ref)
   end
 
   defp put_upload_pid(state, pid, ref, entry_ref, cid) when is_pid(pid) do
