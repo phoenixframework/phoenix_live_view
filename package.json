@@ -28,9 +28,7 @@
     "assets/js/**"
   ],
   "types": "./assets/js/types/index.d.ts",
-  "dependencies": {
-    "morphdom": "github:SteffenDE/morphdom#main"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@babel/cli": "8.0.4",
     "@babel/core": "8.0.1",
@@ -49,6 +47,7 @@
     "jest-environment-jsdom": "^30.4.1",
     "jest-monocart-coverage": "^1.1.1",
     "monocart-reporter": "^2.12.4",
+    "morphdom": "github:SteffenDE/morphdom#main",
     "phoenix": "1.8.9",
     "prettier": "3.9.6",
     "typedoc": "^0.28.20",
