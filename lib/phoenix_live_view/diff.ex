@@ -53,17 +53,17 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp to_iodata(
-         %{@static => static, @keyed => keyed} = kc,
+         %{@static => static, @keyed => %{@keyed_count => count} = keyed} = kc,
          components,
          template,
          mapper
        ) do
     template = template || kc[@template]
 
-    if !keyed or keyed[@keyed_count] == 0 do
+    if count == 0 do
       {[], components}
     else
-      keyed_to_iodata(keyed[@keyed_count] - 1, keyed, static, components, template, mapper, [])
+      keyed_to_iodata(count - 1, keyed, static, components, template, mapper, [])
     end
   end
 
