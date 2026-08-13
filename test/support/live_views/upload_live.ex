@@ -55,6 +55,15 @@ defmodule Phoenix.LiveViewTest.Support.UploadLive do
     {:noreply, socket}
   end
 
+  def handle_event("save", _params, socket) do
+    consumed =
+      Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn _meta, entry ->
+        {:ok, entry.client_name}
+      end)
+
+    {:noreply, update(socket, :consumed, &(&1 ++ consumed))}
+  end
+
   ## test helpers
 
   def inspect_html_safe(term) do

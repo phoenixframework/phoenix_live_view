@@ -214,6 +214,23 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     {:noreply, socket}
   end
 
+  def consume_all_when_done(%LiveView.UploadEntry{done?: true}, socket) do
+    case LiveView.uploaded_entries(socket, :avatar) do
+      {[_ | _], []} ->
+        consumed =
+          LiveView.consume_uploaded_entries(socket, :avatar, fn _meta, entry ->
+            {:ok, entry.client_name}
+          end)
+
+        {:noreply, Component.update(socket, :consumed, &(&1 ++ consumed))}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def consume_all_when_done(%LiveView.UploadEntry{}, socket), do: {:noreply, socket}
+
   def record_writer_failure(%LiveView.UploadEntry{} = entry, socket) do
     errors = Component.upload_errors(socket.assigns.uploads.avatar, entry)
 
@@ -350,6 +367,38 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     case Keyword.fetch(opts, :validator_response) do
       {:ok, response} -> Keyword.put(opts, :validator, fn _ -> response end)
       :error -> opts
+    end
+  end
+
+  describe "multiple file uploads" do
+    setup :setup_lv
+
+    @tag allow: [max_entries: 2, chunk_size: 20, accept: :any]
+    test "completed entries can be consumed on submit", %{lv: lv} do
+      avatar = file_input(lv, "form", :avatar, build_entries(2))
+
+      assert render_upload(avatar, "myfile1.jpeg") =~ "lv:myfile1.jpeg:100%"
+      assert render_upload(avatar, "myfile2.jpeg") =~ "lv:myfile2.jpeg:100%"
+
+      html = lv |> form("form") |> render_submit()
+      assert html =~ "consumed:myfile1.jpeg"
+      assert html =~ "consumed:myfile2.jpeg"
+    end
+
+    @tag allow: [
+           max_entries: 2,
+           chunk_size: 20,
+           accept: :any,
+           progress: :consume_all_when_done
+         ]
+    test "completed entries can be consumed from the final progress callback", %{lv: lv} do
+      avatar = file_input(lv, "form", :avatar, build_entries(2))
+
+      assert render_upload(avatar, "myfile1.jpeg") =~ "lv:myfile1.jpeg:100%"
+
+      html = render_upload(avatar, "myfile2.jpeg")
+      assert html =~ "consumed:myfile1.jpeg"
+      assert html =~ "consumed:myfile2.jpeg"
     end
   end
 
