@@ -378,11 +378,17 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   @doc false
   def fail_entry(%UploadConfig{} = conf, entry_ref, reason) do
-    %UploadEntry{} = get_entry_by_ref(conf, entry_ref)
+    # the entry may already have been dropped, for example by a progress callback
+    # that cancelled it, in which case the failure report is stale
+    case get_entry_by_ref(conf, entry_ref) do
+      %UploadEntry{} ->
+        conf
+        |> put_error(entry_ref, reason)
+        |> Map.update!(:entry_refs_to_pids, &Map.put(&1, entry_ref, @failed))
 
-    conf
-    |> put_error(entry_ref, reason)
-    |> Map.update!(:entry_refs_to_pids, &Map.put(&1, entry_ref, @failed))
+      nil ->
+        conf
+    end
   end
 
   @doc false
@@ -414,6 +420,10 @@ defmodule Phoenix.LiveView.UploadConfig do
 
       {:ok, existing_pid} when is_pid(existing_pid) ->
         {:error, :already_registered}
+
+      # the entry is retained, but it may no longer be uploaded to
+      {:ok, status} when status in [@invalid, @failed] ->
+        {:error, :disallowed}
 
       :error ->
         {:error, :disallowed}
@@ -702,7 +712,10 @@ defmodule Phoenix.LiveView.UploadConfig do
   end
 
   def put_error(%UploadConfig{} = conf, entry_ref, reason) do
-    %{conf | errors: conf.errors ++ [{entry_ref, reason}]}
+    # entries with errors are retained, so the same error can be reported more than
+    # once for the same entry, for example by repeated external client failures
+    pair = {entry_ref, reason}
+    %{conf | errors: List.delete(conf.errors, pair) ++ [pair]}
   end
 
   @doc false

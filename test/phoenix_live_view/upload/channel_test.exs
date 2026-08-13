@@ -1006,6 +1006,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
         assert render_upload(avatar, "foo.jpeg", 50) =~ "#{@context}:foo.jpeg:50%"
         assert %{"foo.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
+        assert {:ok, %{token: token}} = UploadClient.fetch_allow_acknowledged(avatar, "foo.jpeg")
 
         unlink(channel_pid, lv, avatar)
         Process.monitor(channel_pid)
@@ -1038,6 +1039,14 @@ defmodule Phoenix.LiveView.UploadChannelTest do
                         [writer_failure: :custom_error]}
 
         refute_receive {:writer_failure_progress, _, _, _}
+        assert Process.alive?(lv.pid)
+
+        # the entry is retained, but its still valid token may no longer be joined with
+        {:ok, socket} = Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{})
+
+        assert {:error, %{reason: :disallowed}} =
+                 Phoenix.ChannelTest.subscribe_and_join(socket, "lvu:123", %{"token" => token})
+
         assert Process.alive?(lv.pid)
 
         UploadLive.run(lv, fn socket ->
