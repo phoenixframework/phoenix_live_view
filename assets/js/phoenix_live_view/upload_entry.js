@@ -10,9 +10,10 @@ import LiveUploader from "./live_uploader";
 
 export default class UploadEntry {
   static isActive(fileEl, file) {
-    const isNew = file._phxRef === undefined;
+    const ref = file._phxRef;
+    const isNew = ref === undefined;
     const activeRefs = fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",");
-    const isActive = activeRefs.indexOf(LiveUploader.genFileRef(file)) >= 0;
+    const isActive = !isNew && activeRefs.indexOf(ref) >= 0;
     return file.size > 0 && (isNew || isActive);
   }
 

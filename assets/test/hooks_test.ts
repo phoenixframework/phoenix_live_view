@@ -1,4 +1,5 @@
 import Hooks from "phoenix_live_view/hooks";
+import LiveUploader from "phoenix_live_view/live_uploader";
 
 describe("LiveFileUpload", () => {
   afterEach(() => {
@@ -86,6 +87,38 @@ describe("LiveFileUpload", () => {
     Hooks.LiveFileUpload.mounted!.call(ctx as any);
 
     expect(input.required).toBe(true);
+  });
+
+  test("does not discard programmatically tracked files when removing required", () => {
+    document.body.innerHTML = `
+      <form>
+        <input
+          type="file"
+          name="documents"
+          multiple
+          required
+          data-phx-upload-ref="upload-ref"
+          data-phx-active-refs=""
+          data-phx-preflighted-refs=""
+        >
+      </form>
+    `;
+
+    const input = document.querySelector("input")!;
+    const ctx = {
+      ...Hooks.LiveFileUpload,
+      el: input,
+      js: () => ({ ignoreAttributes: jest.fn() }),
+    };
+
+    Hooks.LiveFileUpload.mounted!.call(ctx as any);
+    LiveUploader.trackFiles(input, [new File(["first"], "first.txt")]);
+    input.dispatchEvent(new Event("input"));
+
+    expect(input.required).toBe(false);
+    expect(LiveUploader.serializeUploads(input)).toMatchObject({
+      "upload-ref": [{ name: "first.txt" }],
+    });
   });
 });
 
