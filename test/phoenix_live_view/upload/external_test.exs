@@ -302,6 +302,24 @@ defmodule Phoenix.LiveView.UploadExternalTest do
 
     assert_receive {:individual_consume, %{uploader: "S3"}, "foo.jpeg"}
     refute render(lv) =~ upload_complete
+
+    run(lv, fn socket ->
+      assert socket.assigns.uploads.avatar.consumed_entries == 1
+
+      new_socket =
+        Phoenix.LiveView.allow_upload(socket, :avatar,
+          max_entries: 2,
+          chunk_size: 20,
+          accept: :any,
+          external: &__MODULE__.preflight/2
+        )
+
+      assert new_socket.assigns.uploads.avatar.consumed_entries == 0
+      {:reply, :ok, new_socket}
+    end)
+
+    retry = file_input(lv, "form", :avatar, [%{name: "retry.jpeg", content: "retry"}])
+    assert render_upload(retry, "retry.jpeg", 100) =~ "retry.jpeg:100%"
   end
 
   @tag allow: [

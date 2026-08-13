@@ -167,6 +167,19 @@ defmodule Phoenix.LiveView.Upload do
   end
 
   @doc false
+  def consume_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, entry_ref) do
+    case UploadConfig.get_entry_by_ref(conf, entry_ref) do
+      %UploadEntry{} = entry ->
+        conf
+        |> UploadConfig.consume_entry(entry)
+        |> update_uploads(socket)
+
+      nil ->
+        socket
+    end
+  end
+
+  @doc false
   def fail_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, entry_ref, reason) do
     conf
     |> UploadConfig.fail_entry(entry_ref, reason)
@@ -298,10 +311,10 @@ defmodule Phoenix.LiveView.Upload do
   @doc """
   Drops all entries from the upload.
   """
-  def drop_upload_entries(%Socket{} = socket, %UploadConfig{} = conf, entry_refs) do
+  def drop_consumed_upload_entries(%Socket{} = socket, %UploadConfig{} = conf, entry_refs) do
     conf.entries
     |> Enum.filter(fn entry -> entry.ref in entry_refs end)
-    |> Enum.reduce(conf, fn entry, acc -> UploadConfig.drop_entry(acc, entry) end)
+    |> Enum.reduce(conf, fn entry, acc -> UploadConfig.consume_entry(acc, entry) end)
     |> update_uploads(socket)
   end
 
@@ -352,7 +365,7 @@ defmodule Phoenix.LiveView.Upload do
           {ref, _result} -> [ref]
         end)
 
-      Phoenix.LiveView.Channel.drop_upload_entries(conf, consumed_refs)
+      Phoenix.LiveView.Channel.drop_consumed_upload_entries(conf, consumed_refs)
 
       Enum.map(results, fn {_ref, result} -> result end)
     else
@@ -370,11 +383,13 @@ defmodule Phoenix.LiveView.Upload do
   def generate_preflight_response(%Socket{} = socket, name, cid, refs) do
     %UploadConfig{} = conf = Map.fetch!(socket.assigns.uploads, name)
 
-    # don't send more than max_entries preflight responses
+    # don't send more than the remaining max_entries preflight responses
+    remaining_entries = max(conf.max_entries - conf.consumed_entries, 0)
+
     refs =
       for {entry, i} <- Enum.with_index(conf.entries),
           entry.ref in refs,
-          i < conf.max_entries && not entry.preflighted?,
+          i < remaining_entries && not entry.preflighted?,
           do: entry.ref
 
     client_meta = %{

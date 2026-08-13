@@ -619,6 +619,68 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              max_entries: 1,
              chunk_size: 20,
              accept: :any,
+             auto_upload: true,
+             progress: :consume
+           ]
+      test "consumed auto uploads count towards max_entries", %{lv: lv} do
+        first = file_input(lv, "form", :avatar, [%{name: "first.jpeg", content: "first"}])
+        assert render_upload(first, "first.jpeg") =~ "consumed:first.jpeg"
+
+        assert eventually(fn ->
+                 UploadLive.run(lv, fn socket ->
+                   conf = socket.assigns.uploads.avatar
+                   {:reply, conf.consumed_entries == 1 && conf.entries == [], socket}
+                 end)
+               end)
+
+        second = file_input(lv, "form", :avatar, [%{name: "second.jpeg", content: "second"}])
+
+        assert lv
+               |> form("form", user: %{})
+               |> render_change(second) =~ "config_error::too_many_files"
+
+        assert {:error, :not_allowed} = render_upload(second, "second.jpeg")
+      end
+
+      @tag allow: [
+             max_entries: 1,
+             chunk_size: 20,
+             accept: :any,
+             auto_upload: true,
+             progress: :consume
+           ]
+      test "allow_upload starts a new max_entries budget after consumption", %{lv: lv} do
+        first = file_input(lv, "form", :avatar, [%{name: "first.jpeg", content: "first"}])
+        assert render_upload(first, "first.jpeg") =~ "consumed:first.jpeg"
+
+        assert eventually(fn ->
+                 UploadLive.run(lv, fn socket ->
+                   conf = socket.assigns.uploads.avatar
+                   {:reply, conf.consumed_entries == 1 && conf.entries == [], socket}
+                 end)
+               end)
+
+        UploadLive.run(lv, fn socket ->
+          socket =
+            LiveView.allow_upload(socket, :avatar,
+              max_entries: 1,
+              chunk_size: 20,
+              accept: :any,
+              auto_upload: true,
+              progress: fn :avatar, entry, socket -> __MODULE__.consume(entry, socket) end
+            )
+
+          {:reply, :ok, socket}
+        end)
+
+        second = file_input(lv, "form", :avatar, [%{name: "second.jpeg", content: "second"}])
+        assert render_upload(second, "second.jpeg") =~ "consumed:second.jpeg"
+      end
+
+      @tag allow: [
+             max_entries: 1,
+             chunk_size: 20,
+             accept: :any,
              max_file_size: 1,
              auto_upload: true
            ]

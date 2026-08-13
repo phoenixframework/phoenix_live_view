@@ -68,9 +68,9 @@ defmodule Phoenix.LiveView.Channel do
     GenServer.call(pid, {@prefix, :fetch_upload_config, name, cid})
   end
 
-  def drop_upload_entries(%UploadConfig{} = conf, entry_refs) do
+  def drop_consumed_upload_entries(%UploadConfig{} = conf, entry_refs) do
     info = %{ref: conf.ref, entry_refs: entry_refs, cid: conf.cid}
-    send(self(), {@prefix, :drop_upload_entries, info})
+    send(self(), {@prefix, :drop_consumed_upload_entries, info})
   end
 
   def drop_upload_name(%UploadConfig{} = conf) do
@@ -81,6 +81,12 @@ defmodule Phoenix.LiveView.Channel do
   def report_writer_error(pid, reason) do
     channel_pid = self()
     send(pid, {@prefix, :report_writer_error, channel_pid, reason})
+    :ok
+  end
+
+  def report_upload_consumed(pid) do
+    channel_pid = self()
+    send(pid, {@prefix, :report_upload_consumed, channel_pid})
     :ok
   end
 
@@ -272,13 +278,21 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  def handle_info({@prefix, :drop_upload_entries, info}, state) do
+  def handle_info({@prefix, :drop_consumed_upload_entries, info}, state) do
     %{ref: ref, cid: cid, entry_refs: entry_refs} = info
 
     new_state =
       write_socket(state, cid, nil, fn socket, _ ->
         upload_config = Upload.get_upload_by_ref!(socket, ref)
-        {Upload.drop_upload_entries(socket, upload_config, entry_refs), {:ok, nil, state}}
+        new_socket = Upload.drop_consumed_upload_entries(socket, upload_config, entry_refs)
+        new_upload_config = Upload.get_upload_by_ref!(new_socket, ref)
+
+        new_state =
+          if new_upload_config.entries == [],
+            do: drop_upload_name(state, upload_config.name),
+            else: state
+
+        {new_socket, {:ok, nil, new_state}}
       end)
 
     {:noreply, new_state}
@@ -298,6 +312,30 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_info({@prefix, :report_writer_error, channel_pid, reason}, state) do
     {:noreply, fail_writer_entry(state, channel_pid, reason)}
+  end
+
+  def handle_info({@prefix, :report_upload_consumed, channel_pid}, state) do
+    new_state =
+      case state.upload_pids do
+        %{^channel_pid => {ref, entry_ref, cid}} ->
+          write_socket(state, cid, nil, fn socket, _ ->
+            upload_config = Upload.get_upload_by_ref!(socket, ref)
+            new_socket = Upload.consume_entry_upload(socket, upload_config, entry_ref)
+            new_upload_config = Upload.get_upload_by_ref!(new_socket, ref)
+
+            new_state =
+              if new_upload_config.entries == [],
+                do: drop_upload_name(state, upload_config.name),
+                else: state
+
+            {new_socket, {:ok, nil, new_state}}
+          end)
+
+        _ ->
+          state
+      end
+
+    {:noreply, new_state}
   end
 
   def handle_info({@prefix, :send_update, update}, state) do

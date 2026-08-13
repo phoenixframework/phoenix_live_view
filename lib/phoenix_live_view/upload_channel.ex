@@ -158,6 +158,7 @@ defmodule Phoenix.LiveView.UploadChannel do
 
   @impl true
   def handle_call(:consume_done, from, socket) do
+    :ok = Channel.report_upload_consumed(socket.assigns.live_view_pid)
     GenServer.reply(from, :ok)
     {:stop, {:shutdown, :closed}, socket}
   end
