@@ -3364,6 +3364,9 @@ defmodule Phoenix.Component do
       data-phx-preflighted-refs={
         join_refs(for(entry <- @upload.entries, entry.preflighted?, do: entry.ref))
       }
+      data-phx-error-refs={
+        @upload.errors != [] && join_refs(for {ref, _reason} <- @upload.errors, uniq: true, do: ref)
+      }
       data-phx-auto-upload={@upload.auto_upload?}
       {if @upload.max_entries > 1, do: Map.put(@rest, :multiple, true), else: @rest}
     />

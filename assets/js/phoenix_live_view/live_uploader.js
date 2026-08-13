@@ -1,5 +1,6 @@
 import {
   PHX_DONE_REFS,
+  PHX_ERROR_REFS,
   PHX_PREFLIGHTED_REFS,
   PHX_UPLOAD_REF,
 } from "./constants";
@@ -41,6 +42,12 @@ export default class LiveUploader {
       }
     });
     return active > 0;
+  }
+
+  static hasUploadErrors(formEl) {
+    return DOM.findUploadInputs(formEl).some(
+      (input) => (input.getAttribute(PHX_ERROR_REFS) || "") !== "",
+    );
   }
 
   static serializeUploads(inputEl) {

@@ -27,6 +27,7 @@ export const PHX_TRACK_UPLOADS = "track-uploads";
 export const PHX_UPLOAD_REF = "data-phx-upload-ref";
 export const PHX_PREFLIGHTED_REFS = "data-phx-preflighted-refs";
 export const PHX_DONE_REFS = "data-phx-done-refs";
+export const PHX_ERROR_REFS = "data-phx-error-refs";
 export const PHX_DROP_TARGET = "drop-target";
 export const PHX_ACTIVE_ENTRY_REFS = "data-phx-active-refs";
 export const PHX_LIVE_FILE_UPDATED = "phx:live-file:updated";
