@@ -32,8 +32,9 @@ test("a custom writer failure remains visible until it is cancelled", async ({
   await expect(page.locator("[data-phx-main]")).toHaveClass(/phx-connected/);
 
   const failedRef = await input.getAttribute("data-phx-active-refs");
+  // eslint-disable-next-line playwright/prefer-web-first-assertions
   expect(failedRef).not.toBe("");
-  expect(await input.getAttribute("data-phx-preflighted-refs")).toBe(failedRef);
+  await expect(input).toHaveAttribute("data-phx-preflighted-refs", failedRef);
   await expect(input).toHaveAttribute("data-phx-done-refs", "");
 
   await failedEntry.getByRole("button", { name: "Cancel" }).click();
