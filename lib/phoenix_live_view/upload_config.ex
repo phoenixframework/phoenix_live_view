@@ -73,6 +73,7 @@ defmodule Phoenix.LiveView.UploadConfig do
              :name,
              :ref,
              :entries,
+             :consumed_entries,
              :max_entries,
              :max_file_size,
              :accept,
@@ -91,6 +92,7 @@ defmodule Phoenix.LiveView.UploadConfig do
             chunk_size: @default_chunk_size,
             chunk_timeout: @default_chunk_timeout,
             entries: [],
+            consumed_entries: 0,
             entry_refs_to_pids: %{},
             entry_refs_to_metas: %{},
             accept: [],
@@ -113,6 +115,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           max_entries: pos_integer(),
           max_file_size: pos_integer(),
           entries: list(),
+          consumed_entries: non_neg_integer(),
           entry_refs_to_pids: %{String.t() => pid() | :unregistered | :invalid | :failed},
           entry_refs_to_metas: %{String.t() => map()},
           accept: list() | :any,
@@ -364,7 +367,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   def unregister_completed_external_entry(%UploadConfig{} = conf, entry_ref) do
     %UploadEntry{} = entry = get_entry_by_ref(conf, entry_ref)
 
-    drop_entry(conf, entry)
+    consume_entry(conf, entry)
   end
 
   @doc false
@@ -581,8 +584,12 @@ defmodule Phoenix.LiveView.UploadConfig do
     conf
   end
 
-  defp too_many_files?(%UploadConfig{entries: entries, max_entries: max}) do
-    length(entries) > max
+  defp too_many_files?(%UploadConfig{
+         entries: entries,
+         consumed_entries: consumed_entries,
+         max_entries: max
+       }) do
+    consumed_entries + length(entries) > max
   end
 
   defp cast_and_validate_entry(%UploadConfig{} = conf, %{"ref" => ref} = client_entry) do
@@ -728,6 +735,13 @@ defmodule Phoenix.LiveView.UploadConfig do
       _ ->
         drop_entry(conf, entry)
     end
+  end
+
+  @doc false
+  def consume_entry(%UploadConfig{} = conf, %UploadEntry{} = entry) do
+    conf
+    |> Map.update!(:consumed_entries, &(&1 + 1))
+    |> drop_entry(entry)
   end
 
   @doc false
