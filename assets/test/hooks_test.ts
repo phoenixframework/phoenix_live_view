@@ -1,5 +1,38 @@
 import Hooks from "phoenix_live_view/hooks";
 
+describe("LiveFileUpload", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  test("cancels a scheduled submit when the upload becomes errored", () => {
+    document.body.innerHTML = `
+      <form>
+        <input
+          type="file"
+          data-phx-active-refs="0"
+          data-phx-preflighted-refs=""
+        >
+      </form>
+    `;
+
+    const input = document.querySelector("input")!;
+    const cancelSubmit = jest.fn();
+    const ctx = {
+      ...Hooks.LiveFileUpload,
+      el: input,
+      js: () => ({ ignoreAttributes: jest.fn() }),
+      __view: () => ({ cancelSubmit }),
+    };
+
+    Hooks.LiveFileUpload.mounted!.call(ctx as any);
+    input.setAttribute("data-phx-error-refs", "0");
+    Hooks.LiveFileUpload.updated!.call(ctx as any);
+
+    expect(cancelSubmit).toHaveBeenCalledWith(input.form);
+  });
+});
+
 describe("InfiniteScroll", () => {
   describe("updated", () => {
     afterEach(() => {
