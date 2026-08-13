@@ -126,6 +126,18 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end)
   end
 
+  defp cancel_last_entry_and_reallow(lv) do
+    UploadLive.run(lv, fn socket ->
+      {completed, in_progress} = LiveView.uploaded_entries(socket, :avatar)
+      [%{ref: ref}] = completed ++ in_progress
+      {:reply, :ok, LiveView.cancel_upload(socket, :avatar, ref)}
+    end)
+
+    UploadLive.run(lv, fn socket ->
+      {:reply, :ok, LiveView.allow_upload(socket, :avatar, accept: :any)}
+    end)
+  end
+
   # TODO: Replace this helper with ExUnit's trace/3 once it is available in our
   # supported Elixir versions.
   defp eventually(fun, attempts \\ 100)
@@ -211,6 +223,20 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       {_completed, in_progress} = LiveView.uploaded_entries(socket, :avatar)
       in_progress? = Enum.any?(in_progress, &(&1.ref == entry.ref))
       send(:test_writer, {:writer_failure_progress, entry, in_progress?, errors})
+      {:noreply, socket}
+    end
+  end
+
+  def cancel_and_disallow_writer_failure(%LiveView.UploadEntry{} = entry, socket) do
+    if Component.upload_errors(socket.assigns.uploads.avatar, entry) == [] do
+      {:noreply, socket}
+    else
+      socket =
+        socket
+        |> LiveView.cancel_upload(:avatar, entry.ref)
+        |> LiveView.disallow_upload(:avatar)
+
+      send(:test_writer, :writer_failure_cancelled_and_disallowed)
       {:noreply, socket}
     end
   end
@@ -533,7 +559,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       end
 
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any, max_file_size: 1]
-      test "render_change error with upload", %{lv: lv} do
+      test "too_large entry is retained without starting an upload channel", %{lv: lv} do
         avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "overmax"}])
 
         assert lv
@@ -541,6 +567,12 @@ defmodule Phoenix.LiveView.UploadChannelTest do
                |> render_change(avatar) =~ "entry_error::too_large"
 
         assert {:error, [[_ref, :too_large]]} = render_upload(avatar, "foo.jpeg")
+        assert UploadClient.channel_pids(avatar) == %{}
+
+        cancel_last_entry_and_reallow(lv)
+
+        retry = file_input(lv, "form", :avatar, [%{name: "retry.jpeg", content: "retry"}])
+        assert render_upload(retry, "retry.jpeg") =~ "#{@context}:retry.jpeg:100%"
       end
 
       @tag allow: [
@@ -590,7 +622,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              max_file_size: 1,
              auto_upload: true
            ]
-      test "render_upload invalid with auto_upload", %{lv: lv} do
+      test "auto-upload too_large entry releases its upload name when cancelled", %{lv: lv} do
         avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "overmax"}])
 
         html =
@@ -602,6 +634,14 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         assert html =~ "foo.jpeg:0%"
 
         assert {:error, [[_ref, :too_large]]} = render_upload(avatar, "foo.jpeg")
+
+        assert {:error, [:too_large]} =
+                 UploadClient.fetch_allow_acknowledged(avatar, "foo.jpeg")
+
+        cancel_last_entry_and_reallow(lv)
+
+        retry = file_input(lv, "form", :avatar, [%{name: "retry.jpeg", content: "retry"}])
+        assert render_upload(retry, "retry.jpeg") =~ "#{@context}:retry.jpeg:100%"
       end
 
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
@@ -901,6 +941,13 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         end)
 
         refute render(lv) =~ file_name
+
+        UploadLive.run(lv, fn socket ->
+          {:reply, :ok, LiveView.allow_upload(socket, :avatar, accept: :any)}
+        end)
+
+        retry = file_input(lv, "form", :avatar, [%{name: "retry.jpeg", content: "retry"}])
+        assert render_upload(retry, "retry.jpeg") =~ "#{@context}:retry.jpeg:100%"
       end
 
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
@@ -1060,6 +1107,39 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         assert html =~ ~s(data-phx-active-refs="")
         assert html =~ ~s(data-phx-preflighted-refs="")
         assert html =~ ~s(data-phx-done-refs="")
+
+        UploadLive.run(lv, fn socket ->
+          {:reply, :ok, LiveView.allow_upload(socket, :avatar, accept: :any)}
+        end)
+
+        retry = file_input(lv, "form", :avatar, [%{name: "retry.jpeg", content: "retry"}])
+        assert render_upload(retry, "retry.jpeg") =~ "#{@context}:retry.jpeg:100%"
+      end
+
+      @tag allow: [
+             max_entries: 1,
+             chunk_size: 5,
+             accept: :any,
+             progress: :cancel_and_disallow_writer_failure,
+             writer: &__MODULE__.build_writer/3
+           ]
+      test "writer failure callback may cancel and disallow before channel cleanup", %{lv: lv} do
+        Process.register(self(), :test_writer)
+
+        avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "00000error"}])
+
+        assert render_upload(avatar, "foo.jpeg", 50) =~ "#{@context}:foo.jpeg:50%"
+        assert %{"foo.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
+
+        unlink(channel_pid, lv, avatar)
+        Process.monitor(channel_pid)
+
+        render_upload(avatar, "foo.jpeg", 50)
+
+        assert_receive :writer_failure_cancelled_and_disallowed
+        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
+        assert render(lv) =~ "save"
+        assert Process.alive?(lv.pid)
       end
 
       @tag allow: [

@@ -73,6 +73,11 @@ defmodule Phoenix.LiveView.Channel do
     send(self(), {@prefix, :drop_upload_entries, info})
   end
 
+  def drop_upload_name(%UploadConfig{} = conf) do
+    info = %{name: conf.name, ref: conf.ref, cid: conf.cid}
+    send(self(), {@prefix, :drop_upload_name, info})
+  end
+
   def report_writer_error(pid, reason) do
     channel_pid = self()
     send(pid, {@prefix, :report_writer_error, channel_pid, reason})
@@ -275,6 +280,18 @@ defmodule Phoenix.LiveView.Channel do
         upload_config = Upload.get_upload_by_ref!(socket, ref)
         {Upload.drop_upload_entries(socket, upload_config, entry_refs), {:ok, nil, state}}
       end)
+
+    {:noreply, new_state}
+  end
+
+  def handle_info({@prefix, :drop_upload_name, info}, state) do
+    %{name: name, ref: ref, cid: cid} = info
+
+    new_state =
+      case Map.fetch(state.upload_names, name) do
+        {:ok, {^ref, ^cid}} -> drop_upload_name(state, name)
+        _ -> state
+      end
 
     {:noreply, new_state}
   end
@@ -700,14 +717,21 @@ defmodule Phoenix.LiveView.Channel do
 
   defp unregister_upload(state, ref, entry_ref, cid) do
     write_socket(state, cid, nil, fn socket, _ ->
-      conf = Upload.get_upload_by_ref!(socket, ref)
-      new_socket = Upload.unregister_completed_entry_upload(socket, conf, entry_ref)
-      new_conf = Upload.get_upload_by_ref!(new_socket, ref)
+      case Upload.fetch_upload_by_ref(socket, ref) do
+        {:ok, conf} ->
+          new_socket = Upload.unregister_completed_entry_upload(socket, conf, entry_ref)
+          new_conf = Upload.get_upload_by_ref!(new_socket, ref)
 
-      new_state =
-        if new_conf.entries == [], do: drop_upload_name(state, conf.name), else: state
+          new_state =
+            if new_conf.entries == [], do: drop_upload_name(state, conf.name), else: state
 
-      {new_socket, {:ok, nil, new_state}}
+          {new_socket, {:ok, nil, new_state}}
+
+        :error ->
+          # A progress callback may cancel the failed entry and disallow its config
+          # before the upload channel's ordered :DOWN is handled.
+          {socket, {:ok, nil, state}}
+      end
     end)
   end
 
