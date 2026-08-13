@@ -63,6 +63,8 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   @unregistered :unregistered
   @invalid :invalid
+  # Writer failures retain their entry until it is explicitly cancelled or replaced.
+  @failed :failed
 
   @too_many_files :too_many_files
 
@@ -111,7 +113,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           max_entries: pos_integer(),
           max_file_size: pos_integer(),
           entries: list(),
-          entry_refs_to_pids: %{String.t() => pid() | :unregistered | :done},
+          entry_refs_to_pids: %{String.t() => pid() | :unregistered | :invalid | :failed},
           entry_refs_to_metas: %{String.t() => map()},
           accept: list() | :any,
           acceptable_types: MapSet.t(),
@@ -340,7 +342,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   def entry_pid(%UploadConfig{} = conf, %UploadEntry{} = entry) do
     case Map.fetch(conf.entry_refs_to_pids, entry.ref) do
       {:ok, pid} when is_pid(pid) -> pid
-      {:ok, status} when status in [@unregistered, @invalid] -> nil
+      {:ok, status} when status in [@unregistered, @invalid, @failed] -> nil
     end
   end
 
@@ -367,9 +369,20 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   @doc false
   def unregister_completed_entry(%UploadConfig{} = conf, entry_ref) do
-    %UploadEntry{} = entry = get_entry_by_ref(conf, entry_ref)
+    case {get_entry_by_ref(conf, entry_ref), Map.get(conf.entry_refs_to_pids, entry_ref)} do
+      {%UploadEntry{}, @failed} -> conf
+      {%UploadEntry{} = entry, _status} -> drop_entry(conf, entry)
+      {nil, _status} -> conf
+    end
+  end
 
-    drop_entry(conf, entry)
+  @doc false
+  def fail_entry(%UploadConfig{} = conf, entry_ref, reason) do
+    %UploadEntry{} = get_entry_by_ref(conf, entry_ref)
+
+    conf
+    |> put_error(entry_ref, reason)
+    |> Map.update!(:entry_refs_to_pids, &Map.put(&1, entry_ref, @failed))
   end
 
   @doc false

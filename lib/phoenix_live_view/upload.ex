@@ -162,6 +162,13 @@ defmodule Phoenix.LiveView.Upload do
     |> update_uploads(socket)
   end
 
+  @doc false
+  def fail_entry_upload(%Socket{} = socket, %UploadConfig{} = conf, entry_ref, reason) do
+    conf
+    |> UploadConfig.fail_entry(entry_ref, reason)
+    |> update_uploads(socket)
+  end
+
   @doc """
   Registers a new entry upload for a `Phoenix.LiveView.UploadChannel` process.
   """
