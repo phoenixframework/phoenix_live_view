@@ -57,6 +57,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   alias Phoenix.LiveView.UploadEntry
 
   @default_max_entries 1
+  @default_max_entries_mode :selected
   @default_max_file_size 8_000_000
   @default_chunk_size 64_000
   @default_chunk_timeout 10_000
@@ -75,6 +76,7 @@ defmodule Phoenix.LiveView.UploadConfig do
              :entries,
              :consumed_entries,
              :max_entries,
+             :max_entries_mode,
              :max_file_size,
              :accept,
              :errors,
@@ -88,6 +90,7 @@ defmodule Phoenix.LiveView.UploadConfig do
             cid: :unregistered,
             client_key: nil,
             max_entries: @default_max_entries,
+            max_entries_mode: @default_max_entries_mode,
             max_file_size: @default_max_file_size,
             chunk_size: @default_chunk_size,
             chunk_timeout: @default_chunk_timeout,
@@ -113,6 +116,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           cid: :unregistered | nil | integer(),
           client_key: String.t(),
           max_entries: pos_integer(),
+          max_entries_mode: :selected | :total,
           max_file_size: pos_integer(),
           entries: list(),
           consumed_entries: non_neg_integer(),
@@ -210,6 +214,24 @@ defmodule Phoenix.LiveView.UploadConfig do
 
         :error ->
           @default_max_entries
+      end
+
+    max_entries_mode =
+      case Keyword.fetch(opts, :max_entries_mode) do
+        {:ok, mode} when mode in [:selected, :total] ->
+          mode
+
+        {:ok, other} ->
+          raise ArgumentError, """
+          invalid :max_entries_mode value provided to allow_upload.
+
+          Only :selected and :total are supported (Defaults to :selected). Got:
+
+          #{inspect(other)}
+          """
+
+        :error ->
+          @default_max_entries_mode
       end
 
     max_file_size =
@@ -324,6 +346,7 @@ defmodule Phoenix.LiveView.UploadConfig do
       ref: random_ref,
       name: name,
       max_entries: max_entries,
+      max_entries_mode: max_entries_mode,
       max_file_size: max_file_size,
       entry_refs_to_pids: %{},
       entry_refs_to_metas: %{},
@@ -584,11 +607,8 @@ defmodule Phoenix.LiveView.UploadConfig do
     conf
   end
 
-  defp too_many_files?(%UploadConfig{
-         entries: entries,
-         consumed_entries: consumed_entries,
-         max_entries: max
-       }) do
+  defp too_many_files?(%UploadConfig{entries: entries, max_entries: max} = conf) do
+    consumed_entries = if conf.max_entries_mode == :total, do: conf.consumed_entries, else: 0
     consumed_entries + length(entries) > max
   end
 
@@ -738,6 +758,10 @@ defmodule Phoenix.LiveView.UploadConfig do
   end
 
   @doc false
+  def consume_entry(%UploadConfig{max_entries_mode: :selected} = conf, %UploadEntry{} = entry) do
+    drop_entry(conf, entry)
+  end
+
   def consume_entry(%UploadConfig{} = conf, %UploadEntry{} = entry) do
     conf
     |> Map.update!(:consumed_entries, &(&1 + 1))

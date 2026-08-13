@@ -58,8 +58,12 @@ defmodule Phoenix.LiveView.UploadChannel do
 
     with {:ok, %{pid: pid, ref: ref, cid: cid}} <- Static.verify_token(socket.endpoint, token),
          {:ok, config} <- Channel.register_upload(pid, ref, cid) do
-      %{max_file_size: max_file_size, chunk_timeout: chunk_timeout, writer: {writer, writer_opts}} =
-        config
+      %{
+        max_file_size: max_file_size,
+        chunk_timeout: chunk_timeout,
+        max_entries_mode: max_entries_mode,
+        writer: {writer, writer_opts}
+      } = config
 
       case writer.init(writer_opts) do
         {:ok, writer_state} ->
@@ -72,6 +76,7 @@ defmodule Phoenix.LiveView.UploadChannel do
               writer_state: writer_state,
               live_view_pid: pid,
               max_file_size: max_file_size,
+              max_entries_mode: max_entries_mode,
               chunk_timeout: chunk_timeout,
               chunk_timer: nil,
               writer_closed?: false,
@@ -158,7 +163,10 @@ defmodule Phoenix.LiveView.UploadChannel do
 
   @impl true
   def handle_call(:consume_done, from, socket) do
-    :ok = Channel.report_upload_consumed(socket.assigns.live_view_pid)
+    if socket.assigns.max_entries_mode == :total do
+      :ok = Channel.report_upload_consumed(socket.assigns.live_view_pid)
+    end
+
     GenServer.reply(from, :ok)
     {:stop, {:shutdown, :closed}, socket}
   end

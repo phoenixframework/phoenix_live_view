@@ -154,6 +154,26 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       assert %UploadConfig{max_file_size: 10_000_000} = socket.assigns.uploads.avatar
     end
 
+    test "supports :max_entries_mode and defaults to :selected" do
+      socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any)
+      assert socket.assigns.uploads.avatar.max_entries_mode == :selected
+
+      socket =
+        LiveView.allow_upload(build_socket(), :avatar,
+          accept: :any,
+          max_entries_mode: :total
+        )
+
+      assert socket.assigns.uploads.avatar.max_entries_mode == :total
+
+      assert_raise ArgumentError, ~r/invalid :max_entries_mode value provided/, fn ->
+        LiveView.allow_upload(build_socket(), :avatar,
+          accept: :any,
+          max_entries_mode: :invalid
+        )
+      end
+    end
+
     test "raises when invalid :validator provided" do
       assert_raise ArgumentError, ~r/invalid :validator value provided to allow_upload/, fn ->
         LiveView.allow_upload(build_socket(), :avatar, accept: :any, validator: 0)
@@ -338,7 +358,8 @@ defmodule Phoenix.LiveView.UploadConfigTest do
         LiveView.allow_upload(build_socket(), :avatar,
           accept: :any,
           auto_upload: true,
-          max_entries: 2
+          max_entries: 2,
+          max_entries_mode: :total
         )
 
       assert {:ok, avatar} =
@@ -365,9 +386,31 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       socket =
         put_in(socket.assigns.uploads.avatar, UploadConfig.drop_entry(avatar, hd(avatar.entries)))
 
-      socket = LiveView.allow_upload(socket, :avatar, accept: :any, max_entries: 2)
+      socket =
+        LiveView.allow_upload(socket, :avatar,
+          accept: :any,
+          max_entries: 2,
+          max_entries_mode: :total
+        )
 
       assert socket.assigns.uploads.avatar.consumed_entries == 0
+    end
+
+    test "consumed entries free capacity in the default max_entries mode" do
+      socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any, max_entries: 1)
+
+      assert {:ok, avatar} =
+               UploadConfig.put_entries(socket.assigns.uploads.avatar, [
+                 build_client_entry(:avatar)
+               ])
+
+      [entry] = avatar.entries
+      avatar = UploadConfig.consume_entry(avatar, entry)
+
+      assert avatar.consumed_entries == 0
+      assert {:ok, avatar} = UploadConfig.put_entries(avatar, [build_client_entry(:avatar)])
+      assert length(avatar.entries) == 1
+      assert avatar.errors == []
     end
 
     test "cancelling an entry does not consume a max_entries slot" do

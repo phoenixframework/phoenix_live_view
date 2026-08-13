@@ -620,6 +620,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              chunk_size: 20,
              accept: :any,
              auto_upload: true,
+             max_entries_mode: :total,
              progress: :consume
            ]
       test "consumed auto uploads count towards max_entries", %{lv: lv} do
@@ -649,6 +650,29 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              auto_upload: true,
              progress: :consume
            ]
+      test "consumed auto uploads free max_entries capacity by default", %{lv: lv} do
+        first = file_input(lv, "form", :avatar, [%{name: "first.jpeg", content: "first"}])
+        assert render_upload(first, "first.jpeg") =~ "consumed:first.jpeg"
+
+        assert eventually(fn ->
+                 UploadLive.run(lv, fn socket ->
+                   conf = socket.assigns.uploads.avatar
+                   {:reply, conf.consumed_entries == 0 && conf.entries == [], socket}
+                 end)
+               end)
+
+        second = file_input(lv, "form", :avatar, [%{name: "second.jpeg", content: "second"}])
+        assert render_upload(second, "second.jpeg") =~ "consumed:second.jpeg"
+      end
+
+      @tag allow: [
+             max_entries: 1,
+             chunk_size: 20,
+             accept: :any,
+             auto_upload: true,
+             max_entries_mode: :total,
+             progress: :consume
+           ]
       test "allow_upload starts a new max_entries budget after consumption", %{lv: lv} do
         first = file_input(lv, "form", :avatar, [%{name: "first.jpeg", content: "first"}])
         assert render_upload(first, "first.jpeg") =~ "consumed:first.jpeg"
@@ -667,6 +691,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
               chunk_size: 20,
               accept: :any,
               auto_upload: true,
+              max_entries_mode: :total,
               progress: fn :avatar, entry, socket -> __MODULE__.consume(entry, socket) end
             )
 
