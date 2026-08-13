@@ -384,7 +384,11 @@ defmodule Phoenix.LiveView.Upload do
     %UploadConfig{} = conf = Map.fetch!(socket.assigns.uploads, name)
 
     # don't send more than the remaining max_entries preflight responses
-    remaining_entries = max(conf.max_entries - conf.consumed_entries, 0)
+    remaining_entries =
+      case conf.max_entries_mode do
+        :selected -> conf.max_entries
+        :total -> max(conf.max_entries - conf.consumed_entries, 0)
+      end
 
     refs =
       for {entry, i} <- Enum.with_index(conf.entries),

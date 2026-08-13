@@ -70,10 +70,10 @@ be set automatically based on the [`allow_upload/3`] spec.
 Reactive updates to the template will occur as the end-user
 interacts with the file input.
 
-The `:max_entries` option applies for the lifetime of an upload configuration,
-including files that have already been consumed. Once all entries have been
-consumed or cancelled, call `allow_upload/3` again to start a new batch and
-reset the limit.
+By default, consumed entries free capacity under the `:max_entries` limit. Pass
+`max_entries_mode: :total` to count consumed entries for the lifetime of an
+upload configuration instead. Once all entries have been consumed or cancelled,
+call `allow_upload/3` again to start a new batch and reset a `:total` limit.
 
 ### Upload entries
 

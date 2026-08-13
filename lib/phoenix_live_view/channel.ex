@@ -1620,6 +1620,7 @@ defmodule Phoenix.LiveView.Channel do
           reply = %{
             max_file_size: entry.client_size,
             chunk_timeout: conf.chunk_timeout,
+            max_entries_mode: conf.max_entries_mode,
             writer: writer!(socket, conf.name, entry, conf.writer)
           }
 

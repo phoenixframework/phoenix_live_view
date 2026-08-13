@@ -280,7 +280,13 @@ defmodule Phoenix.LiveView.UploadExternalTest do
     refute render(lv) =~ upload_complete
   end
 
-  @tag allow: [max_entries: 2, chunk_size: 20, accept: :any, external: :preflight]
+  @tag allow: [
+         max_entries: 2,
+         max_entries_mode: :total,
+         chunk_size: 20,
+         accept: :any,
+         external: :preflight
+       ]
   test "consume_uploaded_entry", %{lv: lv} do
     upload_complete = "foo.jpeg:100%"
     parent = self()
@@ -309,6 +315,7 @@ defmodule Phoenix.LiveView.UploadExternalTest do
       new_socket =
         Phoenix.LiveView.allow_upload(socket, :avatar,
           max_entries: 2,
+          max_entries_mode: :total,
           chunk_size: 20,
           accept: :any,
           external: &__MODULE__.preflight/2

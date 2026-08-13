@@ -18,7 +18,7 @@ const uploadState = async (page) => ({
 });
 
 // https://github.com/phoenixframework/phoenix_live_view/issues/2835
-test("max_entries includes files consumed by an auto upload", async ({
+test("max_entries total mode includes files consumed by an auto upload", async ({
   page,
 }) => {
   await page.goto("/issues/2835");

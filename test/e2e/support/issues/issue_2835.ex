@@ -10,6 +10,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue2835Live do
        accept: :any,
        auto_upload: true,
        max_entries: 2,
+       max_entries_mode: :total,
        progress: &__MODULE__.handle_progress/3
      )}
   end
