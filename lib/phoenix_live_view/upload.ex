@@ -391,10 +391,14 @@ defmodule Phoenix.LiveView.Upload do
       end
 
     refs =
-      for {entry, i} <- Enum.with_index(conf.entries),
-          entry.ref in refs,
-          i < remaining_entries && not entry.preflighted?,
-          do: entry.ref
+      if conf.auto_upload? == :if_valid && conf.errors != [] do
+        []
+      else
+        for {entry, i} <- Enum.with_index(conf.entries),
+            entry.ref in refs,
+            i < remaining_entries && not entry.preflighted?,
+            do: entry.ref
+      end
 
     client_meta = %{
       max_file_size: conf.max_file_size,

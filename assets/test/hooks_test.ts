@@ -1,4 +1,5 @@
 import Hooks from "phoenix_live_view/hooks";
+import LiveUploader from "phoenix_live_view/live_uploader";
 
 describe("LiveFileUpload", () => {
   afterEach(() => {
@@ -30,6 +31,43 @@ describe("LiveFileUpload", () => {
     Hooks.LiveFileUpload.updated!.call(ctx as any);
 
     expect(cancelSubmit).toHaveBeenCalledWith(input.form);
+  });
+
+  test("retries an if-valid auto upload when its errors are cleared", () => {
+    document.body.innerHTML = `
+      <form>
+        <input
+          type="file"
+          multiple
+          data-phx-upload-ref="upload-ref"
+          data-phx-auto-upload="if_valid"
+          data-phx-active-refs=""
+          data-phx-preflighted-refs=""
+          data-phx-error-refs="upload-ref"
+        >
+      </form>
+    `;
+
+    const input = document.querySelector("input")!;
+    const file = new File(["valid"], "valid.jpg", { type: "image/jpeg" });
+    const ref = LiveUploader.genFileRef(file);
+    input.setAttribute("data-phx-active-refs", ref);
+    LiveUploader.trackFiles(input, [file]);
+
+    const ctx = {
+      ...Hooks.LiveFileUpload,
+      el: input,
+      js: () => ({ ignoreAttributes: jest.fn() }),
+      __view: () => ({ cancelSubmit: jest.fn() }),
+    };
+    const onInput = jest.fn();
+    input.addEventListener("input", onInput);
+
+    Hooks.LiveFileUpload.mounted!.call(ctx as any);
+    input.setAttribute("data-phx-error-refs", "");
+    Hooks.LiveFileUpload.updated!.call(ctx as any);
+
+    expect(onInput).toHaveBeenCalledTimes(1);
   });
 });
 

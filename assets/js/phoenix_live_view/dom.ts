@@ -97,6 +97,14 @@ const DOM = {
     return inputEl.hasAttribute("data-phx-auto-upload");
   },
 
+  isAutoUploadIfValid(inputEl) {
+    return inputEl.getAttribute("data-phx-auto-upload") === "if_valid";
+  },
+
+  hasUploadErrors(inputEl) {
+    return (inputEl.getAttribute("data-phx-error-refs") || "") !== "";
+  },
+
   findUploadInputs(node): HTMLInputElement[] {
     const formId = node.id;
     const inputsOutsideForm = this.all(

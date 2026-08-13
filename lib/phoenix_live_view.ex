@@ -909,7 +909,10 @@ defmodule Phoenix.LiveView do
     * `:progress` - An optional 3-arity function for receiving progress events.
 
     * `:auto_upload` - Instructs the client to upload the file automatically
-      on file selection instead of waiting for form submits. Defaults to `false`.
+      on file selection instead of waiting for form submits. When set to
+      `:if_valid`, automatic uploads wait until all entries in the current
+      selection pass upload validation. Cancelling the last invalid entry starts
+      the retained valid entries automatically. Defaults to `false`.
 
     * `:writer` - A 3-arity anonymous function that returns a tuple with a module
       implementing the `Phoenix.LiveView.UploadWriter` behaviour and its options to use for
