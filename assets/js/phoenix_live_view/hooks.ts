@@ -1,5 +1,6 @@
 import {
   PHX_ACTIVE_ENTRY_REFS,
+  PHX_ERROR_REFS,
   PHX_LIVE_FILE_UPDATED,
   PHX_PREFLIGHTED_REFS,
   PHX_UPLOAD_REF,
@@ -262,13 +263,27 @@ const LiveFileUpload: Hook<object, HTMLInputElement> = {
     return this.el.getAttribute(PHX_PREFLIGHTED_REFS);
   },
 
+  errorRefs() {
+    return this.el.getAttribute(PHX_ERROR_REFS) || "";
+  },
+
   mounted() {
     this.js().ignoreAttributes(this.el, ["value"]);
     this.preflightedWas = this.preflightedRefs();
+    this.errorRefsWas = this.errorRefs();
   },
 
   updated() {
     const newPreflights = this.preflightedRefs();
+    const newErrorRefs = this.errorRefs();
+
+    if (this.errorRefsWas !== newErrorRefs) {
+      this.errorRefsWas = newErrorRefs;
+      if (newErrorRefs !== "") {
+        this.__view().cancelSubmit(this.el.form);
+      }
+    }
+
     if (this.preflightedWas !== newPreflights) {
       this.preflightedWas = newPreflights;
       if (newPreflights === "") {

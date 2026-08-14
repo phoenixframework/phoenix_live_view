@@ -2204,7 +2204,9 @@ export default class View {
     // for phx-trigger-action
     DOM.putPrivate(formEl, "submitter", submitter);
     const cid = this.targetComponentID(formEl, targetCtx);
-    if (LiveUploader.hasUploadsInProgress(formEl)) {
+    if (LiveUploader.hasUploadErrors(formEl)) {
+      return this.cancelSubmit(formEl, phxEvent);
+    } else if (LiveUploader.hasUploadsInProgress(formEl)) {
       const [ref, _els] = refGenerator();
       const push = () =>
         this.pushFormSubmit(
