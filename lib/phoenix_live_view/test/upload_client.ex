@@ -83,7 +83,11 @@ defmodule Phoenix.LiveViewTest.UploadClient do
   end
 
   def handle_call(:channel_pids, _from, state) do
-    pids = Enum.into(state.entries, %{}, fn {name, entry} -> {name, entry.socket.channel_pid} end)
+    pids =
+      for {name, %{socket: %{channel_pid: pid}}} <- state.entries,
+          into: %{},
+          do: {name, pid}
+
     {:reply, pids, state}
   end
 
@@ -136,6 +140,10 @@ defmodule Phoenix.LiveViewTest.UploadClient do
 
     case Phoenix.ChannelTest.subscribe_and_join(state.socket, "lvu:123", %{"token" => token}) do
       {:ok, _resp, entry_socket} ->
+        channel_pid = entry_socket.channel_pid
+        Process.unlink(channel_pid)
+        Process.monitor(channel_pid)
+
         %{
           name: name,
           content: content,
@@ -301,7 +309,42 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     {:noreply, state}
   end
 
-  def handle_info({:socket_close, _pid, reason}, state) do
-    {:stop, reason, state}
+  def handle_info({:socket_close, pid, reason}, state) do
+    drop_closed_channel(state, pid, reason)
+  end
+
+  def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
+    drop_closed_channel(state, pid, reason)
+  end
+
+  defp drop_closed_channel(state, pid, reason) do
+    case entry_for_channel_pid(state.entries, pid) do
+      {name, _entry} ->
+        new_state = %{state | entries: Map.delete(state.entries, name)}
+
+        if has_channel_entries?(new_state.entries) do
+          {:noreply, new_state}
+        else
+          {:stop, reason, new_state}
+        end
+
+      nil ->
+        {:noreply, state}
+    end
+  end
+
+  # Entries rejected during preflight remain as {:error, reason} and have no channel pid.
+  defp entry_for_channel_pid(entries, pid) do
+    Enum.find(entries, fn
+      {_name, %{socket: %{channel_pid: channel_pid}}} -> channel_pid == pid
+      {_name, _entry} -> false
+    end)
+  end
+
+  defp has_channel_entries?(entries) do
+    Enum.any?(entries, fn
+      {_name, %{socket: %{channel_pid: _pid}}} -> true
+      {_name, _entry} -> false
+    end)
   end
 end
