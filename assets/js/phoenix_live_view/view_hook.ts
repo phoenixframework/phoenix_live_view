@@ -80,7 +80,8 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
   /**
    * Pushes an event to the server and invokes a callback with the server's reply.
    *
-   * **Note:** this version silently ignores push errors.
+   * **Note:** this version silently ignores push errors. Exceptions thrown by the
+   * callback are not ignored.
    * Use the {@link pushEvent | promise-returning version} to handle errors.
    *
    * @param event - The event name.
@@ -114,7 +115,8 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
    * If the selector matches multiple elements, the event is sent to all of them,
    * even if they belong to the same LiveComponent or LiveView.
    *
-   * **Note:** this version silently ignores push errors.
+   * **Note:** this version silently ignores push errors. Exceptions thrown by the
+   * callback are not ignored.
    * Use the {@link pushEventTo | promise-returning version} to handle errors.
    *
    * @param selectorOrTarget - The selector, element, or CID to target.
@@ -469,11 +471,11 @@ export class ViewHook<
     if (onReply === undefined) {
       return promise.then(({ reply }: { reply: any }) => reply);
     }
-    promise
-      .then(({ reply, ref }: { reply: any; ref: number }) =>
-        onReply(reply, ref),
-      )
-      .catch(() => {});
+    // Handle push failures separately so exceptions from onReply are not swallowed.
+    promise.then(
+      ({ reply, ref }: { reply: any; ref: number }) => onReply(reply, ref),
+      () => {},
+    );
   }
 
   pushEventTo(
@@ -514,12 +516,11 @@ export class ViewHook<
     this.__view().withinTargets(
       selectorOrTarget,
       (view: View, targetCtx: any) => {
-        view
-          .pushHookEvent(this.el, targetCtx, event, payload || {})
-          .then(({ reply, ref }: { reply: any; ref: number }) =>
-            onReply(reply, ref),
-          )
-          .catch(() => {});
+        // Handle push failures separately so exceptions from onReply are not swallowed.
+        view.pushHookEvent(this.el, targetCtx, event, payload || {}).then(
+          ({ reply, ref }: { reply: any; ref: number }) => onReply(reply, ref),
+          () => {},
+        );
       },
     );
   }

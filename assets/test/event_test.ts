@@ -1,9 +1,9 @@
 import { Socket } from "phoenix";
 import LiveSocket from "phoenix_live_view/live_socket";
 import View from "phoenix_live_view/view";
+import ViewHook, { HooksOptions } from "phoenix_live_view/view_hook";
 
 import { version as liveview_version } from "../../package.json";
-import { HooksOptions } from "phoenix_live_view/view_hook";
 
 let containerId = 0;
 
@@ -301,6 +301,43 @@ describe("pushEvent replies", () => {
       },
       [],
     );
+  });
+
+  test("does not swallow onReply exceptions", () => {
+    const error = new Error("onReply failed");
+    const then = jest.fn();
+    const view = {
+      pushHookEvent: () => ({ then }),
+    };
+    const hook = new ViewHook(view as any, document.createElement("div"));
+
+    hook.pushEvent("charge", {}, () => {
+      throw error;
+    });
+
+    const [onReply, onPushError] = then.mock.calls[0];
+    expect(onPushError).toEqual(expect.any(Function));
+    expect(() => onReply({ transactionID: "1001" }, 0)).toThrow(error);
+  });
+
+  test("does not swallow targeted onReply exceptions", () => {
+    const error = new Error("onReply failed");
+    const then = jest.fn();
+    const pushHookEvent = () => ({ then });
+    const targetView = { pushHookEvent };
+    const view = {
+      pushHookEvent,
+      withinTargets: (_selector, callback) => callback(targetView, null),
+    };
+    const hook = new ViewHook(view as any, document.createElement("div"));
+
+    hook.pushEventTo("#target", "charge", {}, () => {
+      throw error;
+    });
+
+    const [onReply, onPushError] = then.mock.calls[0];
+    expect(onPushError).toEqual(expect.any(Function));
+    expect(() => onReply({ transactionID: "1001" }, 0)).toThrow(error);
   });
 
   test("pushEventTo - promise with multiple targets", (done) => {
