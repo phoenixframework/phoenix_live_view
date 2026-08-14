@@ -1,4 +1,5 @@
 import Hooks from "phoenix_live_view/hooks";
+import LiveUploader from "phoenix_live_view/live_uploader";
 
 describe("LiveFileUpload", () => {
   afterEach(() => {
@@ -10,7 +11,8 @@ describe("LiveFileUpload", () => {
       <form>
         <input
           type="file"
-          data-phx-active-refs="0"
+          required
+          data-phx-active-refs=""
           data-phx-preflighted-refs=""
         >
       </form>
@@ -30,6 +32,93 @@ describe("LiveFileUpload", () => {
     Hooks.LiveFileUpload.updated!.call(ctx as any);
 
     expect(cancelSubmit).toHaveBeenCalledWith(input.form);
+    expect(input.required).toBe(false);
+  });
+
+  test("removes required while the upload has selected files", () => {
+    document.body.innerHTML = `
+      <form>
+        <input
+          type="file"
+          required
+          data-phx-active-refs="0"
+          data-phx-preflighted-refs=""
+        >
+      </form>
+    `;
+
+    const input = document.querySelector("input")!;
+    const ctx = {
+      ...Hooks.LiveFileUpload,
+      el: input,
+      js: () => ({ ignoreAttributes: jest.fn() }),
+    };
+
+    Hooks.LiveFileUpload.mounted!.call(ctx as any);
+
+    expect(input.required).toBe(false);
+
+    input.setAttribute("required", "");
+    input.setAttribute("data-phx-active-refs", "");
+    Hooks.LiveFileUpload.updated!.call(ctx as any);
+
+    expect(input.required).toBe(true);
+  });
+
+  test("leaves required in place when the upload has no selected files", () => {
+    document.body.innerHTML = `
+      <form>
+        <input
+          type="file"
+          required
+          data-phx-active-refs=""
+          data-phx-preflighted-refs=""
+        >
+      </form>
+    `;
+
+    const input = document.querySelector("input")!;
+    const ctx = {
+      ...Hooks.LiveFileUpload,
+      el: input,
+      js: () => ({ ignoreAttributes: jest.fn() }),
+    };
+
+    Hooks.LiveFileUpload.mounted!.call(ctx as any);
+
+    expect(input.required).toBe(true);
+  });
+
+  test("does not discard programmatically tracked files when removing required", () => {
+    document.body.innerHTML = `
+      <form>
+        <input
+          type="file"
+          name="documents"
+          multiple
+          required
+          data-phx-upload-ref="upload-ref"
+          data-phx-active-refs=""
+          data-phx-preflighted-refs=""
+        >
+      </form>
+    `;
+
+    const input = document.querySelector("input")!;
+    const ctx = {
+      ...Hooks.LiveFileUpload,
+      el: input,
+      js: () => ({ ignoreAttributes: jest.fn() }),
+    };
+
+    Hooks.LiveFileUpload.mounted!.call(ctx as any);
+    LiveUploader.trackFiles(input, [new File(["first"], "first.txt")]);
+    input.dispatchEvent(new Event("input"));
+
+    expect(input.required).toBe(false);
+    expect(LiveUploader.serializeUploads(input)).toMatchObject({
+      "upload-ref": [{ name: "first.txt" }],
+    });
   });
 });
 
