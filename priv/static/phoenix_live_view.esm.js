@@ -28,6 +28,7 @@ var PHX_TRACK_UPLOADS = "track-uploads";
 var PHX_UPLOAD_REF = "data-phx-upload-ref";
 var PHX_PREFLIGHTED_REFS = "data-phx-preflighted-refs";
 var PHX_DONE_REFS = "data-phx-done-refs";
+var PHX_ERROR_REFS = "data-phx-error-refs";
 var PHX_DROP_TARGET = "drop-target";
 var PHX_ACTIVE_ENTRY_REFS = "data-phx-active-refs";
 var PHX_LIVE_FILE_UPDATED = "phx:live-file:updated";
@@ -1179,6 +1180,11 @@ var LiveUploader = class _LiveUploader {
     });
     return active > 0;
   }
+  static hasUploadErrors(formEl) {
+    return dom_default.findUploadInputs(formEl).some(
+      (input) => (input.getAttribute(PHX_ERROR_REFS) || "") !== ""
+    );
+  }
   static serializeUploads(inputEl) {
     const files = this.activeFiles(inputEl);
     const fileData = {};
@@ -1555,12 +1561,23 @@ var LiveFileUpload = {
   preflightedRefs() {
     return this.el.getAttribute(PHX_PREFLIGHTED_REFS);
   },
+  errorRefs() {
+    return this.el.getAttribute(PHX_ERROR_REFS) || "";
+  },
   mounted() {
     this.js().ignoreAttributes(this.el, ["value"]);
     this.preflightedWas = this.preflightedRefs();
+    this.errorRefsWas = this.errorRefs();
   },
   updated() {
     const newPreflights = this.preflightedRefs();
+    const newErrorRefs = this.errorRefs();
+    if (this.errorRefsWas !== newErrorRefs) {
+      this.errorRefsWas = newErrorRefs;
+      if (newErrorRefs !== "") {
+        this.__view().cancelSubmit(this.el.form);
+      }
+    }
     if (this.preflightedWas !== newPreflights) {
       this.preflightedWas = newPreflights;
       if (newPreflights === "") {
@@ -6169,7 +6186,9 @@ var View = class _View {
     });
     dom_default.putPrivate(formEl, "submitter", submitter);
     const cid = this.targetComponentID(formEl, targetCtx);
-    if (LiveUploader.hasUploadsInProgress(formEl)) {
+    if (LiveUploader.hasUploadErrors(formEl)) {
+      return this.cancelSubmit(formEl, phxEvent);
+    } else if (LiveUploader.hasUploadsInProgress(formEl)) {
       const [ref, _els] = refGenerator();
       const push = () => this.pushFormSubmit(
         formEl,
