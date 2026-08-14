@@ -171,7 +171,7 @@ The above life-cycle callbacks have in-scope access to the following attributes:
   * `liveSocket` - the reference to the underlying `LiveSocket` instance
   * `pushEvent(event, payload, (reply, ref) => ...)` - method to push an event from the client to the LiveView server.
     Omitting the callback returns a promise that resolves to the `reply`.
-    **Note:** the callback version silently ignores errors.
+    **Note:** the callback version silently ignores push errors. Exceptions thrown by the callback are not ignored.
   * `pushEventTo(selectorOrTarget, event, payload, (reply, ref) => ...)` - method to push targeted events from the client
     to LiveViews and LiveComponents. The `selectorOrTarget` can be a DOM element (such as `this.el`) or a query
     selector string. The event is sent to the LiveComponent or LiveView owning the targeted element(s). If a selector
@@ -179,7 +179,7 @@ The above life-cycle callbacks have in-scope access to the following attributes:
     Omitting the callback returns a promise matching
     [`Promise.allSettled()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/allSettled#return_value),
     where fulfilled values are of the format `{ reply, ref }`.
-    **Note:** the callback version silently ignores errors.
+    **Note:** the callback version silently ignores push errors. Exceptions thrown by the callback are not ignored.
   * `handleEvent(event, (payload) => ...)` - method to handle an event pushed from the server. Returns a value that can be passed to `removeHandleEvent` to remove the event handler.
   * `removeHandleEvent(ref)` - method to remove an event handler added via `handleEvent`
   * `upload(name, files)` - method to inject a list of file-like objects into an uploader.
