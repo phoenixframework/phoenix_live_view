@@ -57,37 +57,44 @@ defmodule Phoenix.LiveView.UploadChannel do
     %{"token" => token} = auth_payload
 
     with {:ok, %{pid: pid, ref: ref, cid: cid}} <- Static.verify_token(socket.endpoint, token),
-         {:ok, config} <- Channel.register_upload(pid, ref, cid),
-         %{max_file_size: max_file_size, chunk_timeout: chunk_timeout} = config,
-         {writer, writer_opts} <- config.writer,
-         {:ok, writer_state} <- writer.init(writer_opts) do
-      Process.monitor(pid)
-      Process.flag(:trap_exit, true)
+         {:ok, config} <- Channel.register_upload(pid, ref, cid) do
+      %{max_file_size: max_file_size, chunk_timeout: chunk_timeout, writer: {writer, writer_opts}} =
+        config
 
-      socket =
-        assign(socket, %{
-          writer: writer,
-          writer_state: writer_state,
-          live_view_pid: pid,
-          max_file_size: max_file_size,
-          chunk_timeout: chunk_timeout,
-          chunk_timer: nil,
-          writer_closed?: false,
-          done?: false,
-          uploaded_size: 0
-        })
+      case writer.init(writer_opts) do
+        {:ok, writer_state} ->
+          Process.monitor(pid)
+          Process.flag(:trap_exit, true)
 
-      {:ok, socket}
+          socket =
+            assign(socket, %{
+              writer: writer,
+              writer_state: writer_state,
+              live_view_pid: pid,
+              max_file_size: max_file_size,
+              chunk_timeout: chunk_timeout,
+              chunk_timer: nil,
+              writer_closed?: false,
+              done?: false,
+              uploaded_size: 0
+            })
+
+          {:ok, socket}
+
+        {:error, reason} ->
+          # the entry is already registered with the LiveView at this point, so the
+          # failure must be reported just like a write_chunk/2 or close/2 failure,
+          # which retains the entry with a {:writer_failure, reason} error
+          Channel.report_writer_error(pid, reason)
+
+          {:error, %{reason: :writer_error}}
+      end
     else
-      {:error, reason} when reason in [:expired, :invalid] ->
+      {:error, reason} when reason in [:expired, :invalid, :outdated] ->
         {:error, %{reason: :invalid_token}}
 
       {:error, reason} when reason in [:already_registered, :disallowed] ->
         {:error, %{reason: reason}}
-
-      # writer init error
-      {:error, _reason} ->
-        {:error, %{reason: :writer_error}}
     end
   end
 
@@ -113,7 +120,7 @@ defmodule Phoenix.LiveView.UploadChannel do
               end
             end
 
-          Channel.report_writer_error(socket.assigns.live_view_pid, reason)
+          :ok = Channel.report_writer_error(socket.assigns.live_view_pid, reason)
 
           {:stop, {:shutdown, :closed}, {:error, %{reason: :writer_error}}, new_socket}
       end
