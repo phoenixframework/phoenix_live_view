@@ -1198,7 +1198,7 @@ defmodule Phoenix.Component do
 
   The output is a list. The following error may be returned:
 
-  * `:too_many_files` - The number of selected files exceeds the `:max_entries` constraint
+  * `:too_many_files` - The number of files exceeds the `:max_entries` constraint
 
   ## Examples
 

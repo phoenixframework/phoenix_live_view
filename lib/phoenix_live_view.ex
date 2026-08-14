@@ -883,8 +883,14 @@ defmodule Phoenix.LiveView do
       `:any` instead of a list to support to allow any kind of file.
       For example, `[".jpeg"]`, `:any`, etc.
 
-    * `:max_entries` - The maximum number of selected files to allow per
-      file input. Defaults to 1.
+    * `:max_entries` - The maximum number of files to allow. Defaults to 1.
+
+    * `:max_entries_mode` - Controls how `:max_entries` is counted. `:selected`
+      limits the entries currently selected by the file input, so consuming an
+      entry frees capacity for another. `:total` also counts entries that have
+      already been consumed for the lifetime of the upload configuration. Once
+      all entries have been consumed or cancelled, call `allow_upload/3` again
+      to reset a `:total` limit. Defaults to `:selected`.
 
     * `:max_file_size` - The maximum file size in bytes to allow to be uploaded.
       Defaults 8MB. For example, `12_000_000`.
