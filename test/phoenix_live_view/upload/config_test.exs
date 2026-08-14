@@ -339,6 +339,28 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       assert length(avatar.entries) == 1
     end
 
+    test "replaces retained entries after too_many_files for max_entries of 1" do
+      socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any, max_entries: 1)
+      config = socket.assigns.uploads.avatar
+
+      assert {:error, config} =
+               UploadConfig.put_entries(config, [
+                 build_client_entry(:avatar, %{"name" => "first.jpg"}),
+                 build_client_entry(:avatar, %{"name" => "second.jpg"})
+               ])
+
+      assert Enum.map(config.entries, & &1.client_name) == ["first.jpg", "second.jpg"]
+      assert config.errors == [{config.ref, :too_many_files}]
+
+      assert {:ok, config} =
+               UploadConfig.put_entries(config, [
+                 build_client_entry(:avatar, %{"name" => "replacement.jpg"})
+               ])
+
+      assert [%UploadEntry{client_name: "replacement.jpg"}] = config.entries
+      assert config.errors == []
+    end
+
     test "returns error when greater than max_entries are provided" do
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any)
 

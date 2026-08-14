@@ -594,10 +594,10 @@ defmodule Phoenix.LiveView.UploadConfig do
   end
 
   defp maybe_replace_sole_entry(%UploadConfig{max_entries: 1} = conf, new_entries) do
-    with [entry] <- conf.entries,
-         [new_entry] <- new_entries,
-         true <- entry.ref != Map.fetch!(new_entry, "ref") do
-      cancel_entry(conf, entry)
+    with [new_entry] <- new_entries,
+         new_ref = Map.fetch!(new_entry, "ref"),
+         nil <- get_entry_by_ref(conf, new_ref) do
+      Enum.reduce(conf.entries, conf, fn entry, conf -> cancel_entry(conf, entry) end)
     else
       _ -> conf
     end
