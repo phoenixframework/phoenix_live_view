@@ -469,11 +469,11 @@ export class ViewHook<
     if (onReply === undefined) {
       return promise.then(({ reply }: { reply: any }) => reply);
     }
-    promise
-      .then(({ reply, ref }: { reply: any; ref: number }) =>
-        onReply(reply, ref),
-      )
-      .catch(() => {});
+    // Handle push failures separately so exceptions from onReply are not swallowed.
+    promise.then(
+      ({ reply, ref }: { reply: any; ref: number }) => onReply(reply, ref),
+      () => {},
+    );
   }
 
   pushEventTo(
@@ -514,12 +514,11 @@ export class ViewHook<
     this.__view().withinTargets(
       selectorOrTarget,
       (view: View, targetCtx: any) => {
-        view
-          .pushHookEvent(this.el, targetCtx, event, payload || {})
-          .then(({ reply, ref }: { reply: any; ref: number }) =>
-            onReply(reply, ref),
-          )
-          .catch(() => {});
+        // Handle push failures separately so exceptions from onReply are not swallowed.
+        view.pushHookEvent(this.el, targetCtx, event, payload || {}).then(
+          ({ reply, ref }: { reply: any; ref: number }) => onReply(reply, ref),
+          () => {},
+        );
       },
     );
   }
