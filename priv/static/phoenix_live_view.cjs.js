@@ -1054,9 +1054,10 @@ var dom_default = DOM;
 // js/phoenix_live_view/upload_entry.js
 var UploadEntry = class {
   static isActive(fileEl, file) {
-    const isNew = file._phxRef === void 0;
+    const ref = file._phxRef;
+    const isNew = ref === void 0;
     const activeRefs = fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",");
-    const isActive = activeRefs.indexOf(LiveUploader.genFileRef(file)) >= 0;
+    const isActive = !isNew && activeRefs.indexOf(ref) >= 0;
     return file.size > 0 && (isNew || isActive);
   }
   static isPreflighted(fileEl, file) {
@@ -1595,10 +1596,20 @@ var LiveFileUpload = {
   errorRefs() {
     return this.el.getAttribute(PHX_ERROR_REFS) || "";
   },
+  hasSelectedFiles() {
+    return (this.el.files?.length || 0) > 0 || LiveUploader.activeFiles(this.el).length > 0 || this.activeRefs() !== "" || this.errorRefs() !== "";
+  },
+  maybeRemoveRequired() {
+    if (this.hasSelectedFiles()) {
+      this.el.removeAttribute("required");
+    }
+  },
   mounted() {
     this.js().ignoreAttributes(this.el, ["value"]);
     this.preflightedWas = this.preflightedRefs();
     this.errorRefsWas = this.errorRefs();
+    this.el.addEventListener("input", () => this.maybeRemoveRequired());
+    this.maybeRemoveRequired();
   },
   updated() {
     const newPreflights = this.preflightedRefs();
@@ -1618,6 +1629,7 @@ var LiveFileUpload = {
     if (this.activeRefs() === "") {
       this.el.value = "";
     }
+    this.maybeRemoveRequired();
     this.el.dispatchEvent(new CustomEvent(PHX_LIVE_FILE_UPDATED));
   }
 };
