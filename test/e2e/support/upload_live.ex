@@ -19,6 +19,16 @@ defmodule Phoenix.LiveViewTest.E2E.UploadLive do
     |> then(&{:noreply, &1})
   end
 
+  def handle_params(%{"mixed_upload" => _}, _uri, socket) do
+    socket
+    |> allow_upload(:avatar,
+      accept: ~w(.txt .md),
+      max_entries: 2,
+      external: &mixed_preflight/2
+    )
+    |> then(&{:noreply, &1})
+  end
+
   def handle_params(_params, _uri, socket) do
     {:noreply, socket}
   end
@@ -36,15 +46,41 @@ defmodule Phoenix.LiveViewTest.E2E.UploadLive do
   @impl Phoenix.LiveView
   def handle_event("save", _params, socket) do
     uploaded_files =
-      consume_uploaded_entries(socket, :avatar, fn %{path: path}, _entry ->
-        dir = Path.join([System.tmp_dir!(), "lvupload"])
-        _ = File.mkdir_p(dir)
-        dest = Path.join([dir, Path.basename(path)])
-        File.cp!(path, dest)
-        {:ok, "/tmp/lvupload/#{Path.basename(dest)}"}
+      consume_uploaded_entries(socket, :avatar, fn
+        %{uploader: "TestExternal", path: path}, entry ->
+          {:ok, %{href: path, name: entry.client_name, uploader: "external"}}
+
+        %{path: path}, entry ->
+          dir = Path.join([System.tmp_dir!(), "lvupload"])
+          _ = File.mkdir_p(dir)
+          dest = Path.join([dir, Path.basename(path)])
+          File.cp!(path, dest)
+
+          {:ok,
+           %{
+             href: "/tmp/lvupload/#{Path.basename(dest)}",
+             name: entry.client_name,
+             uploader: "default"
+           }}
       end)
 
     {:noreply, update(socket, :uploaded_files, &(&1 ++ uploaded_files))}
+  end
+
+  defp mixed_preflight(%{client_type: "text/plain"}, socket) do
+    {:ok, :default, socket}
+  end
+
+  defp mixed_preflight(%{client_type: "text/markdown"} = entry, socket) do
+    key = "#{System.unique_integer([:positive, :monotonic])}-#{Path.basename(entry.client_name)}"
+
+    {:ok,
+     %{
+       uploader: "TestExternal",
+       url: "/upload/external",
+       key: key,
+       path: "/tmp/lvupload/#{key}"
+     }, socket}
   end
 
   @impl Phoenix.LiveView
@@ -79,7 +115,9 @@ defmodule Phoenix.LiveViewTest.E2E.UploadLive do
       </section>
 
       <ul>
-        <li :for={file <- @uploaded_files}><a href={file}>{Path.basename(file)}</a></li>
+        <li :for={file <- @uploaded_files} data-uploader={file.uploader}>
+          <a href={file.href}>{file.name}</a>
+        </li>
       </ul>
     </form>
     """

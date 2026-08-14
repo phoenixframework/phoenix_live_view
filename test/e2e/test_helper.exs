@@ -57,12 +57,35 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
           this.pushEvent("ping", {}, () => (this.el.innerText += "pong"));
         },
       };
+      let Uploaders = {};
+      Uploaders.TestExternal = function (entries, onViewError) {
+        entries.forEach((entry) => {
+          let formData = new FormData();
+          formData.append("key", entry.meta.key);
+          formData.append("file", entry.file);
+
+          let xhr = new XMLHttpRequest();
+          onViewError(() => xhr.abort());
+          xhr.onload = () =>
+            xhr.status === 204 ? entry.progress(100) : entry.error();
+          xhr.onerror = () => entry.error();
+          xhr.upload.addEventListener("progress", (event) => {
+            if (event.lengthComputable) {
+              let percent = Math.round((event.loaded / event.total) * 100);
+              if (percent < 100) entry.progress(percent);
+            }
+          });
+          xhr.open("POST", entry.meta.url, true);
+          xhr.send(formData);
+        });
+      };
       let csrfToken = document
         .querySelector("meta[name='csrf-token']")
         .getAttribute("content");
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
         params: { _csrf_token: csrfToken },
         hooks: { ...Hooks, ...window.hooks, ...colocatedHooks },
+        uploaders: Uploaders,
       });
       liveSocket.connect();
       window.liveSocket = liveSocket;
@@ -119,6 +142,17 @@ defmodule Phoenix.LiveViewTest.E2E.SubmitController do
 
   def submit(conn, params) do
     send_resp(conn, 200, Phoenix.json_library().encode!(params))
+  end
+end
+
+defmodule Phoenix.LiveViewTest.E2E.UploadController do
+  use Phoenix.Controller, formats: []
+
+  def upload(conn, %{"file" => %Plug.Upload{path: path}, "key" => key}) do
+    dir = Path.join(System.tmp_dir!(), "lvupload")
+    File.mkdir_p!(dir)
+    File.cp!(path, Path.join(dir, Path.basename(key)))
+    send_resp(conn, 204, "")
   end
 end
 
@@ -278,6 +312,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
   end
 
   post "/eval", Phoenix.LiveViewTest.E2E.EvalController, :eval
+  post "/upload/external", Phoenix.LiveViewTest.E2E.UploadController, :upload
 end
 
 defmodule Phoenix.LiveViewTest.E2E.Endpoint do

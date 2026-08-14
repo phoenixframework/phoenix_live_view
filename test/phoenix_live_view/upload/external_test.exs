@@ -8,6 +8,11 @@ defmodule Phoenix.LiveView.UploadExternalTest do
   alias Phoenix.LiveView
   alias Phoenix.LiveViewTest.Support.UploadLive
 
+  setup_all do
+    start_supervised!(Phoenix.PubSub.child_spec(name: Phoenix.LiveView.PubSub))
+    :ok
+  end
+
   def inspect_html_safe(term) do
     term
     |> inspect()
@@ -65,6 +70,10 @@ defmodule Phoenix.LiveView.UploadExternalTest do
     {:ok, %{uploader: "S3"}, new_socket}
   end
 
+  def default_preflight(%LiveView.UploadEntry{}, socket) do
+    {:ok, :default, socket}
+  end
+
   def consume(%LiveView.UploadEntry{} = entry, socket) do
     if entry.done? do
       Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn _ -> {:ok, :ok} end)
@@ -108,6 +117,29 @@ defmodule Phoenix.LiveView.UploadExternalTest do
     assert render_upload(avatar, "foo1.jpeg", 1) =~ "foo1.jpeg:1%"
     assert render(lv) =~ "preflight:#{UploadLive.inspect_html_safe("foo1.jpeg")}"
     assert render(lv) =~ "preflight:#{UploadLive.inspect_html_safe("foo2.jpeg")}"
+  end
+
+  @tag allow: [max_entries: 1, chunk_size: 20, accept: :any, external: :default_preflight]
+  test "external upload can use the default uploader", %{lv: lv} do
+    content = String.duplicate("ok", 100)
+
+    avatar =
+      file_input(lv, "form", :avatar, [
+        %{name: "foo.jpeg", content: content}
+      ])
+
+    assert render_upload(avatar, "foo.jpeg") =~ "foo.jpeg:100%"
+
+    assert run(lv, fn socket ->
+             {[entry], []} = Phoenix.LiveView.uploaded_entries(socket, :avatar)
+
+             result =
+               Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn %{path: path} ->
+                 {:ok, File.read!(path)}
+               end)
+
+             {:reply, result, socket}
+           end) == content
   end
 
   @tag allow: [max_entries: 1, chunk_size: 20, accept: :any, external: :preflight]

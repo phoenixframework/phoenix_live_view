@@ -108,7 +108,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     end
   end
 
-  defp build_and_join_entry(%{socket: nil} = _state, client_entry, token) do
+  defp build_and_join_entry(_state, client_entry, token) when is_map(token) do
     %{
       "name" => name,
       "content" => content,
@@ -124,6 +124,8 @@ defmodule Phoenix.LiveViewTest.UploadClient do
       type: type,
       ref: ref,
       token: token,
+      # external uploads have a meta map as token
+      external: true,
       chunk_percent: 0
     }
     |> with_chunk_boundaries()
@@ -152,6 +154,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
           socket: entry_socket,
           ref: ref,
           token: token,
+          external: false,
           chunk_percent: 0
         }
         |> with_chunk_boundaries()
@@ -221,7 +224,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     end
   end
 
-  defp do_chunk(%{socket: nil, cid: cid} = state, from, entry, proxy_pid, element, percent) do
+  defp do_chunk(%{cid: cid} = state, from, %{external: true} = entry, proxy_pid, element, percent) do
     stats = progress_stats(entry, percent)
 
     :ok =
@@ -322,7 +325,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
       {name, _entry} ->
         new_state = %{state | entries: Map.delete(state.entries, name)}
 
-        if has_channel_entries?(new_state.entries) do
+        if has_upload_entries?(new_state.entries) do
           {:noreply, new_state}
         else
           {:stop, reason, new_state}
@@ -341,9 +344,10 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     end)
   end
 
-  defp has_channel_entries?(entries) do
+  defp has_upload_entries?(entries) do
     Enum.any?(entries, fn
       {_name, %{socket: %{channel_pid: _pid}}} -> true
+      {_name, %{socket: nil}} -> true
       {_name, _entry} -> false
     end)
   end
