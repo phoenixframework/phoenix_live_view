@@ -4464,9 +4464,10 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         return promise.then(({ reply }) => reply);
       }
       promise.then(
-        ({ reply, ref }) => onReply(reply, ref)
-      ).catch(() => {
-      });
+        ({ reply, ref }) => onReply(reply, ref),
+        () => {
+        }
+      );
     }
     pushEventTo(selectorOrTarget, event, payload, onReply) {
       if (onReply === void 0) {
@@ -4491,9 +4492,10 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         selectorOrTarget,
         (view, targetCtx) => {
           view.pushHookEvent(this.el, targetCtx, event, payload || {}).then(
-            ({ reply, ref }) => onReply(reply, ref)
-          ).catch(() => {
-          });
+            ({ reply, ref }) => onReply(reply, ref),
+            () => {
+            }
+          );
         }
       );
     }

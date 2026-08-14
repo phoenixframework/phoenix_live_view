@@ -4413,9 +4413,10 @@ var ViewHook = class _ViewHook {
       return promise.then(({ reply }) => reply);
     }
     promise.then(
-      ({ reply, ref }) => onReply(reply, ref)
-    ).catch(() => {
-    });
+      ({ reply, ref }) => onReply(reply, ref),
+      () => {
+      }
+    );
   }
   pushEventTo(selectorOrTarget, event, payload, onReply) {
     if (onReply === void 0) {
@@ -4440,9 +4441,10 @@ var ViewHook = class _ViewHook {
       selectorOrTarget,
       (view, targetCtx) => {
         view.pushHookEvent(this.el, targetCtx, event, payload || {}).then(
-          ({ reply, ref }) => onReply(reply, ref)
-        ).catch(() => {
-        });
+          ({ reply, ref }) => onReply(reply, ref),
+          () => {
+          }
+        );
       }
     );
   }
