@@ -7743,7 +7743,6 @@ var LiveSocket = class {
         return;
       }
       e.preventDefault();
-      e.target.disabled = true;
       this.withinOwners(e.target, (view) => {
         js_default.exec(e, "submit", phxEvent, view, e.target, [
           "push",
