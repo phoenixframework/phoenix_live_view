@@ -126,6 +126,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
       token: token,
       # external uploads have a meta map as token
       external: true,
+      socket: nil,
       chunk_percent: 0
     }
     |> with_chunk_boundaries()
