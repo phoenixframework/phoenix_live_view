@@ -1415,6 +1415,67 @@ describe("JS", () => {
       jest.runAllTimers();
       expect(document.activeElement).toBe(modal1);
     });
+
+    test("clears unmatched focus targets when their view is destroyed", () => {
+      const view = setupView(`
+      <div id="modal" tabindex="0">modal</div>
+      <div id="push" phx-click='[["push_focus", {"to": "#modal"}]]'></div>
+      `);
+      const push = document.querySelector("#push")!;
+      const dropFocus = jest.spyOn(JS, "dropFocus");
+
+      JS.exec(event, "click", push.getAttribute("phx-click"), view, push);
+      view.destroy();
+
+      expect(dropFocus).toHaveBeenCalledWith(view);
+      expect(dropFocus).toHaveReturnedWith(1);
+    });
+
+    test("does not pop focus targets from a destroyed view", () => {
+      const oldView = setupView(`
+      <div id="modal" tabindex="0">modal</div>
+      <div id="push" phx-click='[["push_focus", {"to": "#modal"}]]'></div>
+      `);
+      const oldModal = document.querySelector<HTMLElement>("#modal")!;
+      const oldPush = document.querySelector("#push")!;
+      const focus = jest.spyOn(oldModal, "focus");
+
+      JS.exec(
+        event,
+        "click",
+        oldPush.getAttribute("phx-click"),
+        oldView,
+        oldPush,
+      );
+      oldView.destroy();
+
+      const newView = setupView(`
+      <div id="new-modal" tabindex="0">new modal</div>
+      <div id="new-push" phx-click='[["push_focus", {"to": "#new-modal"}]]'></div>
+      <div id="pop" phx-click='[["pop_focus", {}]]'></div>
+      `);
+      const newModal = document.querySelector<HTMLElement>("#new-modal")!;
+      const newPush = document.querySelector("#new-push")!;
+      const pop = document.querySelector("#pop")!;
+      const newFocus = jest.spyOn(newModal, "focus");
+
+      JS.exec(
+        event,
+        "click",
+        newPush.getAttribute("phx-click"),
+        newView,
+        newPush,
+      );
+      JS.exec(event, "click", pop.getAttribute("phx-click"), newView, pop);
+      jest.runAllTimers();
+      expect(newFocus).toHaveBeenCalled();
+
+      newFocus.mockClear();
+      JS.exec(event, "click", pop.getAttribute("phx-click"), newView, pop);
+      jest.runAllTimers();
+      expect(focus).not.toHaveBeenCalled();
+      expect(newFocus).not.toHaveBeenCalled();
+    });
   });
 
   describe("exec_focus_first", () => {

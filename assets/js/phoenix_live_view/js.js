@@ -198,18 +198,30 @@ const JS = {
   },
 
   exec_push_focus(e, eventType, phxEvent, view, sourceEl, el) {
-    focusStack.push(el || sourceEl);
+    focusStack.push({ el: el || sourceEl, view });
   },
 
   exec_pop_focus(_e, _eventType, _phxEvent, _view, _sourceEl, _el) {
-    const el = focusStack.pop();
-    if (el) {
+    const focusEntry = focusStack.pop();
+    if (focusEntry) {
+      const { el } = focusEntry;
       el.focus();
       // if you wonder about the nested animation frames, see exec_focus
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => el.focus());
       });
     }
+  },
+
+  dropFocus(view) {
+    let dropped = 0;
+    for (let i = focusStack.length - 1; i >= 0; i--) {
+      if (focusStack[i].view === view) {
+        focusStack.splice(i, 1);
+        dropped++;
+      }
+    }
+    return dropped;
   },
 
   exec_add_class(
