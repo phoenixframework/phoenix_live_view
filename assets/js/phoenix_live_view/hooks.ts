@@ -138,6 +138,7 @@ const InfiniteScroll: Hook<
         });
       },
     );
+    this.throttles = [onTopOverrun, onFirstChildAtTop, onLastChildAtBottom];
 
     this.onScroll = (_e: Event) => {
       const scrollNow = scrollTop(this.scrollContainer);
@@ -202,6 +203,9 @@ const InfiniteScroll: Hook<
   },
 
   destroyed() {
+    this.throttles?.forEach((throttled) => throttled.cancel());
+    this.throttles = null;
+
     if (this.scrollContainer) {
       this.scrollContainer.removeEventListener("scroll", this.onScroll);
     } else {
@@ -211,20 +215,20 @@ const InfiniteScroll: Hook<
 
   throttle(interval, callback) {
     let lastCallAt = 0;
-    let timer;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-    return (...args) => {
+    const throttled = (...args) => {
       const now = Date.now();
       const remainingTime = interval - (now - lastCallAt);
 
       if (remainingTime <= 0 || remainingTime > interval) {
-        if (timer) {
+        if (timer !== null) {
           clearTimeout(timer);
           timer = null;
         }
         lastCallAt = now;
         callback(...args);
-      } else if (!timer) {
+      } else if (timer === null) {
         timer = setTimeout(() => {
           lastCallAt = Date.now();
           timer = null;
@@ -232,6 +236,15 @@ const InfiniteScroll: Hook<
         }, remainingTime);
       }
     };
+
+    throttled.cancel = () => {
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+
+    return throttled;
   },
 
   findOverrunTarget() {
