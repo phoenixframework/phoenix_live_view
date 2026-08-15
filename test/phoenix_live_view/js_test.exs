@@ -874,6 +874,10 @@ defmodule Phoenix.LiveView.JSTest do
       assert JS.hide(to: "#modal", time: 123) == %JS{
                ops: [["hide", %{time: 123, to: "#modal"}]]
              }
+
+      assert JS.hide(to: "#modal", time: 0) == %JS{
+               ops: [["hide", %{time: 0, to: "#modal"}]]
+             }
     end
 
     test "raises with unknown options" do

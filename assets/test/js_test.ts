@@ -244,6 +244,49 @@ describe("JS", () => {
   });
 
   describe("exec_toggle", () => {
+    test("preserves a zero-duration transition", () => {
+      const view = setupView(`
+      <div id="modal">modal</div>
+      <div id="click"></div>
+      `);
+      const _modal = simulateVisibility(document.querySelector("#modal"));
+      const click = document.querySelector("#click")!;
+
+      JS.exec(
+        event,
+        "click",
+        [
+          [
+            "hide",
+            { to: "#modal", transition: [["fade-out"], [], []], time: 0 },
+          ],
+        ],
+        view,
+        click,
+      );
+      JS.exec(
+        event,
+        "click",
+        [
+          [
+            "add_class",
+            {
+              to: "#modal",
+              names: ["hidden"],
+              transition: [["fade-in"], [], []],
+              time: 0,
+            },
+          ],
+        ],
+        view,
+        click,
+      );
+
+      expect(view.liveSocket["transitions"].size()).toBe(2);
+      jest.advanceTimersByTime(0);
+      expect(view.liveSocket["transitions"].size()).toBe(0);
+    });
+
     test("with defaults", (done) => {
       const view = setupView(`
       <div id="modal">modal</div>
