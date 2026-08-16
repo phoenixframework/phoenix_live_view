@@ -305,7 +305,7 @@ export default class DOMPatch {
 
           // data-phx-runtime-hook
           if (el.nodeName === "SCRIPT" && el.hasAttribute(PHX_RUNTIME_HOOK)) {
-            this.handleRuntimeHook(el as HTMLScriptElement, source);
+            el = this.handleRuntimeHook(el as HTMLScriptElement, source);
           }
 
           added.push(el);
@@ -930,5 +930,6 @@ export default class DOMPatch {
       script.nonce = nonce;
     }
     el.replaceWith(script);
+    return script;
   }
 }
