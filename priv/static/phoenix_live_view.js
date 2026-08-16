@@ -2619,7 +2619,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
               this.trackAfterPhxChildAdded(el);
             }
             if (el.nodeName === "SCRIPT" && el.hasAttribute(PHX_RUNTIME_HOOK)) {
-              this.handleRuntimeHook(el, source);
+              el = this.handleRuntimeHook(el, source);
             }
             added.push(el);
           },
@@ -3074,6 +3074,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         script.nonce = nonce;
       }
       el.replaceWith(script);
+      return script;
     }
   };
 
@@ -3969,7 +3970,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       }
     },
     toggle(eventType, view, el, display, ins, outs, time, blocking) {
-      time = time || default_transition_time;
+      time = time == null ? default_transition_time : time;
       const [inClasses, inStartClasses, inEndClasses] = ins || [[], [], []];
       const [outClasses, outStartClasses, outEndClasses] = outs || [[], [], []];
       if (inClasses.length > 0 || outClasses.length > 0) {
@@ -4099,7 +4100,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       }
     },
     addOrRemoveClasses(el, adds, removes, transition, time, view, blocking) {
-      time = time || default_transition_time;
+      time = time == null ? default_transition_time : time;
       const [transitionRun, transitionStart, transitionEnd] = transition || [
         [],
         [],
