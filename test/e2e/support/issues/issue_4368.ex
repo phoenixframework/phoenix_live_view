@@ -12,6 +12,12 @@ defmodule Phoenix.LiveViewTest.E2E.Issue4368Live do
 
     @impl true
     def write_chunk("error", name), do: {:error, :invalid_pdf, name}
+
+    def write_chunk("delay", name) do
+      Process.sleep(500)
+      {:ok, name}
+    end
+
     def write_chunk(_chunk, name), do: {:ok, name}
 
     @impl true
