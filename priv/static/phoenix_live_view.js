@@ -1515,6 +1515,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           });
         }
       );
+      this.throttles = [onTopOverrun, onFirstChildAtTop, onLastChildAtBottom];
       this.onScroll = (_e) => {
         const scrollNow = scrollTop(this.scrollContainer);
         if (pendingOp) {
@@ -1558,6 +1559,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       }
     },
     destroyed() {
+      var _a;
+      (_a = this.throttles) == null ? void 0 : _a.forEach((throttled) => throttled.cancel());
+      this.throttles = null;
       if (this.scrollContainer) {
         this.scrollContainer.removeEventListener("scroll", this.onScroll);
       } else {
@@ -1566,18 +1570,18 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     },
     throttle(interval, callback) {
       let lastCallAt = 0;
-      let timer;
-      return (...args) => {
+      let timer = null;
+      const throttled = (...args) => {
         const now = Date.now();
         const remainingTime = interval - (now - lastCallAt);
         if (remainingTime <= 0 || remainingTime > interval) {
-          if (timer) {
+          if (timer !== null) {
             clearTimeout(timer);
             timer = null;
           }
           lastCallAt = now;
           callback(...args);
-        } else if (!timer) {
+        } else if (timer === null) {
           timer = setTimeout(() => {
             lastCallAt = Date.now();
             timer = null;
@@ -1585,6 +1589,13 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           }, remainingTime);
         }
       };
+      throttled.cancel = () => {
+        if (timer !== null) {
+          clearTimeout(timer);
+          timer = null;
+        }
+      };
+      return throttled;
     },
     findOverrunTarget() {
       let rect;
