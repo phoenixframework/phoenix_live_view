@@ -17,6 +17,9 @@ export default class EntryUploader {
     if (this.errored) {
       return;
     }
+    // A scheduled submit locks the upload input, so cancel it directly instead
+    // of waiting for the input hook to observe the error diff.
+    this.entry.view.cancelSubmit(this.entry.fileEl.form);
     this.uploadChannel.leave();
     this.errored = true;
     this.chunkTimer != null && clearTimeout(this.chunkTimer);
