@@ -191,6 +191,7 @@ var LiveView = (() => {
       if (this.errored) {
         return;
       }
+      this.entry.view.cancelSubmit(this.entry.fileEl.form);
       this.uploadChannel.leave();
       this.errored = true;
       this.chunkTimer != null && clearTimeout(this.chunkTimer);
