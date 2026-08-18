@@ -259,6 +259,7 @@ export default class View {
   }
 
   destroy(callback = function () {}) {
+    JS.dropFocus(this);
     this.destroyAllChildren();
     this.destroyPortalElements();
     this.destroyed = true;
