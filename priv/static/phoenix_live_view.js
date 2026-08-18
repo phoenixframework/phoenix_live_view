@@ -5564,6 +5564,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
             }
           );
           this.destroy();
+          return;
         }
         const trueChildEl = dom_default.byId(this.el.id);
         if (trueChildEl) {

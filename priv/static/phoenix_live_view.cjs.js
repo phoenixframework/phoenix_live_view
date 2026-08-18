@@ -5538,6 +5538,7 @@ var View = class _View {
           }
         );
         this.destroy();
+        return;
       }
       const trueChildEl = dom_default.byId(this.el.id);
       if (trueChildEl) {
