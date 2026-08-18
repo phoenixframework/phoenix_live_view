@@ -1501,6 +1501,7 @@ export default class View {
           });
         },
         timeout: () => {
+          onLoadingDone();
           resolve({
             type: "error",
             error: "push timeout",

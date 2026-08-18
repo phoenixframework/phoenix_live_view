@@ -228,6 +228,42 @@ describe("View + DOM", function () {
     window.removeEventListener("phx:page-loading-stop", pageLoadingListener);
   });
 
+  test("pushWithReply stops page loading when a push times out", async function () {
+    liveSocket = new LiveSocket("/live", Socket);
+    const el = liveViewDOM();
+    const view = simulateJoinedView(el, liveSocket);
+    const events: string[] = [];
+    const pageLoadingListener = (event: Event) => events.push(event.type);
+    window.addEventListener("phx:page-loading-start", pageLoadingListener);
+    window.addEventListener("phx:page-loading-stop", pageLoadingListener);
+    const reloadWithJitter = jest
+      .spyOn(liveSocket, "reloadWithJitter")
+      .mockImplementation(() => {});
+
+    const push = {
+      receives: [] as [string, () => void][],
+      receive(status: string, callback: () => void) {
+        this.receives.push([status, callback]);
+        return this;
+      },
+    };
+    (view["channel"] as any).push = () => push;
+
+    const result = view.pushWithReply(
+      () => [null, [el], { page_loading: true }],
+      "event",
+      { event: "save" },
+    );
+    push.receives.find(([status]) => status === "timeout")![1]();
+
+    await expect(result).resolves.toMatchObject({ type: "error" });
+    expect(events).toEqual(["phx:page-loading-start", "phx:page-loading-stop"]);
+    expect(reloadWithJitter).toHaveBeenCalledWith(view, expect.any(Function));
+
+    window.removeEventListener("phx:page-loading-start", pageLoadingListener);
+    window.removeEventListener("phx:page-loading-stop", pageLoadingListener);
+  });
+
   test("pushEvent", function () {
     expect.assertions(3);
 
