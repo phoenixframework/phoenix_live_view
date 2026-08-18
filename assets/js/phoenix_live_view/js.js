@@ -198,10 +198,16 @@ const JS = {
   },
 
   exec_push_focus(e, eventType, phxEvent, view, sourceEl, el) {
+    if (view.isDestroyed()) {
+      return;
+    }
     focusStack.push({ el: el || sourceEl, view });
   },
 
-  exec_pop_focus(_e, _eventType, _phxEvent, _view, _sourceEl, _el) {
+  exec_pop_focus(_e, _eventType, _phxEvent, view, _sourceEl, _el) {
+    if (view.isDestroyed()) {
+      return;
+    }
     const focusEntry = focusStack.pop();
     if (focusEntry) {
       const { el } = focusEntry;

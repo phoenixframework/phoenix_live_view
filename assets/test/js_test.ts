@@ -1429,9 +1429,10 @@ describe("JS", () => {
 
       expect(dropFocus).toHaveBeenCalledWith(view);
       expect(dropFocus).toHaveReturnedWith(1);
+      dropFocus.mockRestore();
     });
 
-    test("does not pop focus targets from a destroyed view", () => {
+    test("does not pop focus targets owned by a destroyed view", () => {
       const oldView = setupView(`
       <div id="modal" tabindex="0">modal</div>
       <div id="push" phx-click='[["push_focus", {"to": "#modal"}]]'></div>
@@ -1475,6 +1476,85 @@ describe("JS", () => {
       jest.runAllTimers();
       expect(focus).not.toHaveBeenCalled();
       expect(newFocus).not.toHaveBeenCalled();
+    });
+
+    test("does not push focus after the view is destroyed", () => {
+      const oldView = setupView(`
+      <div id="old-modal" tabindex="0">old modal</div>
+      <div id="old-push" phx-remove='[["push_focus", {"to": "#old-modal"}]]'></div>
+      `);
+      const oldModal = document.querySelector<HTMLElement>("#old-modal")!;
+      const oldPush = document.querySelector("#old-push")!;
+      const oldFocus = jest.spyOn(oldModal, "focus");
+
+      oldView.destroy();
+      JS.exec(
+        event,
+        "remove",
+        oldPush.getAttribute("phx-remove"),
+        oldView,
+        oldPush,
+      );
+
+      const newView = setupView(`
+      <div id="new-pop" phx-click='[["pop_focus", {}]]'></div>
+      `);
+      const newPop = document.querySelector("#new-pop")!;
+
+      JS.exec(
+        event,
+        "click",
+        newPop.getAttribute("phx-click"),
+        newView,
+        newPop,
+      );
+      jest.runAllTimers();
+      expect(oldFocus).not.toHaveBeenCalled();
+    });
+
+    test("does not pop focus after the view is destroyed", () => {
+      const oldView = setupView(`
+      <div id="old-pop" phx-remove='[["pop_focus", {}]]'></div>
+      `);
+      const oldPop = document.querySelector("#old-pop")!;
+      oldView.destroy();
+
+      const newView = setupView(`
+      <div id="new-modal" tabindex="0">new modal</div>
+      <div id="new-push" phx-click='[["push_focus", {"to": "#new-modal"}]]'></div>
+      <div id="new-pop" phx-click='[["pop_focus", {}]]'></div>
+      `);
+      const newModal = document.querySelector<HTMLElement>("#new-modal")!;
+      const newPush = document.querySelector("#new-push")!;
+      const newPop = document.querySelector("#new-pop")!;
+      const newFocus = jest.spyOn(newModal, "focus");
+
+      JS.exec(
+        event,
+        "click",
+        newPush.getAttribute("phx-click"),
+        newView,
+        newPush,
+      );
+      JS.exec(
+        event,
+        "remove",
+        oldPop.getAttribute("phx-remove"),
+        oldView,
+        oldPop,
+      );
+      jest.runAllTimers();
+      expect(newFocus).not.toHaveBeenCalled();
+
+      JS.exec(
+        event,
+        "click",
+        newPop.getAttribute("phx-click"),
+        newView,
+        newPop,
+      );
+      jest.runAllTimers();
+      expect(newFocus).toHaveBeenCalled();
     });
   });
 
