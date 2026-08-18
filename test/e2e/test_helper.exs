@@ -78,6 +78,10 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
         params: { _csrf_token: csrfToken },
         hooks: { ...Hooks, ...window.hooks, ...colocatedHooks },
         uploaders: Uploaders,
+        cascadePhxRemoveOnNavigation:
+          new URLSearchParams(window.location.search).get(
+            "cascadePhxRemoveOnNavigation",
+          ) !== "false",
       });
       liveSocket.connect();
       window.liveSocket = liveSocket;
@@ -196,6 +200,11 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3083", Issue3083Live
       live "/3107", Issue3107Live
       live "/3117", Issue3117Live
+
+      live "/3199", Issue3199Live,
+        container: {:div, [{:"phx-remove", Phoenix.LiveViewTest.E2E.Issue3199Live.remove_view()}]}
+
+      live "/3199/away", Issue3199Live.Away
       live "/3200/messages", Issue3200.PanelLive, :messages_tab
       live "/3200/settings", Issue3200.PanelLive, :settings_tab
       live "/3194", Issue3194Live

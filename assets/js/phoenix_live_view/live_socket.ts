@@ -190,6 +190,14 @@ export interface LiveSocketOptions {
    * Defaults to `false`.
    */
   blockPhxChangeWhileComposing?: boolean;
+  /**
+   * Whether `phx-remove` commands on descendants of the outgoing main LiveView
+   * are executed during live navigation. When set to `false`, only a
+   * `phx-remove` command on the LiveView's own container is executed.
+   *
+   * Defaults to `true`.
+   */
+  cascadePhxRemoveOnNavigation?: boolean;
   /** DOM callbacks. */
   dom?: {
     /**
@@ -280,6 +288,7 @@ export default class LiveSocket {
   private boundTopLevelEvents: boolean;
   private boundEventNames: Set<string>;
   private blockPhxChangeWhileComposing: boolean;
+  private cascadePhxRemoveOnNavigation: boolean;
   private serverCloseRef: string | null;
   /** @internal */
   domCallbacks: {
@@ -383,6 +392,9 @@ export default class LiveSocket {
     this.boundEventNames = new Set();
     this.blockPhxChangeWhileComposing =
       opts.blockPhxChangeWhileComposing || false;
+    // TODO: Default to false in LiveView 2.0.
+    this.cascadePhxRemoveOnNavigation =
+      opts.cascadePhxRemoveOnNavigation ?? true;
     this.serverCloseRef = null;
     this.domCallbacks = Object.assign(
       {
@@ -922,10 +934,10 @@ export default class LiveSocket {
     this.outgoingMainEl = this.outgoingMainEl || this.main!.el;
 
     const stickies = DOM.findPhxSticky(document) || [];
-    const removeEls = DOM.all(
+    const removeEls = this.phxRemoveElementsForNavigation(
       this.outgoingMainEl!,
-      `[${this.binding("remove")}]`,
-    ).filter((el) => !DOM.isChildOfAny(el, stickies));
+      stickies,
+    );
 
     const newMainEl = DOM.cloneNode(this.outgoingMainEl, "");
     const oldMainView = this.main;
@@ -940,8 +952,14 @@ export default class LiveSocket {
     this.main.join((joinCount, onDone) => {
       if (joinCount === 1 && this.commitPendingLink(linkRef)) {
         this.requestDOMUpdate(() => {
-          // remove phx-remove els right before we replace the main element
-          removeEls.forEach((el) => el.remove());
+          // Remove descendant phx-remove elements right before we replace the
+          // main element. The outgoing main itself must remain connected so
+          // replaceWith below can swap in the new main element.
+          removeEls.forEach((el) => {
+            if (!el.isSameNode(this.outgoingMainEl)) {
+              el.remove();
+            }
+          });
           stickies.forEach((el) => newMainEl.appendChild(el));
           this.outgoingMainEl!.replaceWith(newMainEl);
           this.outgoingMainEl = null;
@@ -950,6 +968,20 @@ export default class LiveSocket {
         });
       }
     });
+  }
+
+  private phxRemoveElementsForNavigation(
+    mainEl: Element,
+    stickies = DOM.findPhxSticky(document) || [],
+  ) {
+    const removeSelector = `[${this.binding("remove")}]`;
+    const removeEls = this.cascadePhxRemoveOnNavigation
+      ? [mainEl, ...DOM.all(mainEl, removeSelector)]
+      : [mainEl];
+
+    return removeEls.filter(
+      (el) => el.matches(removeSelector) && !DOM.isChildOfAny(el, stickies),
+    );
   }
 
   /** @internal */

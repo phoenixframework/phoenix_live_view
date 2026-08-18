@@ -62,6 +62,28 @@ describe("LiveSocket", () => {
     expect(liveSocket.unloaded).toBe(false);
     expect(liveSocket.bindingPrefix).toBe("phx-");
     expect(liveSocket.prevActive).toBe(null);
+    expect(liveSocket.cascadePhxRemoveOnNavigation).toBe(true);
+  });
+
+  test("selects phx-remove elements for live navigation", () => {
+    const mainEl = container(1)!;
+    mainEl.setAttribute("phx-remove", "[]");
+    mainEl.innerHTML = `
+      <div id="remove-child" phx-remove="[]"></div>
+      <div id="keep-child"></div>
+    `;
+
+    liveSocket = new LiveSocket("/live", Socket);
+    expect(
+      liveSocket.phxRemoveElementsForNavigation(mainEl).map((el) => el.id),
+    ).toEqual(["container1", "remove-child"]);
+
+    liveSocket = new LiveSocket("/live", Socket, {
+      cascadePhxRemoveOnNavigation: false,
+    });
+    expect(
+      liveSocket.phxRemoveElementsForNavigation(mainEl).map((el) => el.id),
+    ).toEqual(["container1"]);
   });
 
   test("viewLogger", async () => {
