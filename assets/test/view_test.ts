@@ -194,6 +194,40 @@ describe("View + DOM", function () {
     expect(view.el.querySelector("form")).toBeTruthy();
   });
 
+  test("pushWithReply stops page loading when a push errors", async function () {
+    liveSocket = new LiveSocket("/live", Socket);
+    const el = liveViewDOM();
+    const view = simulateJoinedView(el, liveSocket);
+    const events: string[] = [];
+    const pageLoadingListener = (event: Event) => events.push(event.type);
+    window.addEventListener("phx:page-loading-start", pageLoadingListener);
+    window.addEventListener("phx:page-loading-stop", pageLoadingListener);
+
+    const push = {
+      receives: [] as [string, (reason: { reason: string }) => void][],
+      receive(status: string, callback: (reason: { reason: string }) => void) {
+        this.receives.push([status, callback]);
+        return this;
+      },
+    };
+    (view["channel"] as any).push = () => push;
+
+    const result = view.pushWithReply(
+      () => [null, [el], { page_loading: true }],
+      "event",
+      { event: "save" },
+    );
+    push.receives.find(([status]) => status === "error")![1]({
+      reason: "invalid",
+    });
+
+    await expect(result).resolves.toMatchObject({ type: "error" });
+    expect(events).toEqual(["phx:page-loading-start", "phx:page-loading-stop"]);
+
+    window.removeEventListener("phx:page-loading-start", pageLoadingListener);
+    window.removeEventListener("phx:page-loading-stop", pageLoadingListener);
+  });
+
   test("pushEvent", function () {
     expect.assertions(3);
 

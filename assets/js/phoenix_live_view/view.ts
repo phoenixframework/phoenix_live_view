@@ -1491,6 +1491,7 @@ export default class View {
           }
         },
         error: (reason) => {
+          onLoadingDone();
           resolve({
             type: "error",
             error: `failed with reason: ${JSON.stringify(reason)}`,
