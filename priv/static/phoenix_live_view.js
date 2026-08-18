@@ -5138,7 +5138,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       const template = document.createElement("template");
       template.innerHTML = html;
       if (!template.content.firstElementChild) {
-        return;
+        return callback();
       }
       dom_default.all(template.content, `[${PHX_PORTAL}]`).forEach((portalTemplate) => {
         var _a2;

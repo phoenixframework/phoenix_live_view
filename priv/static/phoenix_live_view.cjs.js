@@ -5114,7 +5114,7 @@ var View = class _View {
     const template = document.createElement("template");
     template.innerHTML = html;
     if (!template.content.firstElementChild) {
-      return;
+      return callback();
     }
     dom_default.all(template.content, `[${PHX_PORTAL}]`).forEach((portalTemplate) => {
       if (!(portalTemplate instanceof HTMLTemplateElement)) {
