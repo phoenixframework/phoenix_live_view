@@ -474,6 +474,16 @@ describe("View + DOM", function () {
     );
   });
 
+  test("maybeRecoverForms completes when the join HTML has no element", function () {
+    liveSocket = new LiveSocket("/live", Socket);
+    const view = new View(liveViewDOM(), liveSocket, null, null, null);
+    const callback = jest.fn();
+
+    view.maybeRecoverForms("", callback);
+
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
   describe("submitForm", function () {
     test("submits payload", function () {
       expect.assertions(3);
