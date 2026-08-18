@@ -1152,6 +1152,7 @@ defmodule Phoenix.LiveView.Diff do
     |> configure_socket_for_component(assigns, %{
       conn_session: parent_private[:conn_session],
       root_view: parent_private[:root_view],
+      live_session_name: parent_private[:live_session_name],
       live_temp: %{},
       children_cids: [],
       lifecycle: %Phoenix.LiveView.Lifecycle{}

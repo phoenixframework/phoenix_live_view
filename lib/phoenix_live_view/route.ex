@@ -49,6 +49,36 @@ defmodule Phoenix.LiveView.Route do
   end
 
   @doc """
+  Returns the navigation type for the given socket and path.
+  """
+  def navigation_type(
+        %Socket{
+          endpoint: endpoint,
+          router: router,
+          view: current_view,
+          host_uri: %URI{} = host_uri,
+          private: %{live_session_name: current_session}
+        },
+        path
+      )
+      when is_binary(path) do
+    uri = URI.merge(host_uri, path)
+
+    case live_link_info_without_checks(endpoint, router, uri) do
+      {:internal, %Route{view: ^current_view, live_session: %{name: ^current_session}}} ->
+        :patch
+
+      {:internal, %Route{live_session: %{name: ^current_session}}} ->
+        :navigate
+
+      _ ->
+        :href
+    end
+  end
+
+  def navigation_type(%Socket{}, path) when is_binary(path), do: :href
+
+  @doc """
   Returns the internal or external matched LiveView route info for the given uri.
   """
   def live_link_info_without_checks(endpoint, router, uri) when is_binary(uri) do
