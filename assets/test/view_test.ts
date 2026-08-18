@@ -12,6 +12,7 @@ import {
   PHX_ERROR_CLASS,
   PHX_SERVER_ERROR_CLASS,
   PHX_HAS_FOCUSED,
+  MAX_CHILD_JOIN_ATTEMPTS,
 } from "phoenix_live_view/constants";
 
 import {
@@ -1318,6 +1319,35 @@ describe("View", function () {
       metadata: { error },
       attribution: "network",
     });
+  });
+
+  test("stops processing after exhausting child join attempts", () => {
+    jest.useFakeTimers();
+    liveSocket = new LiveSocket("/live", Socket);
+    const root = simulateJoinedView(liveViewDOM(), liveSocket);
+    const childEl = document.createElement("div");
+    childEl.id = "child";
+    childEl.setAttribute("data-phx-parent-id", root.id);
+    childEl.setAttribute("data-phx-session", "abc123");
+    childEl.setAttribute("data-phx-static", "");
+    root.el.appendChild(childEl);
+
+    const child = new View(childEl, liveSocket, root, null, null);
+    root["children"]![root.id][child.id] = child;
+    stubChannel(child);
+    child["joinAttempts"] = MAX_CHILD_JOIN_ATTEMPTS;
+    const destroySpy = jest.spyOn(child, "destroy");
+    const displayErrorSpy = jest.spyOn(child, "displayError");
+
+    child.onJoinError({ reason: "error" });
+
+    expect(destroySpy).toHaveBeenCalledTimes(1);
+    expect(displayErrorSpy).not.toHaveBeenCalled();
+    expect(child.isDestroyed()).toBe(true);
+    expect(child["disconnectedTimer"]).toBeNull();
+
+    jest.clearAllTimers();
+    jest.useRealTimers();
   });
 
   test("sends _track_static and _mounts on params", () => {

@@ -1327,6 +1327,7 @@ export default class View {
           },
         );
         this.destroy();
+        return;
       }
       const trueChildEl = DOM.byId(this.el.id);
       if (trueChildEl) {
