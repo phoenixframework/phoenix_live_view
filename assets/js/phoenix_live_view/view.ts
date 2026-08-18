@@ -784,7 +784,7 @@ export default class View {
     template.innerHTML = html;
 
     if (!template.content.firstElementChild) {
-      return;
+      return callback();
     }
 
     // we special case <.portal> here and teleport it into our temporary DOM for recovery
