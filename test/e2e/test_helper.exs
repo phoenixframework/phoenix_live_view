@@ -57,12 +57,27 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
           this.pushEvent("ping", {}, () => (this.el.innerText += "pong"));
         },
       };
+      let Uploaders = {};
+      Uploaders.TestExternal = function (entries) {
+        entries.forEach((entry) => {
+          document.documentElement.dataset.externalUploadStarted = entry.ref;
+
+          let upload = {
+            abort() {
+              document.documentElement.dataset.externalUploadAborted = entry.ref;
+            },
+          };
+
+          entry.onCancel(() => upload.abort());
+        });
+      };
       let csrfToken = document
         .querySelector("meta[name='csrf-token']")
         .getAttribute("content");
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
         params: { _csrf_token: csrfToken },
         hooks: { ...Hooks, ...window.hooks, ...colocatedHooks },
+        uploaders: Uploaders,
       });
       liveSocket.connect();
       window.liveSocket = liveSocket;

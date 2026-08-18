@@ -19,6 +19,19 @@ defmodule Phoenix.LiveViewTest.E2E.UploadLive do
     |> then(&{:noreply, &1})
   end
 
+  def handle_params(%{"external_upload" => _}, _uri, socket) do
+    socket
+    |> allow_upload(:avatar,
+      accept: ~w(.txt .md),
+      max_entries: 2,
+      auto_upload: true,
+      external: fn _entry, socket ->
+        {:ok, %{uploader: "TestExternal"}, socket}
+      end
+    )
+    |> then(&{:noreply, &1})
+  end
+
   def handle_params(_params, _uri, socket) do
     {:noreply, socket}
   end

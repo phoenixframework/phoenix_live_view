@@ -44,6 +44,7 @@ export default class UploadEntry {
     this._isDone = false;
     this._progress = 0;
     this._lastProgressSent = -1;
+    this._onCancel = function () {};
     this._onDone = function () {};
     this._onElUpdated = this.onElUpdated.bind(this);
     this.fileEl.addEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
@@ -80,7 +81,11 @@ export default class UploadEntry {
     this.file._preflightInProgress = false;
     this._isCancelled = true;
     this._isDone = true;
-    this._onDone();
+    try {
+      this._onCancel();
+    } finally {
+      this._onDone();
+    }
   }
 
   isDone() {
@@ -97,6 +102,14 @@ export default class UploadEntry {
 
   isAutoUpload() {
     return this.autoUpload;
+  }
+
+  onCancel(callback) {
+    if (this.isCancelled()) {
+      callback();
+    } else {
+      this._onCancel = callback;
+    }
   }
 
   //private

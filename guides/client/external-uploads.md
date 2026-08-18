@@ -84,6 +84,9 @@ Uploaders.UpChunk = function(entries, onViewError){
     // stop uploading in the event of a view error
     onViewError(() => upload.pause())
 
+    // abort the upload if the user cancels it
+    entry.onCancel(() => upload.abort())
+
     // upload error triggers LiveView error
     upload.on("error", (e) => entry.error(e.detail.message))
 
@@ -206,6 +209,7 @@ Uploaders.S3 = function(entries, onViewError){
     formData.append("file", entry.file)
     let xhr = new XMLHttpRequest()
     onViewError(() => xhr.abort())
+    entry.onCancel(() => xhr.abort())
     xhr.onload = () => xhr.status === 204 ? entry.progress(100) : entry.error()
     xhr.onerror = () => entry.error()
     xhr.upload.addEventListener("progress", (event) => {
@@ -284,6 +288,7 @@ Uploaders.S3 = function (entries, onViewError) {
   entries.forEach(entry => {
     let xhr = new XMLHttpRequest()
     onViewError(() => xhr.abort())
+    entry.onCancel(() => xhr.abort())
     xhr.onload = () => xhr.status === 200 ? entry.progress(100) : entry.error()
     xhr.onerror = () => entry.error()
 
