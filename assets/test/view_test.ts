@@ -1554,7 +1554,7 @@ describe("View Hooks", function () {
       liveview_version,
     });
     expect(mounted).toBe(false);
-    expect(Object.keys(view.viewHooks)).toHaveLength(0);
+    expect(Object.keys(view["viewHooks"])).toHaveLength(0);
 
     // update: element gains phx-hook attribute dynamically
     view.update(
@@ -1565,7 +1565,7 @@ describe("View Hooks", function () {
       [],
     );
     expect(mounted).toBe(true);
-    expect(Object.keys(view.viewHooks)).toHaveLength(1);
+    expect(Object.keys(view["viewHooks"])).toHaveLength(1);
     // mounted, not updated — this is the first time the hook is attached
     expect(updated).toBe(false);
   });
@@ -1609,7 +1609,7 @@ describe("View Hooks", function () {
     expect(dynMounted).toBe(true);
     expect(dynDestroyed).toBe(false);
     expect(otherMounted).toBe(false);
-    expect(Object.keys(view.viewHooks)).toHaveLength(1);
+    expect(Object.keys(view["viewHooks"])).toHaveLength(1);
 
     // update: element gains phx-hook attribute dynamically
     view.update(
@@ -1621,7 +1621,7 @@ describe("View Hooks", function () {
     );
     expect(dynDestroyed).toBe(true);
     expect(otherMounted).toBe(true);
-    expect(Object.keys(view.viewHooks)).toHaveLength(1);
+    expect(Object.keys(view["viewHooks"])).toHaveLength(1);
 
     // update: hook removed altogether
     view.update(
@@ -1632,7 +1632,7 @@ describe("View Hooks", function () {
       [],
     );
     expect(otherDestroyed).toBe(true);
-    expect(Object.keys(view.viewHooks)).toHaveLength(0);
+    expect(Object.keys(view["viewHooks"])).toHaveLength(0);
   });
 
   test("class based hook", async () => {

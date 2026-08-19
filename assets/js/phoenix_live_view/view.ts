@@ -702,8 +702,11 @@ export default class View {
       }
     });
 
+    // hoisted out of the callback below, which runs for every patched element
+    const hookAttr = this.binding(PHX_HOOK);
+    const privateHookAttr = `data-phx-${PHX_HOOK}`;
+
     patch.beforeUpdated((fromEl, toEl) => {
-      const hookAttr = this.binding(PHX_HOOK);
       const hook = this.triggerBeforeUpdateHook(fromEl, toEl);
       if (hook) {
         if (
@@ -720,14 +723,12 @@ export default class View {
         } else {
           updatedHookIds.add(fromEl.id);
         }
-      } else {
-        // dynamically added hook
-        if (
-          toEl.id &&
-          toEl.getAttribute &&
-          (toEl.getAttribute(hookAttr) ||
-            toEl.getAttribute(`data-phx-${PHX_HOOK}`))
-        ) {
+      } else if (toEl.id && toEl.getAttribute && !this.getHook(fromEl)) {
+        // triggerBeforeUpdateHook also returns nothing when the element is
+        // unchanged, so only look for a dynamically added hook when there is
+        // really no hook attached to the element yet; otherwise every already
+        // hooked element would run through maybeAddNewHook on every patch.
+        if (toEl.getAttribute(hookAttr) || toEl.getAttribute(privateHookAttr)) {
           newHookIds.add(toEl.id);
         }
       }
