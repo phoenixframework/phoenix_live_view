@@ -199,6 +199,32 @@ test("auto upload", async ({ page }) => {
   await expect(page.locator("ul li")).toBeVisible();
 });
 
+// https://github.com/phoenixframework/phoenix_live_view/issues/3287
+test("external uploader is notified when an upload is cancelled", async ({
+  page,
+}) => {
+  await page.goto("/upload?external_upload=1");
+  await syncLV(page);
+
+  await page.locator("#upload-form input").setInputFiles({
+    name: "file.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("this upload remains in progress"),
+  });
+
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-external-upload-started",
+    /.+/,
+  );
+
+  await page.getByLabel("cancel").click();
+
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-external-upload-aborted",
+    /.+/,
+  );
+});
+
 test("issue 3115 - cancelled upload is not re-added", async ({ page }) => {
   await page.goto("/upload");
   await syncLV(page);
