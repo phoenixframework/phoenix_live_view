@@ -1082,6 +1082,8 @@ var UploadEntry = class {
     this._isDone = false;
     this._progress = 0;
     this._lastProgressSent = -1;
+    this._onCancel = function() {
+    };
     this._onDone = function() {
     };
     this._onElUpdated = this.onElUpdated.bind(this);
@@ -1115,7 +1117,11 @@ var UploadEntry = class {
     this.file._preflightInProgress = false;
     this._isCancelled = true;
     this._isDone = true;
-    this._onDone();
+    try {
+      this._onCancel();
+    } finally {
+      this._onDone();
+    }
   }
   isDone() {
     return this._isDone;
@@ -1129,6 +1135,13 @@ var UploadEntry = class {
   }
   isAutoUpload() {
     return this.autoUpload;
+  }
+  onCancel(callback) {
+    if (this.isCancelled()) {
+      callback();
+    } else {
+      this._onCancel = callback;
+    }
   }
   //private
   onDone(callback) {

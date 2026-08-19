@@ -1099,6 +1099,8 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       this._isDone = false;
       this._progress = 0;
       this._lastProgressSent = -1;
+      this._onCancel = function() {
+      };
       this._onDone = function() {
       };
       this._onElUpdated = this.onElUpdated.bind(this);
@@ -1132,7 +1134,11 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       this.file._preflightInProgress = false;
       this._isCancelled = true;
       this._isDone = true;
-      this._onDone();
+      try {
+        this._onCancel();
+      } finally {
+        this._onDone();
+      }
     }
     isDone() {
       return this._isDone;
@@ -1146,6 +1152,13 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     }
     isAutoUpload() {
       return this.autoUpload;
+    }
+    onCancel(callback) {
+      if (this.isCancelled()) {
+        callback();
+      } else {
+        this._onCancel = callback;
+      }
     }
     //private
     onDone(callback) {
