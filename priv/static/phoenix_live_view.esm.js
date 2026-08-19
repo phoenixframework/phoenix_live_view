@@ -4428,7 +4428,7 @@ var ViewHook = class _ViewHook {
   // Default lifecycle methods
   mounted() {
   }
-  beforeUpdate() {
+  beforeUpdate(_toEl) {
   }
   updated() {
   }
@@ -4448,8 +4448,8 @@ var ViewHook = class _ViewHook {
     this.updated();
   }
   /** @internal */
-  __beforeUpdate() {
-    this.beforeUpdate();
+  __beforeUpdate(toEl) {
+    this.beforeUpdate(toEl);
   }
   /** @internal */
   __destroyed() {
@@ -4995,7 +4995,7 @@ var View = class _View {
     const hook = this.getHook(fromEl);
     const isIgnored = hook && dom_default.isIgnored(fromEl, this.binding(PHX_UPDATE));
     if (hook && !fromEl.isEqualNode(toEl) && !(isIgnored && isEqualObj(fromEl.dataset, toEl.dataset))) {
-      hook.__beforeUpdate();
+      hook.__beforeUpdate(toEl);
       return hook;
     }
   }
