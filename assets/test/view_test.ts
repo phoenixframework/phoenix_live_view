@@ -1928,6 +1928,134 @@ describe("View Hooks", function () {
     expect((view.el.firstChild! as HTMLElement).innerHTML).toBe("updated");
   });
 
+  test("beforeUpdate receives toEl", async () => {
+    let args: object | null = null;
+    const Hooks = <HooksOptions>{
+      MyHook: {
+        beforeUpdate(toEl) {
+          args = {
+            // el is still the unmodified element in the DOM
+            elHTML: this.el.outerHTML,
+            toHTML: toEl.outerHTML,
+            toIsConnected: document.contains(toEl),
+          };
+        },
+      },
+    };
+    liveSocket = new LiveSocket("/live", Socket, { hooks: Hooks });
+    const el = liveViewDOM();
+    const view = simulateJoinedView(el, liveSocket);
+
+    view.onJoin({
+      rendered: {
+        s: ['<div id="hook" phx-hook="MyHook">initial</div>'],
+        fingerprint: 123,
+      },
+      liveview_version,
+    });
+    expect(args).toBe(null);
+
+    view.update(
+      {
+        s: ['<div id="hook" phx-hook="MyHook" class="x">updated</div>'],
+        fingerprint: 123,
+      },
+      [],
+    );
+
+    expect(args).toEqual({
+      elHTML: '<div id="hook" phx-hook="MyHook">initial</div>',
+      // toEl carries the update that is about to be applied
+      toHTML: '<div id="hook" phx-hook="MyHook" class="x">updated</div>',
+      // and it is detached; it is discarded once the patch is applied
+      toIsConnected: false,
+    });
+  });
+
+  test("beforeUpdate receives new attributes for phx-update=ignore", async () => {
+    let elV: string | undefined;
+    let toV: string | undefined;
+    const Hooks = <HooksOptions>{
+      MyHook: {
+        beforeUpdate(toEl) {
+          elV = this.el.dataset.v;
+          toV = toEl.dataset.v;
+        },
+      },
+    };
+    liveSocket = new LiveSocket("/live", Socket, { hooks: Hooks });
+    const el = liveViewDOM();
+    const view = simulateJoinedView(el, liveSocket);
+
+    view.onJoin({
+      rendered: {
+        s: [
+          '<div id="hook" phx-hook="MyHook" phx-update="ignore" data-v="1">initial</div>',
+        ],
+        fingerprint: 123,
+      },
+      liveview_version,
+    });
+
+    view.update(
+      {
+        s: [
+          '<div id="hook" phx-hook="MyHook" phx-update="ignore" data-v="2">updated</div>',
+        ],
+        fingerprint: 123,
+      },
+      [],
+    );
+
+    // the hook sees the new data attributes before they are merged into el
+    expect(elV).toBe("1");
+    expect(toV).toBe("2");
+    // the content is ignored, but the data attributes are merged
+    expect(el.querySelector("#hook")!.outerHTML).toBe(
+      '<div id="hook" phx-hook="MyHook" phx-update="ignore" data-v="2">initial</div>',
+    );
+  });
+
+  test("beforeUpdate observes toEl changes from dom.onBeforeElUpdated", async () => {
+    let seen: string | null = null;
+    const Hooks = <HooksOptions>{
+      MyHook: {
+        beforeUpdate(toEl) {
+          seen = toEl.getAttribute("data-js-flag");
+        },
+      },
+    };
+    liveSocket = new LiveSocket("/live", Socket, {
+      hooks: Hooks,
+      dom: {
+        onBeforeElUpdated(_from, to) {
+          to.setAttribute("data-js-flag", "set-by-dom-callback");
+        },
+      },
+    });
+    const el = liveViewDOM();
+    const view = simulateJoinedView(el, liveSocket);
+
+    view.onJoin({
+      rendered: {
+        s: ['<div id="hook" phx-hook="MyHook">initial</div>'],
+        fingerprint: 123,
+      },
+      liveview_version,
+    });
+
+    view.update(
+      {
+        s: ['<div id="hook" phx-hook="MyHook">updated</div>'],
+        fingerprint: 123,
+      },
+      [],
+    );
+
+    // onBeforeElUpdated runs before the hook's beforeUpdate
+    expect(seen).toBe("set-by-dom-callback");
+  });
+
   test("can overwrite property", async () => {
     let customHandleEventCalled = false;
     const Hooks = <HooksOptions>{

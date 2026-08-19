@@ -148,7 +148,11 @@ or removed by the server, a hook object may be provided via `phx-hook`.
 
   * `mounted` - the element has been added to the DOM and its server
     LiveView has finished mounting
-  * `beforeUpdate` - the element is about to be updated in the DOM.
+  * `beforeUpdate(toEl)` - the element is about to be updated in the DOM.
+    `toEl` is a detached element carrying the update that is about to be applied,
+    while `this.el` is still the unmodified element as it currently exists in the DOM.
+    This is the per-element counterpart to the `dom` option's `onBeforeElUpdated`
+    callback described below.
     *Note*: any call here must be synchronous as the operation cannot
     be deferred or cancelled.
   * `updated` - the element has been updated in the DOM by the server.
@@ -249,6 +253,16 @@ let liveSocket = new LiveSocket("/live", Socket, {
 ```
 
 In the example above, all attributes starting with `data-js-` won't be replaced when the DOM is patched by LiveView.
+
+`onBeforeElUpdated` is called for every element LiveView is about to patch. A hook's
+`beforeUpdate(toEl)` callback receives the same `toEl` node, but only for the hooked
+element itself, and only when that element actually changed. For an element with
+`phx-update="ignore"`, it is additionally only called when the element's `data-*`
+attributes changed.
+
+In both callbacks, `toEl` is a detached node that is discarded once the patch has been
+applied. Read what you need from it synchronously; keeping a reference to it past the
+callback retains a detached element that will never reflect the live DOM.
 
 A hook can also be defined as a subclass of `ViewHook`:
 
