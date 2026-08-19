@@ -3349,16 +3349,32 @@ defmodule Phoenix.Component do
   attr.(:rest, :global, include: ~w(webkitdirectory required disabled capture form))
 
   def live_file_input(%{upload: upload} = assigns) do
-    assigns = assign_new(assigns, :accept, fn -> upload.accept != :any && upload.accept end)
+    # The input stays disabled until its upload hook is mounted. Keep the caller's
+    # disabled state separately so the hook knows whether it may enable the input.
+    upload_disabled = !!(assigns.rest[:disabled] || assigns.rest["disabled"])
+
+    rest =
+      assigns.rest
+      |> Map.drop([:disabled, "disabled"])
+      |> then(&if(upload.max_entries > 1, do: Map.put(&1, :multiple, true), else: &1))
+
+    assigns =
+      assigns
+      |> assign_new(:accept, fn -> upload.accept != :any && upload.accept end)
+      |> assign(:upload_disabled, upload_disabled)
+      |> assign(:rest, rest)
 
     ~H"""
     <input
       id={@upload.ref}
       type="file"
+      disabled
+      autocomplete="off"
       name={@upload.name}
       accept={@accept}
       data-phx-hook="Phoenix.LiveFileUpload"
       data-phx-upload-ref={@upload.ref}
+      data-phx-upload-disabled={@upload_disabled}
       data-phx-active-refs={join_refs(for(entry <- @upload.entries, do: entry.ref))}
       data-phx-done-refs={join_refs(for(entry <- @upload.entries, entry.done?, do: entry.ref))}
       data-phx-preflighted-refs={
@@ -3368,7 +3384,7 @@ defmodule Phoenix.Component do
         @upload.errors != [] && join_refs(for {ref, _reason} <- @upload.errors, uniq: true, do: ref)
       }
       data-phx-auto-upload={@upload.auto_upload?}
-      {if @upload.max_entries > 1, do: Map.put(@rest, :multiple, true), else: @rest}
+      {@rest}
     />
     """
   end

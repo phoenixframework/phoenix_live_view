@@ -3,6 +3,7 @@ import {
   PHX_ERROR_REFS,
   PHX_LIVE_FILE_UPDATED,
   PHX_PREFLIGHTED_REFS,
+  PHX_UPLOAD_DISABLED,
   PHX_UPLOAD_REF,
   PHX_VIEWPORT_OVERRUN_TARGET,
 } from "./constants";
@@ -295,11 +296,19 @@ const LiveFileUpload: Hook<object, HTMLInputElement> = {
     }
   },
 
+  updateDisabled() {
+    this.el.disabled = this.el.hasAttribute(PHX_UPLOAD_DISABLED);
+  },
+
   mounted() {
     this.js().ignoreAttributes(this.el, ["value"]);
     this.preflightedWas = this.preflightedRefs();
     this.errorRefsWas = this.errorRefs();
     this.el.addEventListener("input", () => this.maybeRemoveRequired());
+    if (this.activeRefs() === "") {
+      this.el.value = "";
+    }
+    this.updateDisabled();
     this.maybeRemoveRequired();
   },
 
@@ -324,8 +333,17 @@ const LiveFileUpload: Hook<object, HTMLInputElement> = {
     if (this.activeRefs() === "") {
       this.el.value = "";
     }
+    this.updateDisabled();
     this.maybeRemoveRequired();
     this.el.dispatchEvent(new CustomEvent(PHX_LIVE_FILE_UPDATED));
+  },
+
+  disconnected() {
+    this.el.disabled = true;
+  },
+
+  reconnected() {
+    this.updateDisabled();
   },
 };
 

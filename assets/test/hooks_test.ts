@@ -120,6 +120,95 @@ describe("LiveFileUpload", () => {
       "upload-ref": [{ name: "first.txt" }],
     });
   });
+
+  test("clears untracked files and enables the input when mounted", () => {
+    document.body.innerHTML = `
+      <form>
+        <input
+          type="file"
+          disabled
+          data-phx-active-refs=""
+          data-phx-preflighted-refs=""
+        >
+      </form>
+    `;
+
+    const input = document.querySelector("input")!;
+    Object.defineProperty(input, "value", {
+      configurable: true,
+      writable: true,
+      value: "restored.txt",
+    });
+    const ctx = {
+      ...Hooks.LiveFileUpload,
+      el: input,
+      js: () => ({ ignoreAttributes: jest.fn() }),
+    };
+
+    Hooks.LiveFileUpload.mounted!.call(ctx as any);
+
+    expect(input.value).toBe("");
+    expect(input.disabled).toBe(false);
+  });
+
+  test("preserves and updates the caller's disabled state", () => {
+    document.body.innerHTML = `
+      <form>
+        <input
+          type="file"
+          disabled
+          data-phx-upload-disabled
+          data-phx-active-refs=""
+          data-phx-preflighted-refs=""
+        >
+      </form>
+    `;
+
+    const input = document.querySelector("input")!;
+    const ctx = {
+      ...Hooks.LiveFileUpload,
+      el: input,
+      js: () => ({ ignoreAttributes: jest.fn() }),
+    };
+
+    Hooks.LiveFileUpload.mounted!.call(ctx as any);
+    expect(input.disabled).toBe(true);
+
+    input.removeAttribute("data-phx-upload-disabled");
+    Hooks.LiveFileUpload.updated!.call(ctx as any);
+    expect(input.disabled).toBe(false);
+
+    input.setAttribute("data-phx-upload-disabled", "");
+    Hooks.LiveFileUpload.updated!.call(ctx as any);
+    expect(input.disabled).toBe(true);
+  });
+
+  test("disables the input while disconnected", () => {
+    document.body.innerHTML = `
+      <form>
+        <input
+          type="file"
+          disabled
+          data-phx-active-refs=""
+          data-phx-preflighted-refs=""
+        >
+      </form>
+    `;
+
+    const input = document.querySelector("input")!;
+    const ctx = {
+      ...Hooks.LiveFileUpload,
+      el: input,
+      js: () => ({ ignoreAttributes: jest.fn() }),
+    };
+
+    Hooks.LiveFileUpload.mounted!.call(ctx as any);
+    Hooks.LiveFileUpload.disconnected!.call(ctx as any);
+    expect(input.disabled).toBe(true);
+
+    Hooks.LiveFileUpload.reconnected!.call(ctx as any);
+    expect(input.disabled).toBe(false);
+  });
 });
 
 describe("InfiniteScroll", () => {

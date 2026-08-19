@@ -25,6 +25,7 @@ export const PHX_REF_LOCK = "data-phx-ref-lock";
 export const PHX_PENDING_REFS = "phx-pending-refs";
 export const PHX_TRACK_UPLOADS = "track-uploads";
 export const PHX_UPLOAD_REF = "data-phx-upload-ref";
+export const PHX_UPLOAD_DISABLED = "data-phx-upload-disabled";
 export const PHX_PREFLIGHTED_REFS = "data-phx-preflighted-refs";
 export const PHX_DONE_REFS = "data-phx-done-refs";
 export const PHX_ERROR_REFS = "data-phx-error-refs";

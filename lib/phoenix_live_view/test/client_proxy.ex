@@ -2,6 +2,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   @moduledoc false
   use GenServer
 
+  @data_phx_upload_disabled "data-phx-upload-disabled"
   @data_phx_upload_ref "data-phx-upload-ref"
   @async_shutdown_timeout 5_000
   @events :e
@@ -1322,6 +1323,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
        when tag != "form" and form_data != nil do
     {:error, :invalid,
      "a form element was given but the selected node is not a form, got #{inspect(tag)}}"}
+  end
+
+  defp maybe_enabled(type, node, element) when type in [:allow_upload, :upload_progress] do
+    if TreeDOM.attribute(node, @data_phx_upload_disabled) do
+      {:error, :invalid,
+       "cannot #{type} element #{inspect(element.selector)} because it is disabled"}
+    else
+      :ok
+    end
   end
 
   defp maybe_enabled(type, node, element) do

@@ -21,7 +21,7 @@ defmodule Phoenix.LiveViewTest.Support.UploadLive do
         <% end %>
         relative path:{entry.client_relative_path}
       <% end %>
-      <.live_file_input upload={@uploads.avatar} />
+      <.live_file_input upload={@uploads.avatar} disabled={assigns[:upload_disabled]} />
       <button type="submit">save</button>
     </form>
     """
