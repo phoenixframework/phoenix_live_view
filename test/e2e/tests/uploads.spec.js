@@ -124,6 +124,53 @@ test("can upload multiple files", async ({ page }) => {
   await expect(page.locator("ul li")).toHaveCount(2);
 });
 
+// https://github.com/phoenixframework/phoenix_live_view/pull/3801
+test("can mix default and external uploaders", async ({ page, request }) => {
+  await page.goto("/upload?mixed_upload=1");
+  await syncLV(page);
+
+  const externalUpload = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/upload/external" &&
+      response.request().method() === "POST",
+  );
+
+  await page.locator("#upload-form input").setInputFiles([
+    {
+      name: "default.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("uploaded through the LiveView channel"),
+    },
+    {
+      name: "external.md",
+      mimeType: "text/markdown",
+      buffer: Buffer.from("uploaded through the external endpoint"),
+    },
+  ]);
+  await syncLV(page);
+  await page.getByRole("button", { name: "Upload" }).click();
+
+  const externalUploadResponse = await externalUpload;
+  expect(externalUploadResponse.status()).toBe(204);
+
+  const defaultUpload = page.locator('ul li[data-uploader="default"]');
+  const externalUploadResult = page.locator('ul li[data-uploader="external"]');
+
+  await expect(defaultUpload).toHaveText("default.txt");
+  await expect(externalUploadResult).toHaveText("external.md");
+
+  for (const [upload, contents] of [
+    [defaultUpload, "uploaded through the LiveView channel"],
+    [externalUploadResult, "uploaded through the external endpoint"],
+  ]) {
+    const response = await request.get(
+      await upload.getByRole("link").getAttribute("href"),
+    );
+    expect(response.ok()).toBe(true);
+    expect((await response.body()).toString()).toEqual(contents);
+  }
+});
+
 test("shows error when there are too many files", async ({ page }) => {
   await page.goto("/upload");
   await syncLV(page);

@@ -325,55 +325,61 @@ defmodule Phoenix.LiveView.Upload do
 
   defp consume_entries(%UploadConfig{} = conf, entries, func)
        when is_list(entries) and is_function(func) do
-    if conf.external do
-      results =
-        entries
-        |> Enum.map(fn entry ->
-          meta = Map.fetch!(conf.entry_refs_to_metas, entry.ref)
+    {results, consumed_refs} =
+      Enum.reduce(entries, {[], []}, fn entry, {results, consumed_refs} ->
+        case UploadConfig.entry_pid(conf, entry) do
+          pid when is_pid(pid) ->
+            result = Phoenix.LiveView.UploadChannel.consume(pid, entry, func)
+            {[result | results], consumed_refs}
 
-          result =
-            cond do
-              is_function(func, 1) -> func.(meta)
-              is_function(func, 2) -> func.(meta, entry)
+          nil ->
+            case Map.fetch!(conf.entry_refs_to_metas, entry.ref) do
+              %{uploader: _} ->
+                {result, consumed?} = consume_external_entry(conf, entry, func)
+                consumed_refs = if consumed?, do: [entry.ref | consumed_refs], else: consumed_refs
+                {[result | results], consumed_refs}
+
+              %{} ->
+                {results, consumed_refs}
             end
+        end
+      end)
 
-          case result do
-            {:ok, return} ->
-              {entry.ref, return}
-
-            {:postpone, return} ->
-              {:postpone, return}
-
-            return ->
-              IO.warn("""
-              consuming uploads requires a return signature matching:
-
-                  {:ok, value} | {:postpone, value}
-
-              got:
-
-                  #{inspect(return)}
-              """)
-
-              {entry.ref, return}
-          end
-        end)
-
-      consumed_refs =
-        Enum.flat_map(results, fn
-          {:postpone, _result} -> []
-          {ref, _result} -> [ref]
-        end)
-
+    if consumed_refs != [] do
       Phoenix.LiveView.Channel.drop_consumed_upload_entries(conf, consumed_refs)
+    end
 
-      Enum.map(results, fn {_ref, result} -> result end)
-    else
-      for entry <- entries,
-          pid = UploadConfig.entry_pid(conf, entry),
-          is_pid(pid) do
-        Phoenix.LiveView.UploadChannel.consume(pid, entry, func)
+    Enum.reverse(results)
+  end
+
+  defp consume_external_entry(%UploadConfig{} = conf, entry, func) do
+    meta = Map.fetch!(conf.entry_refs_to_metas, entry.ref)
+
+    result =
+      cond do
+        is_function(func, 1) -> func.(meta)
+        is_function(func, 2) -> func.(meta, entry)
       end
+
+    case result do
+      {:ok, return} ->
+        {return, true}
+
+      {:postpone, return} ->
+        {return, false}
+
+      return ->
+        IO.warn("""
+        consuming uploads requires a return signature matching:
+
+            {:ok, value} | {:postpone, value}
+
+        got:
+
+            #{inspect(return)}
+        """)
+
+        {return, true}
     end
   end
 
@@ -410,7 +416,7 @@ defmodule Phoenix.LiveView.Upload do
         channel_preflight(new_socket, new_conf, new_entries, cid, client_meta)
 
       func when is_function(func) ->
-        external_preflight(new_socket, new_conf, new_entries, client_meta)
+        external_preflight(new_socket, new_conf, new_entries, cid, client_meta)
     end
   end
 
@@ -457,7 +463,13 @@ defmodule Phoenix.LiveView.Upload do
     for {ref, err} <- conf.errors, ref == entry.ref, do: err
   end
 
-  defp external_preflight(%Socket{} = socket, %UploadConfig{} = conf, entries, client_config_meta) do
+  defp external_preflight(
+         %Socket{} = socket,
+         %UploadConfig{} = conf,
+         entries,
+         cid,
+         client_config_meta
+       ) do
     reply_entries =
       Enum.reduce_while(entries, {:ok, %{}, %{}, socket}, fn entry, {:ok, metas, errors, acc} ->
         if conf.auto_upload? and not entry.valid? do
@@ -469,6 +481,20 @@ defmodule Phoenix.LiveView.Upload do
             {:ok, %{} = meta, new_socket} ->
               new_socket = update_upload_entry_meta(new_socket, conf.name, entry, meta)
               {:cont, {:ok, Map.put(metas, entry.ref, meta), errors, new_socket}}
+
+            {:ok, :default, new_socket} ->
+              token =
+                Phoenix.LiveView.Static.sign_token(
+                  socket.endpoint,
+                  %{
+                    pid: self(),
+                    ref: {conf.ref, entry.ref},
+                    cid: cid
+                  },
+                  @upload_token_opts
+                )
+
+              {:cont, {:ok, Map.put(metas, entry.ref, token), errors, new_socket}}
 
             {:error, %{} = meta, new_socket} ->
               if conf.auto_upload? do

@@ -1352,7 +1352,7 @@ defmodule Phoenix.LiveViewTest do
         start_upload_client(builder, view, selector, name, entries, cid)
 
       {:ok, %{external: func}} when is_function(func) ->
-        start_external_upload_client(view, selector, name, entries, cid)
+        start_upload_client(builder, view, selector, name, entries, cid)
 
       :error ->
         raise "no uploads allowed for #{name}"
@@ -1375,12 +1375,6 @@ defmodule Phoenix.LiveViewTest do
   defp start_upload_client(builder, view, form_selector, name, entries, cid) do
     {:ok, socket} = builder.()
     spec = {UploadClient, socket: socket, cid: cid}
-    {:ok, pid} = Supervisor.start_child(fetch_test_supervisor!(), spec)
-    Upload.new(pid, view, form_selector, name, entries, cid)
-  end
-
-  defp start_external_upload_client(view, form_selector, name, entries, cid) do
-    spec = {UploadClient, cid: cid}
     {:ok, pid} = Supervisor.start_child(fetch_test_supervisor!(), spec)
     Upload.new(pid, view, form_selector, name, entries, cid)
   end
