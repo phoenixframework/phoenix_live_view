@@ -5058,6 +5058,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       const removedEls = [];
       let phxChildrenAdded = false;
       const updatedHookIds = /* @__PURE__ */ new Set();
+      const newHookIds = /* @__PURE__ */ new Set();
       this.liveSocket.triggerDOM("onPatchStart", [patch.targetContainer]);
       patch.afterAdded((el) => {
         this.liveSocket.triggerDOM("onNodeAdded", [el]);
@@ -5076,10 +5077,23 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           phxChildrenAdded = true;
         }
       });
+      const hookAttr = this.binding(PHX_HOOK);
+      const privateHookAttr = `data-phx-${PHX_HOOK}`;
       patch.beforeUpdated((fromEl, toEl) => {
         const hook = this.triggerBeforeUpdateHook(fromEl, toEl);
         if (hook) {
-          updatedHookIds.add(fromEl.id);
+          if (fromEl.hasAttribute(hookAttr) && fromEl.getAttribute(hookAttr) !== toEl.getAttribute(hookAttr)) {
+            this.destroyHook(hook);
+            if (toEl.getAttribute(hookAttr)) {
+              newHookIds.add(toEl.id);
+            }
+          } else {
+            updatedHookIds.add(fromEl.id);
+          }
+        } else if (toEl.id && toEl.getAttribute && !this.getHook(fromEl)) {
+          if (toEl.getAttribute(hookAttr) || toEl.getAttribute(privateHookAttr)) {
+            newHookIds.add(toEl.id);
+          }
         }
         js_default.onBeforeElUpdated(fromEl, toEl);
       });
@@ -5087,6 +5101,8 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         if (updatedHookIds.has(el.id)) {
           const hook = this.getHook(el);
           hook && hook.__updated();
+        } else if (newHookIds.has(el.id)) {
+          this.maybeAddNewHook(el);
         }
       });
       patch.afterDiscarded((el) => {
@@ -5705,6 +5721,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
             }
           },
           error: (reason) => {
+            onLoadingDone();
             resolve({
               type: "error",
               error: `failed with reason: ${JSON.stringify(reason)}`,
@@ -5714,6 +5731,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
             });
           },
           timeout: () => {
+            onLoadingDone();
             resolve({
               type: "error",
               error: "push timeout",

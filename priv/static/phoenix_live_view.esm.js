@@ -5004,6 +5004,7 @@ var View = class _View {
     const removedEls = [];
     let phxChildrenAdded = false;
     const updatedHookIds = /* @__PURE__ */ new Set();
+    const newHookIds = /* @__PURE__ */ new Set();
     this.liveSocket.triggerDOM("onPatchStart", [patch.targetContainer]);
     patch.afterAdded((el) => {
       this.liveSocket.triggerDOM("onNodeAdded", [el]);
@@ -5022,10 +5023,23 @@ var View = class _View {
         phxChildrenAdded = true;
       }
     });
+    const hookAttr = this.binding(PHX_HOOK);
+    const privateHookAttr = `data-phx-${PHX_HOOK}`;
     patch.beforeUpdated((fromEl, toEl) => {
       const hook = this.triggerBeforeUpdateHook(fromEl, toEl);
       if (hook) {
-        updatedHookIds.add(fromEl.id);
+        if (fromEl.hasAttribute(hookAttr) && fromEl.getAttribute(hookAttr) !== toEl.getAttribute(hookAttr)) {
+          this.destroyHook(hook);
+          if (toEl.getAttribute(hookAttr)) {
+            newHookIds.add(toEl.id);
+          }
+        } else {
+          updatedHookIds.add(fromEl.id);
+        }
+      } else if (toEl.id && toEl.getAttribute && !this.getHook(fromEl)) {
+        if (toEl.getAttribute(hookAttr) || toEl.getAttribute(privateHookAttr)) {
+          newHookIds.add(toEl.id);
+        }
       }
       js_default.onBeforeElUpdated(fromEl, toEl);
     });
@@ -5033,6 +5047,8 @@ var View = class _View {
       if (updatedHookIds.has(el.id)) {
         const hook = this.getHook(el);
         hook && hook.__updated();
+      } else if (newHookIds.has(el.id)) {
+        this.maybeAddNewHook(el);
       }
     });
     patch.afterDiscarded((el) => {
@@ -5648,6 +5664,7 @@ var View = class _View {
           }
         },
         error: (reason) => {
+          onLoadingDone();
           resolve({
             type: "error",
             error: `failed with reason: ${JSON.stringify(reason)}`,
@@ -5657,6 +5674,7 @@ var View = class _View {
           });
         },
         timeout: () => {
+          onLoadingDone();
           resolve({
             type: "error",
             error: "push timeout",
