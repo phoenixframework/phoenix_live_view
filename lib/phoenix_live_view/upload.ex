@@ -470,12 +470,20 @@ defmodule Phoenix.LiveView.Upload do
               new_socket = update_upload_entry_meta(new_socket, conf.name, entry, meta)
               {:cont, {:ok, Map.put(metas, entry.ref, meta), errors, new_socket}}
 
-            {:error, %{} = meta, new_socket} ->
+            {:error, %{} = error_meta, new_socket} ->
               if conf.auto_upload? do
-                new_errors = Map.put(errors, entry.ref, [meta])
+                new_socket =
+                  put_upload_error(
+                    new_socket,
+                    conf.name,
+                    entry.ref,
+                    {:external_metadata_failure, error_meta}
+                  )
+
+                new_errors = Map.put(errors, entry.ref, [error_meta])
                 {:cont, {:ok, metas, new_errors, new_socket}}
               else
-                {:halt, {:error, {entry.ref, meta}, new_socket}}
+                {:halt, {:error, {entry.ref, error_meta}, new_socket}}
               end
           end
         end
@@ -486,9 +494,16 @@ defmodule Phoenix.LiveView.Upload do
         reply = %{ref: conf.ref, config: client_config_meta, entries: entry_metas, errors: errors}
         {:ok, reply, new_socket}
 
-      {:error, {entry_ref, meta_reason}, new_socket} ->
-        new_socket = put_upload_error(new_socket, conf.name, entry_ref, meta_reason)
-        {:error, %{ref: conf.ref, error: [[entry_ref, meta_reason]]}, new_socket}
+      {:error, {entry_ref, error_meta}, new_socket} ->
+        new_socket =
+          put_upload_error(
+            new_socket,
+            conf.name,
+            entry_ref,
+            {:external_metadata_failure, error_meta}
+          )
+
+        {:error, %{ref: conf.ref, error: [[entry_ref, error_meta]]}, new_socket}
     end
   end
 

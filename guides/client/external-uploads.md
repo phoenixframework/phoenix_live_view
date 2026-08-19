@@ -49,8 +49,13 @@ Supply the `:external` option to
 `Phoenix.LiveView.allow_upload/3`. It requires a 2-arity
 function that generates a signed URL where the client will
 push the bytes for the upload entry. This function must
-return either `{:ok, meta, socket}` or `{:error, meta, socket}`,
-where `meta` must be a map.
+return either `{:ok, meta, socket}` or `{:error, error_meta, socket}`,
+where `meta` and `error_meta` must be maps. Returning an error marks the
+entry as failed and makes `{:external_metadata_failure, error_meta}` available
+through `Phoenix.Component.upload_errors/2`. With auto uploads, any remaining
+valid entries continue uploading. For example:
+
+    {:error, %{reason: :presign_failed}, socket}
 
 For example, if you were using a context that provided a
 [`start_session`](https://developers.google.com/youtube/v3/guides/using_resumable_upload_protocol##Start_Resumable_Session)

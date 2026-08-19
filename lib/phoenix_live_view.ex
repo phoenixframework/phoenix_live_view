@@ -903,8 +903,11 @@ defmodule Phoenix.LiveView do
 
     * `:external` - A 2-arity function for generating metadata for external
       client uploaders. This function must return either `{:ok, meta, socket}`
-      or `{:error, meta, socket}` where meta is a map. See the Uploads section
-      for example usage.
+      or `{:error, error_meta, socket}`, where `meta` and `error_meta` are maps.
+      An error marks the entry as failed and exposes
+      `{:external_metadata_failure, error_meta}` via `Phoenix.Component.upload_errors/2`.
+      With auto uploads, any remaining valid entries continue uploading. See the
+      Uploads section for example usage.
 
     * `:progress` - An optional 3-arity function for receiving progress events.
 
