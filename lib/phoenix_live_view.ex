@@ -1986,6 +1986,12 @@ defmodule Phoenix.LiveView do
        For example, when you render a non-stream item at the beginning of the stream container and then
        prepend items (with `at: 0`) to the stream, the non-stream item will be pushed down.
 
+  Also note that after patching the DOM, LiveView always orders stream items before non-stream items.
+  This means that in the `songs-empty` example above, the empty placeholder would be placed after stream
+  items in case the table is not empty. If you need to customize this, you can manually reorder elements
+  with a [JavaScript hook](js-interop.md#client-hooks-via-phx-hook).
+  See [this issue](https://github.com/phoenixframework/phoenix_live_view/issues/3744#issuecomment-2781485595) for an example.
+
   """
   @spec stream(
           socket :: Socket.t(),
