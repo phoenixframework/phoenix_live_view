@@ -1189,6 +1189,28 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
+  test "raise with guidance when attrs are declared after an embedded template" do
+    msg = ~r/attributes must be defined before the first function clause at line \d+/
+
+    error =
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.EmbeddedTemplateAndFunctionComponent do
+          use Elixir.Phoenix.Component
+
+          embed_templates "pages/*"
+
+          attr :foo, :string
+          def about_page(assigns), do: ~H[<p>{@foo}</p>]
+        end
+      end
+
+    assert error.description =~
+             "This error commonly occurs when using `embed_templates` alongside function components"
+
+    assert error.description =~ "an embedded template file"
+    assert error.description =~ "a function component with the same name"
+  end
+
   test "raise if slot is declared between multiple function heads" do
     msg = ~r"slots must be defined before the first function clause at line \d+"
 
