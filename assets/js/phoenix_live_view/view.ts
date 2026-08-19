@@ -654,7 +654,7 @@ export default class View {
       !fromEl.isEqualNode(toEl) &&
       !(isIgnored && isEqualObj(fromEl.dataset, toEl.dataset))
     ) {
-      hook.__beforeUpdate();
+      hook.__beforeUpdate(toEl);
       return hook;
     }
   }

@@ -39,9 +39,14 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
    * The beforeUpdate callback.
    *
    * Called when the element is about to be updated in the DOM.
+   *
+   * `toEl` is a detached element carrying the update that is about to be applied;
+   * `el` is still the unmodified element as it currently exists in the DOM. `toEl` is
+   * discarded once the patch has been applied and must not be kept past the callback.
+   *
    * Note: any call here must be synchronous as the operation cannot be deferred or cancelled.
    */
-  beforeUpdate?: () => void;
+  beforeUpdate?: (toEl: E) => void;
 
   /**
    * The updated callback.
@@ -220,9 +225,14 @@ export interface Hook<T = object, E extends HTMLElement = HTMLElement> {
    * The beforeUpdate callback.
    *
    * Called when the element is about to be updated in the DOM.
+   *
+   * `toEl` is a detached element carrying the update that is about to be applied;
+   * `el` is still the unmodified element as it currently exists in the DOM. `toEl` is
+   * discarded once the patch has been applied and must not be kept past the callback.
+   *
    * Note: any call here must be synchronous as the operation cannot be deferred or cancelled.
    */
-  beforeUpdate?: (this: T & HookInterface<E>) => void;
+  beforeUpdate?: (this: T & HookInterface<E>, toEl: E) => void;
 
   /**
    * The updated callback.
@@ -408,7 +418,7 @@ export class ViewHook<
 
   // Default lifecycle methods
   mounted(): void {}
-  beforeUpdate(): void {}
+  beforeUpdate(_toEl: E): void {}
   updated(): void {}
   destroyed(): void {}
   disconnected(): void {}
@@ -425,8 +435,8 @@ export class ViewHook<
     this.updated();
   }
   /** @internal */
-  __beforeUpdate() {
-    this.beforeUpdate();
+  __beforeUpdate(toEl: E) {
+    this.beforeUpdate(toEl);
   }
   /** @internal */
   __destroyed() {
