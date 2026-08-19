@@ -679,6 +679,7 @@ export default class View {
     const removedEls: Array<Element> = [];
     let phxChildrenAdded = false;
     const updatedHookIds = new Set();
+    const newHookIds = new Set();
 
     this.liveSocket.triggerDOM("onPatchStart", [patch.targetContainer]);
 
@@ -701,10 +702,35 @@ export default class View {
       }
     });
 
+    // hoisted out of the callback below, which runs for every patched element
+    const hookAttr = this.binding(PHX_HOOK);
+    const privateHookAttr = `data-phx-${PHX_HOOK}`;
+
     patch.beforeUpdated((fromEl, toEl) => {
       const hook = this.triggerBeforeUpdateHook(fromEl, toEl);
       if (hook) {
-        updatedHookIds.add(fromEl.id);
+        if (
+          fromEl.hasAttribute(hookAttr) &&
+          fromEl.getAttribute(hookAttr) !== toEl.getAttribute(hookAttr)
+        ) {
+          // dynamically removed hook
+          // (data-phx-hook from createHook or viewport bindings cannot be removed)
+          this.destroyHook(hook);
+          if (toEl.getAttribute(hookAttr)) {
+            // changed hook
+            newHookIds.add(toEl.id);
+          }
+        } else {
+          updatedHookIds.add(fromEl.id);
+        }
+      } else if (toEl.id && toEl.getAttribute && !this.getHook(fromEl)) {
+        // triggerBeforeUpdateHook also returns nothing when the element is
+        // unchanged, so only look for a dynamically added hook when there is
+        // really no hook attached to the element yet; otherwise every already
+        // hooked element would run through maybeAddNewHook on every patch.
+        if (toEl.getAttribute(hookAttr) || toEl.getAttribute(privateHookAttr)) {
+          newHookIds.add(toEl.id);
+        }
       }
       // trigger JS specific update logic (for example for JS.ignore_attributes)
       JS.onBeforeElUpdated(fromEl, toEl);
@@ -714,6 +740,8 @@ export default class View {
       if (updatedHookIds.has(el.id)) {
         const hook = this.getHook(el);
         hook && hook.__updated();
+      } else if (newHookIds.has(el.id)) {
+        this.maybeAddNewHook(el);
       }
     });
 
