@@ -7354,6 +7354,7 @@ var LiveSocket = class {
       }
     );
     this.on("dragover", (e) => e.preventDefault());
+    const dropTargetDragDepths = /* @__PURE__ */ new WeakMap();
     this.on("dragenter", (e) => {
       let target = e.target && dom_default.elementFromTarget(e.target);
       if (!target) {
@@ -7364,7 +7365,11 @@ var LiveSocket = class {
         return;
       }
       if (eventContainsFiles(e)) {
-        this.js().addClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
+        const dragDepth = (dropTargetDragDepths.get(dropzone) || 0) + 1;
+        dropTargetDragDepths.set(dropzone, dragDepth);
+        if (dragDepth === 1) {
+          this.js().addClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
+        }
       }
     });
     this.on("dragleave", (e) => {
@@ -7376,8 +7381,13 @@ var LiveSocket = class {
       if (!dropzone || !(dropzone instanceof HTMLElement)) {
         return;
       }
-      const rect = dropzone.getBoundingClientRect();
-      if (e.clientX <= rect.left || e.clientX >= rect.right || e.clientY <= rect.top || e.clientY >= rect.bottom) {
+      const dragDepth = dropTargetDragDepths.get(dropzone);
+      if (dragDepth === void 0) {
+        return;
+      } else if (dragDepth > 1) {
+        dropTargetDragDepths.set(dropzone, dragDepth - 1);
+      } else {
+        dropTargetDragDepths.delete(dropzone);
         this.js().removeClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
       }
     });
@@ -7391,6 +7401,7 @@ var LiveSocket = class {
       if (!dropzone || !(dropzone instanceof HTMLElement)) {
         return;
       }
+      dropTargetDragDepths.delete(dropzone);
       this.js().removeClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
       if (!e.dataTransfer) {
         return;
