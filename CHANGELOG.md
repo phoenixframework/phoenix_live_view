@@ -115,6 +115,39 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.10 (2026-08-20)
+
+### Bug fixes
+
+* Preserve `onReply` exceptions in hook `pushEvent` / `pushEventTo` ([#4381](https://github.com/phoenixframework/phoenix_live_view/pull/4381))
+* Handle writer errors like other upload entry errors ([#4370](https://github.com/phoenixframework/phoenix_live_view/pull/4370))
+* Cancel scheduled submit when auto upload is invalid ([#3391](https://github.com/phoenixframework/phoenix_live_view/issues/3391))
+* Fix max_entries not working properly with auto uploads ([#2835](https://github.com/phoenixframework/phoenix_live_view/issues/2835))
+* Fix testing file uploads with multiple entries ([#3480](https://github.com/phoenixframework/phoenix_live_view/issues/3480))
+* Remove native input required attribute when LiveView tracks uploads ([#4377](https://github.com/phoenixframework/phoenix_live_view/pull/4377))
+* Accept new drops afrer too_many_files with max_entries 1 ([#3368](https://github.com/phoenixframework/phoenix_live_view/issues/3368))
+* Fix runtime hook added node tracking ([#4387](https://github.com/phoenixframework/phoenix_live_view/pull/4387))
+* Preserve zero-duration JS transitions ([#4385](https://github.com/phoenixframework/phoenix_live_view/pull/4385))
+* Cancel submit in `EntryUploader.error` ([#4382](https://github.com/phoenixframework/phoenix_live_view/issues/4382))
+* Cancel infinite scroll throttle timers on destroy ([#4384](https://github.com/phoenixframework/phoenix_live_view/pull/4384))
+* Clear focus stack entries on view teardown ([#4386](https://github.com/phoenixframework/phoenix_live_view/pull/4386))
+* Fix join completion for empty recovery markup ([#4390](https://github.com/phoenixframework/phoenix_live_view/pull/4390))
+* Fix missing return after child join failure ([#4391](https://github.com/phoenixframework/phoenix_live_view/pull/4391))
+* Stop page loading when pushes fail ([#4392](https://github.com/phoenixframework/phoenix_live_view/pull/4392))
+* Ensure external metadata failures are reported consistently ([#4397](https://github.com/phoenixframework/phoenix_live_view/pull/4397))
+
+### Enhancements
+
+* Mark morphdom as dev dependency, as it is already included in the bundle
+* Allow dynamically updating phx-hook attribute ([#4153](https://github.com/phoenixframework/phoenix_live_view/pull/4153))
+* Allow external uploads to be notified on cancel ([#4395](https://github.com/phoenixframework/phoenix_live_view/pull/4395))
+* Pass `toEl` to hook `beforeUpdate` ([#3616](https://github.com/phoenixframework/phoenix_live_view/pull/3616))
+* Improve error message when attributes have been defined after an embedded template ([#4396](https://github.com/phoenixframework/phoenix_live_view/pull/4396))
+* Add `Phoenix.LiveView.navigation_type/2` ([#4393](https://github.com/phoenixframework/phoenix_live_view/pull/4393))
+* Cancel external uploads when navigating away ([#4398](https://github.com/phoenixframework/phoenix_live_view/pull/4398))
+* Allow to opt out of phx-remove cascade on navigation ([#4394](https://github.com/phoenixframework/phoenix_live_view/pull/4394))
+* Make `phx-drop-target-active` more reliable ([#4399](https://github.com/phoenixframework/phoenix_live_view/pull/4399))
+
 ## v1.2.9 (2026-08-10)
 
 ### Security fixes
