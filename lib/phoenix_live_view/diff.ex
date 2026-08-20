@@ -27,12 +27,25 @@ defmodule Phoenix.LiveView.Diff do
   # for deletion. If the component is used after being marked,
   # it should not be deleted.
   @marked_for_deletion :marked_for_deletion
+  @force_render :force_render
 
   @doc """
   Returns the diff component state.
   """
   def new_components(uuids \\ 1) do
     {_cid_to_component = %{}, _id_to_cid = %{}, uuids}
+  end
+
+  @doc """
+  Marks all existing components to be rendered with change tracking disabled.
+  """
+  def force_render_components({cid_to_component, id_to_cid, uuids}) do
+    cid_to_component =
+      Map.new(cid_to_component, fn {cid, {component, id, assigns, private, prints}} ->
+        {cid, {component, id, assigns, Map.put(private, @force_render, true), prints}}
+      end)
+
+    {cid_to_component, id_to_cid, uuids}
   end
 
   @doc """
@@ -189,10 +202,14 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp maybe_put_title(diff, socket) do
-    if Utils.changed?(socket.assigns, :page_title) do
-      Map.put(diff, @title, socket.assigns.page_title)
-    else
-      diff
+    case socket.assigns do
+      %{page_title: title} ->
+        if Utils.changed?(socket.assigns, :page_title),
+          do: Map.put(diff, @title, title),
+          else: diff
+
+      %{} ->
+        diff
     end
   end
 
@@ -908,7 +925,7 @@ defmodule Phoenix.LiveView.Diff do
                         "for component #{inspect(component)} when rendering template"
               end
 
-              {socket, components, prints, revived?} =
+              {socket, components, prints, revived?, force_render?} =
                 case cids do
                   %{^cid => {_component, _id, assigns, private, prints}} ->
                     # The client reports the whole destroyed subtree, so a component
@@ -916,21 +933,23 @@ defmodule Phoenix.LiveView.Diff do
                     # every dynamic, which reaches (and therefore revives) each child in
                     # turn.
                     {revived?, private} = Map.pop(private, @marked_for_deletion, false)
+                    {force_render?, private} = Map.pop(private, @force_render, false)
                     prints = if revived?, do: new_fingerprints(), else: prints
 
-                    {configure_socket_for_component(socket, assigns, private), components, prints,
-                     revived?}
+                    socket = configure_socket_for_component(socket, assigns, private)
+
+                    {socket, components, prints, revived?, force_render?}
 
                   %{} ->
                     myself_assigns = %{myself: %Phoenix.LiveComponent.CID{cid: cid}}
 
                     {mount_component(socket, component, myself_assigns),
-                     put_cid(components, component, id, cid), new_fingerprints(), false}
+                     put_cid(components, component, id, cid), new_fingerprints(), false, false}
                 end
 
               assigns_sockets = [{new_assigns, socket} | assigns_sockets]
-              # or revived? forces a full render in render_component
-              metadata = [{cid, id, prints, new? or revived?} | metadata]
+              # new? or revived? forces a full render in render_component
+              metadata = [{cid, id, prints, new? or revived?, force_render?} | metadata]
               seen_ids = Map.put(seen_ids, [component | id], true)
               {assigns_sockets, metadata, components, seen_ids}
           end)
@@ -967,11 +986,12 @@ defmodule Phoenix.LiveView.Diff do
 
   defp zip_components(
          [%{__struct__: Phoenix.LiveView.Socket} = socket | sockets],
-         [{cid, id, prints, new?} | metadata],
+         [{cid, id, prints, new?, force_render?} | metadata],
          component,
          cids,
          {pending, diffs, components}
        ) do
+    socket = if force_render?, do: put_in(socket.assigns.__changed__, nil), else: socket
     diffs = maybe_put_events(diffs, socket)
 
     {new_pending, diffs, components} =
