@@ -2101,7 +2101,13 @@ export default class View {
           // we can only start uploads when the tree is unlocked and the
           // necessary data attributes are set in the real DOM
           ElementRef.onUnlock(inputEl, () => {
-            if (LiveUploader.filesAwaitingPreflight(inputEl).length > 0) {
+            const awaitingValidSelection =
+              DOM.isAutoUploadIfValid(inputEl) && DOM.hasUploadErrors(inputEl);
+
+            if (
+              !awaitingValidSelection &&
+              LiveUploader.filesAwaitingPreflight(inputEl).length > 0
+            ) {
               const [ref, _els] = refGenerator();
               this.undoRefs(ref, phxEvent, [inputEl.form]);
               this.uploadFiles(
