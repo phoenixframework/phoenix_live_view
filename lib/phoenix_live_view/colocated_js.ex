@@ -154,6 +154,10 @@ defmodule Phoenix.LiveView.ColocatedJS do
   Note: In contrast to `:target_directory`, the `:node_modules_path` is a project
   specific setting you need to set in your `mix.exs`.
 
+  If you change the `node_modules_path` option, you may need to manually delete the symlink
+  LiveView creates in `_build/$MIX_ENV/phoenix-colocated/my_app/node_modules`, so LiveView
+  recreates it pointing to the new path.
+
   ## Options
 
   Colocated JavaScript can be configured through the attributes of the `<script>` tag.
