@@ -6708,6 +6708,7 @@ var LiveSocket = class {
     this.boundTopLevelEvents = false;
     this.boundEventNames = /* @__PURE__ */ new Set();
     this.blockPhxChangeWhileComposing = opts.blockPhxChangeWhileComposing || false;
+    this.cascadePhxRemoveOnNavigation = opts.cascadePhxRemoveOnNavigation ?? true;
     this.serverCloseRef = null;
     this.domCallbacks = Object.assign(
       {
@@ -7150,10 +7151,10 @@ var LiveSocket = class {
     const liveReferer = this.currentLocation.href;
     this.outgoingMainEl = this.outgoingMainEl || this.main.el;
     const stickies = dom_default.findPhxSticky(document) || [];
-    const removeEls = dom_default.all(
+    const removeEls = this.phxRemoveElementsForNavigation(
       this.outgoingMainEl,
-      `[${this.binding("remove")}]`
-    ).filter((el) => !dom_default.isChildOfAny(el, stickies));
+      stickies
+    );
     const newMainEl = dom_default.cloneNode(this.outgoingMainEl, "");
     const oldMainView = this.main;
     oldMainView.showLoader(this.loaderTimeout);
@@ -7164,7 +7165,11 @@ var LiveSocket = class {
     this.main.join((joinCount, onDone) => {
       if (joinCount === 1 && this.commitPendingLink(linkRef)) {
         this.requestDOMUpdate(() => {
-          removeEls.forEach((el) => el.remove());
+          removeEls.forEach((el) => {
+            if (!el.isSameNode(this.outgoingMainEl)) {
+              el.remove();
+            }
+          });
           stickies.forEach((el) => newMainEl.appendChild(el));
           this.outgoingMainEl.replaceWith(newMainEl);
           this.outgoingMainEl = null;
@@ -7173,6 +7178,13 @@ var LiveSocket = class {
         });
       }
     });
+  }
+  phxRemoveElementsForNavigation(mainEl, stickies = dom_default.findPhxSticky(document) || []) {
+    const removeSelector = `[${this.binding("remove")}]`;
+    const removeEls = this.cascadePhxRemoveOnNavigation ? [mainEl, ...dom_default.all(mainEl, removeSelector)] : [mainEl];
+    return removeEls.filter(
+      (el) => el.matches(removeSelector) && !dom_default.isChildOfAny(el, stickies)
+    );
   }
   /** @internal */
   transitionRemoves(elements, view, callback) {
