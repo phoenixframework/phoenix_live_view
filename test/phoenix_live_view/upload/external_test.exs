@@ -228,8 +228,12 @@ defmodule Phoenix.LiveView.UploadExternalTest do
       ])
 
     assert {:error, [[ref, %{reason: "bad name"}]]} = render_upload(avatar, "bad.jpeg", 1)
-    assert {:error, [[^ref, %{reason: "bad name"}]]} = render_upload(avatar, "foo.jpeg", 1)
-    assert render(lv) =~ "bad name"
+
+    assert {:error, [[^ref, {:external_metadata_failure, %{reason: "bad name"}}]]} =
+             render_upload(avatar, "foo.jpeg", 1)
+
+    assert render(lv) =~
+             "entry_error:#{inspect_html_safe({:external_metadata_failure, %{reason: "bad name"}})}"
   end
 
   @tag allow: [
@@ -250,6 +254,9 @@ defmodule Phoenix.LiveView.UploadExternalTest do
     html = render_upload(avatar, "foo.jpeg", 1)
     assert html =~ "foo.jpeg:1%"
     assert html =~ "bad.jpeg:0%"
+
+    assert html =~
+             "entry_error:#{inspect_html_safe({:external_metadata_failure, %{reason: "bad name"}})}"
   end
 
   @tag allow: [max_entries: 2, chunk_size: 20, accept: :any, external: :preflight]

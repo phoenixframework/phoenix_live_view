@@ -104,7 +104,7 @@ Let's look at an annotated example:
     <%!-- a regular click event whose handler will invoke Phoenix.LiveView.cancel_upload/3 --%>
     <button type="button" phx-click="cancel-upload" phx-value-ref={entry.ref} aria-label="cancel">&times;</button>
 
-    <%!-- Phoenix.Component.upload_errors/2 returns a list of error atoms --%>
+    <%!-- Phoenix.Component.upload_errors/2 returns a list of errors --%>
     <p :for={err <- upload_errors(@uploads.avatar, entry)} class="alert alert-danger">{error_to_string(err)}</p>
   </article>
 
