@@ -226,7 +226,7 @@ defmodule Phoenix.LiveView do
 
   '''
 
-  alias Phoenix.LiveView.{Socket, LiveStream, Async}
+  alias Phoenix.LiveView.{Socket, LiveStream, Async, Route}
 
   @type unsigned_params :: map
 
@@ -1065,6 +1065,38 @@ defmodule Phoenix.LiveView do
       end
   """
   defdelegate consume_uploaded_entry(socket, entry, func), to: Phoenix.LiveView.Upload
+
+  @doc """
+  Returns the navigation type for the given local path.
+
+  The navigation type is:
+
+    * `:patch` when the path points to the current LiveView in the current
+      `live_session`
+    * `:navigate` when the path points to another LiveView in the current
+      `live_session`
+    * `:href` otherwise
+
+  During disconnected render this function always returns `:href`. Once
+  the LiveView connects, a full render resolves the live navigation type.
+
+  This function is useful for components which link to paths that may or may
+  not support live navigation:
+
+  ```heex
+  <.link {%{navigation_type(@socket, @to) => @to}}>
+    Open
+  </.link>
+  ```
+
+  Choosing `:patch` for the current LiveView avoids remounting it. Use an
+  explicit `navigate` attribute instead if the LiveView should be remounted.
+  """
+  @spec navigation_type(Socket.t(), String.t()) :: :patch | :navigate | :href
+  def navigation_type(%Socket{} = socket, path) when is_binary(path) do
+    path = validate_local_url!(path, "navigation_type/2")
+    Route.navigation_type(socket, path)
+  end
 
   @doc """
   Annotates the socket for redirect to a destination path.

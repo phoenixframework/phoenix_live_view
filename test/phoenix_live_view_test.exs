@@ -3,13 +3,19 @@ defmodule Phoenix.LiveViewUnitTest do
 
   import Phoenix.LiveView
 
-  alias Phoenix.LiveView.{Utils, Socket}
-  alias Phoenix.LiveViewTest.Support.Endpoint
+  alias Phoenix.LiveView.{Diff, Socket, Utils}
+
+  alias Phoenix.LiveViewTest.Support.{
+    Endpoint,
+    HostLive,
+    Router,
+    ThermostatLive
+  }
 
   @socket Utils.configure_socket(
             %Socket{
               endpoint: Endpoint,
-              router: Phoenix.LiveViewTest.Support.Router,
+              router: Router,
               view: Phoenix.LiveViewTest.Support.ParamCounterLive
             },
             %{
@@ -22,6 +28,16 @@ defmodule Phoenix.LiveViewUnitTest do
             %{},
             URI.parse("https://www.example.com")
           )
+
+  defmodule NavigationComponent do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~H"""
+      <div>{Phoenix.LiveView.navigation_type(@socket, @to)}</div>
+      """
+    end
+  end
 
   describe "stream_configure/3" do
     test "raises when already streamed" do
@@ -301,6 +317,85 @@ defmodule Phoenix.LiveViewUnitTest do
     end
   end
 
+  describe "navigation_type/2" do
+    test "returns patch for the current LiveView and live session" do
+      socket = navigation_socket(ThermostatLive, :test)
+
+      assert navigation_type(socket, "/thermo-live-session?from=test#content") == :patch
+
+      assert navigation_type(socket, "/thermo-live-session/nested-thermo") == :patch
+    end
+
+    test "returns navigate for another LiveView in the current live session" do
+      socket = navigation_socket(ThermostatLive, :test)
+
+      assert navigation_type(socket, "/clock-live-session?from=test") == :navigate
+    end
+
+    test "returns href for another live session, controller, or missing route" do
+      socket = navigation_socket(ThermostatLive, :test)
+
+      assert navigation_type(socket, "/thermo-live-session-admin") == :href
+      assert navigation_type(socket, "/controller/incoming") == :href
+      assert navigation_type(socket, "/missing") == :href
+    end
+
+    test "requires a local path" do
+      socket = navigation_socket(ThermostatLive, :test)
+
+      for path <- [
+            "https://other.example.com/thermo-live-session",
+            "//other.example.com/path",
+            "mailto:info@example.com"
+          ] do
+        assert_raise ArgumentError, ~r/navigation_type\/2 expects a path/, fn ->
+          navigation_type(socket, path)
+        end
+      end
+    end
+
+    test "uses the current host for host-scoped routes" do
+      socket = navigation_socket(HostLive, :default, "https://app.example.com")
+
+      assert navigation_type(socket, "/with-host/path?from=test") == :patch
+
+      socket = navigation_socket(HostLive, :default, "https://www.example.com")
+      assert navigation_type(socket, "/with-host/path") == :href
+    end
+
+    test "returns href while disconnected or not mounted at a router" do
+      socket = navigation_socket(ThermostatLive, :test)
+
+      disconnected = %{
+        socket
+        | private: Map.delete(socket.private, :live_session_name),
+          transport_pid: nil
+      }
+
+      assert navigation_type(disconnected, "/thermo-live-session") == :href
+
+      assert navigation_type(
+               %{socket | host_uri: :not_mounted_at_router},
+               "/thermo-live-session"
+             ) == :href
+    end
+
+    test "is available from a connected LiveComponent socket" do
+      socket = navigation_socket(ThermostatLive, :test)
+
+      rendered =
+        Diff.component_to_rendered(
+          socket,
+          NavigationComponent,
+          %{id: "navigation", to: "/clock-live-session"},
+          %{myself: %Phoenix.LiveComponent.CID{cid: -1}}
+        )
+
+      assert rendered |> Phoenix.HTML.Safe.to_iodata() |> IO.iodata_to_binary() ==
+               "<div>navigate</div>"
+    end
+  end
+
   describe "push_navigate/2" do
     test "requires local path on to" do
       assert_raise ArgumentError, ~r"the :to option in push_navigate/2 expects a path", fn ->
@@ -344,5 +439,20 @@ defmodule Phoenix.LiveViewUnitTest do
         put_private(@socket, :assign_new, "boom")
       end
     end
+  end
+
+  defp navigation_socket(view, live_session_name, url \\ "https://www.example.com") do
+    private =
+      @socket.private
+      |> Map.put(:root_view, view)
+      |> Map.put(:live_session_name, live_session_name)
+
+    %{
+      @socket
+      | view: view,
+        private: private,
+        host_uri: URI.parse(url),
+        transport_pid: self()
+    }
   end
 end
