@@ -162,6 +162,12 @@ export default class LiveUploader {
     return this._entries;
   }
 
+  cancel() {
+    this._entries
+      .filter((entry) => !entry.isDone())
+      .forEach((entry) => entry.cancel());
+  }
+
   initAdapterUpload(resp, onError, liveSocket) {
     this._entries = this._entries.map((entry) => {
       if (entry.isCancelled()) {
