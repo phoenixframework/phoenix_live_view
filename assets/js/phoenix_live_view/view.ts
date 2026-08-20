@@ -123,6 +123,7 @@ export default class View {
   private children: Record<string, Record<string, View>> | null;
   private pendingForms: Set<string>;
   private formsForRecovery: Record<string, HTMLFormElement>;
+  private activeUploaders: Set<LiveUploader>;
 
   constructor(
     el: Element,
@@ -177,6 +178,7 @@ export default class View {
     this.disconnectedTimer = null;
     this.pendingDiffs = [];
     this.pendingForms = new Set();
+    this.activeUploaders = new Set();
     this.redirect = false;
     this.href = null;
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0;
@@ -263,6 +265,8 @@ export default class View {
     this.destroyAllChildren();
     this.destroyPortalElements();
     this.destroyed = true;
+    this.activeUploaders.forEach((uploader) => uploader.cancel());
+    this.activeUploaders.clear();
     DOM.deletePrivate(this.el, "view");
     delete this.root.children![this.id];
     if (this.parent) {
@@ -2323,17 +2327,20 @@ export default class View {
     // get each file input
     inputEls.forEach((inputEl) => {
       const uploader = new LiveUploader(inputEl, this, () => {
+        this.activeUploaders.delete(uploader);
         numFileInputsInProgress--;
         if (numFileInputsInProgress === 0) {
           onComplete();
         }
       });
+      this.activeUploaders.add(uploader);
 
       const entries = uploader
         .entries()
         .map((entry) => entry.toPreflightPayload());
 
       if (entries.length === 0) {
+        this.activeUploaders.delete(uploader);
         numFileInputsInProgress--;
         return;
       }
@@ -2377,6 +2384,7 @@ export default class View {
             errors.map(([entry_ref, reason]) => {
               this.handleFailedEntryPreflight(entry_ref, reason, uploader);
             });
+            this.activeUploaders.delete(uploader);
           } else {
             const onError = (callback) => {
               this.channel.onError(() => {
@@ -2388,6 +2396,7 @@ export default class View {
             uploader.initAdapterUpload(result.resp, onError, this.liveSocket);
           }
         } else {
+          this.activeUploaders.delete(uploader);
           this.logError(
             "upload.push-failed",
             "Failed to push upload",

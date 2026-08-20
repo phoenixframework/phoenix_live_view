@@ -225,6 +225,33 @@ test("external uploader is notified when an upload is cancelled", async ({
   );
 });
 
+// https://github.com/phoenixframework/phoenix_live_view/issues/3380
+test("external uploader is notified when its view is replaced", async ({
+  page,
+}) => {
+  await page.goto("/upload?external_upload=1");
+  await syncLV(page);
+
+  await page.locator("#upload-form input").setInputFiles({
+    name: "file.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("this upload remains in progress"),
+  });
+
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-external-upload-started",
+    /.+/,
+  );
+
+  await page.getByRole("link", { name: "Replace view" }).click();
+
+  await expect(page).toHaveURL(/\/upload\?replaced=1$/);
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-external-upload-aborted",
+    /.+/,
+  );
+});
+
 test("issue 3115 - cancelled upload is not re-added", async ({ page }) => {
   await page.goto("/upload");
   await syncLV(page);

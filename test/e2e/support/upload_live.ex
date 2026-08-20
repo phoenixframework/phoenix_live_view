@@ -63,6 +63,7 @@ defmodule Phoenix.LiveViewTest.E2E.UploadLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
+    <.link navigate="/upload?replaced=1">Replace view</.link>
     <form id="upload-form" phx-submit="save" phx-change="validate">
       <.live_file_input upload={@uploads.avatar} />
       <button type="submit">Upload</button>
