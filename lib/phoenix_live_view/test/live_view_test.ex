@@ -1274,9 +1274,16 @@ defmodule Phoenix.LiveViewTest do
   It expects the current LiveView, a query selector, and the form data.
   The query selector must return a single element.
 
-  The form data will be validated directly against the form markup and
-  make sure the data you are changing/submitting actually exists, failing
-  otherwise.
+  When the form is submitted or changed, the `form_data` is recursively merged
+  into the values from the rendered form. Values in `form_data` take precedence,
+  while values not provided in `form_data` are included with their current value
+  from the markup.
+
+  Before merging, the `form_data` is validated against the form markup. For
+  example, `%{user: %{name: "hello"}}` requires a non-disabled input, select, or
+  textarea with `name="user[name]"`. Submit and image inputs cannot be provided.
+  Values for select, checkbox, and radio inputs must be among the values in the
+  markup. Invalid data raises an `ArgumentError`.
 
   ## Examples
 
@@ -1285,8 +1292,8 @@ defmodule Phoenix.LiveViewTest do
             |> render_submit() =~ "Name updated"
 
   This function is meant to mimic what the user can actually do, so you cannot
-   set hidden input values. However, hidden values can be given when calling
-   `render_submit/2` or `render_change/2`, see their docs for examples.
+  set hidden input values. However, hidden values can be given when calling
+  `render_submit/2` or `render_change/2`, see their docs for examples.
   """
   def form(%View{proxy: proxy}, selector, form_data \\ %{}) when is_binary(selector) do
     %Element{proxy: proxy, selector: selector, form_data: form_data}
