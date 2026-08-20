@@ -33,6 +33,44 @@ defmodule Phoenix.LiveView.DebugTest do
     end
   end
 
+  defmodule NestedLV do
+    use Phoenix.LiveView
+
+    defmodule Leaf do
+      use Phoenix.LiveComponent
+
+      def render(assigns) do
+        ~H"<p>leaf</p>"
+      end
+    end
+
+    defmodule Branch do
+      use Phoenix.LiveComponent
+
+      # @tick changes, the nested component does not, so change tracking skips
+      # the dynamic holding the leaf on every re-render
+      def render(assigns) do
+        ~H"""
+        <div>
+          tick: {@tick}
+          <.live_component id="leaf" module={Leaf} />
+        </div>
+        """
+      end
+    end
+
+    def mount(_params, _session, socket), do: {:ok, assign(socket, tick: 0)}
+
+    def handle_event("tick", _params, socket), do: {:noreply, update(socket, :tick, &(&1 + 1))}
+
+    def render(assigns) do
+      ~H"""
+      <button phx-click="tick">tick</button>
+      <.live_component id="branch" module={Branch} tick={@tick} />
+      """
+    end
+  end
+
   defmodule NotALiveView do
     use GenServer
 
@@ -88,6 +126,21 @@ defmodule Phoenix.LiveView.DebugTest do
 
       assert {:ok, [%{id: "component-1", module: TestLV.Component}]} =
                Debug.live_components(view.pid)
+    end
+
+    test "reports children that change tracking skipped" do
+      conn = Plug.Test.conn(:get, "/")
+      {:ok, view, _} = live_isolated(conn, NestedLV)
+
+      assert {:ok, components} = Debug.live_components(view.pid)
+      assert %{cid: branch, children_cids: [leaf]} = Enum.find(components, &(&1.id == "branch"))
+      assert %{cid: ^leaf, children_cids: []} = Enum.find(components, &(&1.id == "leaf"))
+
+      # re-render the branch without reaching the leaf
+      render_click(element(view, "button"))
+
+      assert {:ok, components} = Debug.live_components(view.pid)
+      assert %{cid: ^branch, children_cids: [^leaf]} = Enum.find(components, &(&1.id == "branch"))
     end
 
     test "returns an error if the given pid is not a LiveView process" do
