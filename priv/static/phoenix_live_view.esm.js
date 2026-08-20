@@ -1297,6 +1297,9 @@ var LiveUploader = class _LiveUploader {
   entries() {
     return this._entries;
   }
+  cancel() {
+    this._entries.filter((entry) => !entry.isDone()).forEach((entry) => entry.cancel());
+  }
   initAdapterUpload(resp, onError, liveSocket) {
     this._entries = this._entries.map((entry) => {
       if (entry.isCancelled()) {
@@ -4609,6 +4612,7 @@ var View = class _View {
     this.disconnectedTimer = null;
     this.pendingDiffs = [];
     this.pendingForms = /* @__PURE__ */ new Set();
+    this.activeUploaders = /* @__PURE__ */ new Set();
     this.redirect = false;
     this.href = null;
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0;
@@ -4680,6 +4684,8 @@ var View = class _View {
     this.destroyAllChildren();
     this.destroyPortalElements();
     this.destroyed = true;
+    this.activeUploaders.forEach((uploader) => uploader.cancel());
+    this.activeUploaders.clear();
     dom_default.deletePrivate(this.el, "view");
     delete this.root.children[this.id];
     if (this.parent) {
@@ -6338,13 +6344,16 @@ var View = class _View {
     let numFileInputsInProgress = inputEls.length;
     inputEls.forEach((inputEl) => {
       const uploader = new LiveUploader(inputEl, this, () => {
+        this.activeUploaders.delete(uploader);
         numFileInputsInProgress--;
         if (numFileInputsInProgress === 0) {
           onComplete();
         }
       });
+      this.activeUploaders.add(uploader);
       const entries = uploader.entries().map((entry) => entry.toPreflightPayload());
       if (entries.length === 0) {
+        this.activeUploaders.delete(uploader);
         numFileInputsInProgress--;
         return;
       }
@@ -6378,6 +6387,7 @@ var View = class _View {
             errors.map(([entry_ref, reason]) => {
               this.handleFailedEntryPreflight(entry_ref, reason, uploader);
             });
+            this.activeUploaders.delete(uploader);
           } else {
             const onError = (callback) => {
               this.channel.onError(() => {
@@ -6389,6 +6399,7 @@ var View = class _View {
             uploader.initAdapterUpload(result.resp, onError, this.liveSocket);
           }
         } else {
+          this.activeUploaders.delete(uploader);
           this.logError(
             "upload.push-failed",
             "Failed to push upload",
