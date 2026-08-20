@@ -1188,6 +1188,15 @@ export default class LiveSocket {
       },
     );
     this.on("dragover", (e) => e.preventDefault());
+
+    // Browsers fire dragenter and dragleave when a drag crosses child element boundaries, even
+    // though it is still inside the same drop target. Track those events per drop target so that
+    // entering a child and leaving its sibling balance each other. When the drag leaves the drop
+    // target or the browser window, the final dragleave has no matching dragenter and reaches zero.
+    // This avoids relying on browser-specific pointer coordinates or relatedTarget, which is null
+    // for all dragleave events in older Safari versions.
+    const dropTargetDragDepths = new WeakMap<HTMLElement, number>();
+
     this.on("dragenter", (e) => {
       let target = e.target && DOM.elementFromTarget(e.target);
       if (!target) {
@@ -1200,7 +1209,11 @@ export default class LiveSocket {
       }
 
       if (eventContainsFiles(e)) {
-        this.js().addClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
+        const dragDepth = (dropTargetDragDepths.get(dropzone) || 0) + 1;
+        dropTargetDragDepths.set(dropzone, dragDepth);
+        if (dragDepth === 1) {
+          this.js().addClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
+        }
       }
     });
     this.on("dragleave", (e) => {
@@ -1214,15 +1227,13 @@ export default class LiveSocket {
         return;
       }
 
-      // Avoid add/remove jitter in the case that we drag into a new child and that child would
-      // resolve their closest drop target to the current dropzone element
-      const rect = dropzone.getBoundingClientRect();
-      if (
-        e.clientX <= rect.left ||
-        e.clientX >= rect.right ||
-        e.clientY <= rect.top ||
-        e.clientY >= rect.bottom
-      ) {
+      const dragDepth = dropTargetDragDepths.get(dropzone);
+      if (dragDepth === undefined) {
+        return;
+      } else if (dragDepth > 1) {
+        dropTargetDragDepths.set(dropzone, dragDepth - 1);
+      } else {
+        dropTargetDragDepths.delete(dropzone);
         this.js().removeClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
       }
     });
@@ -1237,6 +1248,7 @@ export default class LiveSocket {
       if (!dropzone || !(dropzone instanceof HTMLElement)) {
         return;
       }
+      dropTargetDragDepths.delete(dropzone);
       this.js().removeClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
 
       if (!e.dataTransfer) {

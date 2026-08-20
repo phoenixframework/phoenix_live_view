@@ -101,6 +101,79 @@ test("can drop a file", async ({ page }) => {
   ).resolves.toEqual("this is a test");
 });
 
+test("removes the active drop target class when dragging leaves the browser", async ({
+  page,
+}) => {
+  await page.goto("/upload");
+  await syncLV(page);
+
+  const dropTarget = page.locator("#drop-target");
+
+  const dataTransfer = await page.evaluateHandle(() => {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(
+      new File(["this is a test"], "file.txt", { type: "text/plain" }),
+    );
+    return dataTransfer;
+  });
+
+  await dropTarget.dispatchEvent("dragenter", { dataTransfer });
+  await expect(dropTarget).toHaveClass(/phx-drop-target-active/);
+
+  const box = await dropTarget.boundingBox();
+  expect(box).not.toBeNull();
+
+  // When leaving the browser, Firefox can report pointer coordinates that numerically overlap
+  // the drop target even though relatedTarget is null because no other DOM element was entered.
+  await dropTarget.dispatchEvent("dragleave", {
+    dataTransfer,
+    clientX: box.x + box.width / 2,
+    clientY: box.y + box.height / 2,
+    relatedTarget: null,
+  });
+
+  await expect(dropTarget).not.toHaveClass(/phx-drop-target-active/);
+});
+
+test("keeps the active drop target class when dragging across a child", async ({
+  page,
+}) => {
+  await page.goto("/upload");
+  await syncLV(page);
+
+  const dropTarget = page.locator("#drop-target");
+  const child = page.locator("#drop-target-inner");
+
+  const dataTransfer = await page.evaluateHandle(() => {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(
+      new File(["this is a test"], "file.txt", { type: "text/plain" }),
+    );
+    return dataTransfer;
+  });
+
+  await dropTarget.dispatchEvent("dragenter", { dataTransfer });
+  await expect(dropTarget).toHaveClass(/phx-drop-target-active/);
+
+  // Older Safari reports relatedTarget as null when crossing child boundaries. The dragenter for
+  // the child and dragleave for its parent must balance without removing the active class.
+  await child.dispatchEvent("dragenter", {
+    dataTransfer,
+    relatedTarget: null,
+  });
+  await dropTarget.dispatchEvent("dragleave", {
+    dataTransfer,
+    relatedTarget: null,
+  });
+  await expect(dropTarget).toHaveClass(/phx-drop-target-active/);
+
+  await child.dispatchEvent("dragleave", {
+    dataTransfer,
+    relatedTarget: null,
+  });
+  await expect(dropTarget).not.toHaveClass(/phx-drop-target-active/);
+});
+
 test("can upload multiple files", async ({ page }) => {
   await page.goto("/upload");
   await syncLV(page);
