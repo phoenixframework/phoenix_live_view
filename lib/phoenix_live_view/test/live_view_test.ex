@@ -2114,6 +2114,11 @@ defmodule Phoenix.LiveViewTest do
 
       assert render_upload(avatar, "myfile.jpeg") =~ "100%"
 
+  For external uploads, this function performs the preflight request and simulates
+  the client reporting upload progress. Do not call `preflight_upload/1` first for
+  the same upload. The configured JavaScript uploader is not invoked, and no file
+  is transferred to the external service.
+
   By default, the entire file is chunked to the server, but an optional
   percentage to chunk can be passed to test chunk-by-chunk uploads:
 
@@ -2175,6 +2180,11 @@ defmodule Phoenix.LiveViewTest do
   Performs a preflight upload request.
 
   Useful for testing external uploaders to retrieve the `:external` entry metadata.
+
+  This function only returns the preflight response; it does not acknowledge that
+  response in the simulated upload client. Do not call `render_upload/3` with the
+  same upload afterwards. To test the complete external upload flow, call
+  `render_upload/3` directly, which performs the preflight request automatically.
 
   ## Examples
 

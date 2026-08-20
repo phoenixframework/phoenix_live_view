@@ -16,6 +16,40 @@ pre-signed URL, specific to your cloud storage provider, that
 will provide temporary access for the end-user to upload data
 directly to your cloud storage.
 
+## Testing external uploads
+
+Use [`Phoenix.LiveViewTest.render_upload/3`](`Phoenix.LiveViewTest.render_upload/3`)
+to test the server-side external upload flow. It performs the preflight request,
+invokes the function configured by `:external`, and simulates the client reporting
+upload progress:
+
+```elixir
+avatar =
+  file_input(view, "#upload-form", :avatar, [
+    %{name: "avatar.png", content: "file contents", type: "image/png"}
+  ])
+
+assert render_upload(avatar, "avatar.png") =~ "100%"
+assert view |> form("#upload-form") |> render_submit() =~ "uploaded"
+```
+
+`render_upload/3` does not run the configured JavaScript uploader or send the file
+to the external service. Test the JavaScript uploader and its HTTP integration
+separately, for example with a browser-based test.
+
+To inspect only the metadata returned by the preflight request, use
+[`Phoenix.LiveViewTest.preflight_upload/1`](`Phoenix.LiveViewTest.preflight_upload/1`)
+in a separate test:
+
+```elixir
+assert {:ok, %{entries: entries}} = preflight_upload(avatar)
+assert [%{uploader: "S3", url: url}] = Map.values(entries)
+```
+
+`preflight_upload/1` does not acknowledge the response in the simulated upload
+client. Do not call `render_upload/3` afterwards with the same upload;
+`render_upload/3` performs its own preflight request automatically.
+
 ## Chunked HTTP Uploads
 
 For any service that supports large file
