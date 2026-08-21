@@ -156,6 +156,8 @@ defmodule Phoenix.Component.Declarative do
 
   @doc false
   defmacro def(expr, body) do
+    body = Phoenix.Component.ChangeTrackBody.maybe_rewrite(expr, body, __CALLER__)
+
     quote do
       Kernel.def(unquote(annotate_def(:def, expr)), unquote(body))
     end
@@ -163,6 +165,8 @@ defmodule Phoenix.Component.Declarative do
 
   @doc false
   defmacro defp(expr, body) do
+    body = Phoenix.Component.ChangeTrackBody.maybe_rewrite(expr, body, __CALLER__)
+
     quote do
       Kernel.defp(unquote(annotate_def(:defp, expr)), unquote(body))
     end

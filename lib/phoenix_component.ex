@@ -1572,7 +1572,8 @@ defmodule Phoenix.Component do
   """
   defmacro assign_computed(assigns, key, expression) do
     case assigns do
-      {:assigns, _, _} -> assign_computed_analyze(assigns, key, expression, __CALLER__)
+      {:assigns, _, _} ->
+        assign_computed_analyze(assigns, key, expression, __CALLER__)
 
       _ ->
         quote do
@@ -1582,7 +1583,19 @@ defmodule Phoenix.Component do
   end
 
   defp assign_computed_analyze(assigns, key, expression, caller) do
-    case Phoenix.LiveView.Assigns.analyze_and_return_tainted_keys(expression, {:untainted, %{}}, %{}, caller, &maybe_warn_taint/3) do
+    opts =
+      Phoenix.LiveView.Assigns.opts(%{
+        maybe_warn_taint: &maybe_warn_taint/3,
+        skip_module_attributes: true
+      })
+
+    case Phoenix.LiveView.Assigns.analyze_and_return_tainted_keys(
+           expression,
+           {:untainted, %{}},
+           %{},
+           caller,
+           opts
+         ) do
       {ast, keys, _vars} ->
         to_conditional_assign(keys, assigns, key, ast)
     end
@@ -1616,9 +1629,10 @@ defmodule Phoenix.Component do
     checks =
       for {{changed_var, key}, _} <- keys,
           not Phoenix.LiveView.Assigns.nested_and_parent_is_checked?(changed_var, key, keys) do
-        changed = quote do
-          unquote(assigns).__changed__
-        end
+        changed =
+          quote do
+            unquote(assigns).__changed__
+          end
 
         case key do
           [assign] ->
@@ -2011,6 +2025,47 @@ defmodule Phoenix.Component do
       end
 
     [conditional, imports]
+  end
+
+  @doc """
+  Opts the next function component into automatic change tracking of its body.
+
+  Every `assigns = expression` statement in the component body is analyzed for
+  the assigns it reads. The statement always executes, but when none of the
+  assigns it depends on changed, the values it computed are not marked as
+  changed and are therefore not sent to the client.
+
+  ## Examples
+
+      attr :title, :string, required: true
+      change_track_body true
+
+      defp step(assigns) do
+        assigns =
+          cond do
+            assigns.error? -> assign(assigns, bg: "bg-destructive/70", number: "!")
+            assigns.current_scope.subscribed? -> assign(assigns, bg: "bg-success", number: "\u2713")
+            true -> assign(assigns, bg: "bg-primary", number: nil)
+          end
+
+        ~H"..."
+      end
+
+  Here `bg` and `number` are only sent to the client when `error?` or
+  `current_scope.subscribed?` changed, even though the `cond` runs on every
+  render.
+
+  Only assigns accessed as `assigns.name` can be tracked. `@name` refers to an
+  assign inside `~H` only; in the body it keeps its regular Elixir meaning of a
+  module attribute. If the expression reads a variable, or passes `assigns` to a
+  function other than `assign/2`, `assign/3` or `assign_new/3`, the statement is
+  left untouched and a warning is emitted at compile time.
+
+  It applies to the `def`/`defp` clause that immediately follows it, so
+  multi-clause components must repeat it for each clause.
+  """
+  defmacro change_track_body(enabled) do
+    Phoenix.Component.ChangeTrackBody.enable(__CALLER__, enabled)
   end
 
   @doc ~S'''

@@ -458,13 +458,16 @@ defmodule Phoenix.LiveView.Engine do
       Enum.map_reduce(dynamic, initial_vars, fn
         to_safe_match(var, ast), vars ->
           vars = set_vars(initial_vars, vars)
-          {ast, keys, vars} = Assigns.analyze_and_return_tainted_keys(ast, vars, assigns, caller, &maybe_warn_taint/3)
+
+          {ast, keys, vars} =
+            Assigns.analyze_and_return_tainted_keys(ast, vars, assigns, caller, analysis_opts())
+
           live_struct = to_live_struct(ast, vars, assigns, state)
           {to_conditional_var(keys, var, live_struct), vars}
 
         ast, vars ->
           vars = set_vars(initial_vars, vars)
-          {ast, vars, _} = Assigns.analyze(ast, vars, assigns, caller, &maybe_warn_taint/3)
+          {ast, vars, _} = Assigns.analyze(ast, vars, assigns, caller, analysis_opts())
           {ast, vars}
       end)
 
@@ -492,7 +495,9 @@ defmodule Phoenix.LiveView.Engine do
         end
 
       {gen_pattern, variables} = mark_variables_as_change_tracked(gen_pattern, %{})
-      {gen_pattern, vars, _} = Assigns.analyze(gen_pattern, vars, assigns, caller, &maybe_warn_taint/3)
+
+      {gen_pattern, vars, _} =
+        Assigns.analyze(gen_pattern, vars, assigns, caller, analysis_opts())
 
       {block, static, dynamic, fingerprint} =
         analyze_static_and_dynamic(static, dynamic, vars, %{}, state)
@@ -503,7 +508,7 @@ defmodule Phoenix.LiveView.Engine do
             nil
 
           expr ->
-            {expr, _vars, _} = Assigns.analyze(expr, vars, assigns, caller, &maybe_warn_taint/3)
+            {expr, _vars, _} = Assigns.analyze(expr, vars, assigns, caller, analysis_opts())
             expr
         end
 
@@ -581,7 +586,7 @@ defmodule Phoenix.LiveView.Engine do
         # untainting, as the parent untainting is already causing
         # the block to be rendered and then we can proceed with
         # its own tainting.
-        {args, vars, _} = Assigns.analyze_list(args, vars, assigns, caller, [], &maybe_warn_taint/3)
+        {args, vars, _} = Assigns.analyze_list(args, vars, assigns, caller, [], analysis_opts())
 
         opts =
           for {key, value} <- opts do
@@ -662,7 +667,7 @@ defmodule Phoenix.LiveView.Engine do
     caller = state.caller
 
     for {:->, meta, [args, block]} <- blocks do
-      {args, vars, assigns} = Assigns.analyze_list(args, vars, %{}, caller, [], &maybe_warn_taint/3)
+      {args, vars, assigns} = Assigns.analyze_list(args, vars, %{}, caller, [], analysis_opts())
 
       case to_rendered_struct(block, untaint_vars(vars), assigns, state, []) do
         {:ok, rendered} -> {:->, meta, [args, rendered]}
@@ -785,7 +790,14 @@ defmodule Phoenix.LiveView.Engine do
             for {key, value} <- static_extra,
                 # We pass empty assigns because if this code is rendered,
                 # it means that upstream assigns were change tracked.
-                {_, keys, _} = Assigns.analyze_and_return_tainted_keys(value, vars, %{}, caller, &maybe_warn_taint/3),
+                {_, keys, _} =
+                  Assigns.analyze_and_return_tainted_keys(
+                    value,
+                    vars,
+                    %{},
+                    caller,
+                    analysis_opts()
+                  ),
                 # If keys are empty, it is never changed.
                 keys != %{},
                 do: {key, to_component_keys(keys)}
@@ -826,7 +838,9 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp without_dependencies?(ast, vars, caller) do
-    {_, keys, _} = Assigns.analyze_and_return_tainted_keys(ast, vars, %{}, caller, &maybe_warn_taint/3)
+    {_, keys, _} =
+      Assigns.analyze_and_return_tainted_keys(ast, vars, %{}, caller, analysis_opts())
+
     keys == %{}
   end
 
@@ -866,7 +880,7 @@ defmodule Phoenix.LiveView.Engine do
   defp component_changed([path], assigns, changed, vars_changed_vars, vars_changed) do
     case path do
       {:changed, [key]} ->
-       Assigns.changed_assign(changed, key)
+        Assigns.changed_assign(changed, key)
 
       {:changed, [key | tail]} ->
         Assigns.nested_changed_assign(tail, key, assigns, changed)
@@ -980,6 +994,10 @@ defmodule Phoenix.LiveView.Engine do
     do: {Enum.reverse(["" | bins]), Enum.reverse(vars)}
 
   ## Callbacks
+
+  defp analysis_opts do
+    Assigns.opts(%{maybe_warn_taint: &maybe_warn_taint/3})
+  end
 
   defp maybe_warn_taint(name, meta, caller) do
     if caller && Macro.Env.has_var?(caller, {name, nil}) do
