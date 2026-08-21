@@ -120,6 +120,11 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, {:shutdown, :parent_exited}, state}
   end
 
+  def handle_info({:DOWN, _, :process, pid, _reason}, %{orphaned_asyncs: asyncs} = state)
+      when is_map_key(asyncs, pid) do
+    {:noreply, %{state | orphaned_asyncs: Map.delete(asyncs, pid)}}
+  end
+
   def handle_info({:DOWN, _, :process, pid, reason} = msg, %{socket: socket} = state) do
     case Map.fetch(state.upload_pids, pid) do
       {:ok, {ref, entry_ref, cid}} ->
@@ -1570,6 +1575,7 @@ defmodule Phoenix.LiveView.Channel do
       redirect_count: 0,
       upload_names: %{},
       upload_pids: %{},
+      orphaned_asyncs: %{},
       await_asyncs_on_graceful_shutdown:
         phx_socket.private[:await_asyncs_on_graceful_shutdown] == true
     }
@@ -1718,7 +1724,9 @@ defmodule Phoenix.LiveView.Channel do
         end)
 
       new_state =
-        Enum.reduce(canceled_confs, acc, fn conf, acc -> drop_upload_name(acc, conf.name) end)
+        canceled_confs
+        |> Enum.reduce(acc, fn conf, acc -> drop_upload_name(acc, conf.name) end)
+        |> orphan_asyncs(deleted_cids)
 
       {deleted_cids, %{new_state | components: new_components}}
     end)
@@ -1817,6 +1825,25 @@ defmodule Phoenix.LiveView.Channel do
 
   defp maybe_subscribe_to_live_reload(response), do: response
 
+  # A component may be removed from the tree while its asyncs are still running.
+  # We keep tracking their pids, so a graceful shutdown still awaits them, and
+  # monitor them to drop the entries once they are done.
+  defp orphan_asyncs(state, cids) do
+    %{components: {cid_to_component, _ids, _}} = state
+
+    Enum.reduce(cids, state, fn cid, acc ->
+      case cid_to_component do
+        %{^cid => {_mod, _id, _assigns, private, _prints}} ->
+          asyncs = socket_asyncs(private, cid)
+          Enum.each(asyncs, fn {pid, _info} -> Process.monitor(pid) end)
+          %{acc | orphaned_asyncs: Map.merge(acc.orphaned_asyncs, asyncs)}
+
+        %{} ->
+          acc
+      end
+    end)
+  end
+
   defp component_asyncs(state) do
     %{components: {components, _ids, _}} = state
 
@@ -1831,6 +1858,7 @@ defmodule Phoenix.LiveView.Channel do
     socket.private
     |> socket_asyncs(nil)
     |> Map.merge(component_asyncs(state))
+    |> Map.merge(state.orphaned_asyncs)
   end
 
   defp socket_asyncs(private, cid) do
