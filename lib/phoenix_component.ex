@@ -2006,6 +2006,8 @@ defmodule Phoenix.Component do
 
   @doc false
   defmacro __using__(opts \\ []) do
+    opts = Phoenix.Component.ChangeTrackBody.take_option(__CALLER__, opts)
+
     conditional =
       if __CALLER__.module != Phoenix.LiveView.Helpers do
         quote do: import(Phoenix.LiveView.Helpers)
@@ -2063,6 +2065,17 @@ defmodule Phoenix.Component do
 
   It applies to the `def`/`defp` clause that immediately follows it, so
   multi-clause components must repeat it for each clause.
+
+  ## Setting the default for a whole module
+
+  Pass `:change_track_body` to `use Phoenix.Component` (or `use Phoenix.LiveView`)
+  to opt every function component in the module in:
+
+      use Phoenix.Component, change_track_body: true
+
+  Definitions that are not function components, such as `handle_event/3` or a
+  plain helper, are left alone. Individual components opt back out with
+  `change_track_body false`.
   """
   defmacro change_track_body(enabled) do
     Phoenix.Component.ChangeTrackBody.enable(__CALLER__, enabled)

@@ -92,6 +92,49 @@ defmodule Phoenix.Component.ChangeTrackBodyTest do
     end
   end
 
+  defmodule ModuleDefault do
+    use Phoenix.Component, change_track_body: true
+
+    def tracked(assigns) do
+      assigns = assign(assigns, :v, assigns.x + 1)
+      ~H"{@v}|{@z}"
+    end
+
+    change_track_body(false)
+
+    def opted_out(assigns) do
+      assigns = assign(assigns, :v, assigns.x + 1)
+      ~H"{@v}|{@z}"
+    end
+
+    # not components: the module wide default must leave these alone
+    def helper(a, b), do: a + b
+    def zero_arity, do: :ok
+
+    # single argument named assigns, but receives a %Phoenix.LiveView.Socket{},
+    # which carries no __changed__ at all
+    def socket_taking(assigns) do
+      assigns = assign(assigns, :v, 123)
+      assigns
+    end
+  end
+
+  defmodule LiveViewDefault do
+    use Phoenix.LiveView, change_track_body: true
+
+    def render(assigns) do
+      assigns = assign(assigns, :v, assigns.x + 1)
+      ~H"{@v}|{@z}"
+    end
+
+    def mount(_params, _session, socket), do: {:ok, socket}
+  end
+
+  defp dynamic(mod, fun, assigns, changed) do
+    %{dynamic: dynamic} = apply(mod, fun, [Map.put(assigns, :__changed__, changed)])
+    dynamic.(true)
+  end
+
   defp dynamic(fun, assigns, changed) do
     %{dynamic: dynamic} = apply(Components, fun, [Map.put(assigns, :__changed__, changed)])
     dynamic.(true)
@@ -166,6 +209,43 @@ defmodule Phoenix.Component.ChangeTrackBodyTest do
       assigns = %{x: 1, suffix: "B", z: "z"}
 
       assert ["1-B", nil] = dynamic(:lookalike, assigns, %{suffix: true})
+    end
+  end
+
+  describe "module wide default" do
+    test "use Phoenix.Component, change_track_body: true tracks every component" do
+      assert [nil, "z"] = dynamic(ModuleDefault, :tracked, %{x: 1, z: "z"}, %{z: true})
+      assert ["2", nil] = dynamic(ModuleDefault, :tracked, %{x: 1, z: "z"}, %{x: true})
+    end
+
+    test "change_track_body false overrides the module wide default" do
+      assert ["2", "z"] = dynamic(ModuleDefault, :opted_out, %{x: 1, z: "z"}, %{z: true})
+    end
+
+    test "leaves definitions that are not components alone" do
+      assert ModuleDefault.helper(1, 2) == 3
+      assert ModuleDefault.zero_arity() == :ok
+    end
+
+    test "degrades on a single argument function that carries no __changed__" do
+      socket = %Phoenix.LiveView.Socket{}
+
+      assert ModuleDefault.socket_taking(socket).assigns[:v] == 123
+    end
+
+    test "use Phoenix.LiveView, change_track_body: true reaches render/1" do
+      assert [nil, "z"] = dynamic(LiveViewDefault, :render, %{x: 1, z: "z"}, %{z: true})
+      assert ["2", nil] = dynamic(LiveViewDefault, :render, %{x: 1, z: "z"}, %{x: true})
+    end
+
+    test "rejects a non boolean option" do
+      assert_raise ArgumentError, ~r/:change_track_body expects a boolean literal/, fn ->
+        Code.eval_string("""
+        defmodule Invalid#{System.unique_integer([:positive])} do
+          use Phoenix.Component, change_track_body: "yes"
+        end
+        """)
+      end
     end
   end
 

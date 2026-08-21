@@ -15,6 +15,7 @@ defmodule Phoenix.Component.ChangeTrackBody do
   alias Phoenix.LiveView.Assigns
 
   @attribute :__change_track_body__
+  @default_attribute :__change_track_body_default__
   @assigns_var Macro.var(:assigns, nil)
 
   # Inside such a statement `assigns` is threaded through `assign/2,3` and
@@ -37,47 +38,78 @@ defmodule Phoenix.Component.ChangeTrackBody do
             "\n  #{Exception.format_file_line(caller.file, caller.line)}"
   end
 
+  # `use Phoenix.Component, change_track_body: true` sets the default for every
+  # function component in the module. It has to be read while the `use` is being
+  # expanded, because that is when the following `def`s are expanded too.
+  def take_option(caller, opts) when is_list(opts) do
+    case Keyword.pop(opts, :change_track_body) do
+      {nil, opts} ->
+        opts
+
+      {value, opts} when is_boolean(value) ->
+        Module.put_attribute(caller.module, @default_attribute, value)
+        opts
+
+      {other, _opts} ->
+        raise ArgumentError,
+              ":change_track_body expects a boolean literal, got: #{Macro.to_string(other)}" <>
+                "\n  #{Exception.format_file_line(caller.file, caller.line)}"
+    end
+  end
+
+  def take_option(_caller, opts), do: opts
+
   ## def/defp hook
 
   def maybe_rewrite(expr, body, caller) do
     case Module.get_attribute(caller.module, @attribute) do
       nil ->
-        body
+        # no explicit marker, fall back to the module wide default
+        if Module.get_attribute(caller.module, @default_attribute) do
+          rewrite(expr, body, caller, :default)
+        else
+          body
+        end
 
       enabled? ->
         Module.delete_attribute(caller.module, @attribute)
-        if enabled?, do: rewrite(expr, body, caller), else: body
+        if enabled?, do: rewrite(expr, body, caller, :explicit), else: body
     end
   end
 
-  defp rewrite(expr, body, caller) do
-    validate_head!(expr, caller)
+  # An explicit `change_track_body true` is an assertion that this function is a
+  # component, so a bad head is an error. The module wide default applies to
+  # every definition in the module, so anything that is not a component, such as
+  # `handle_event/3` or a plain helper, is simply left alone.
+  defp rewrite(expr, body, caller, source) do
+    cond do
+      not component_head?(expr) ->
+        if source == :explicit, do: raise_bad_head!(expr, caller)
+        body
 
-    if Keyword.has_key?(body, :do) do
-      Keyword.update!(body, :do, &rewrite_block(&1, caller))
-    else
-      body
+      not Keyword.has_key?(body, :do) ->
+        body
+
+      true ->
+        Keyword.update!(body, :do, &rewrite_block(&1, caller))
     end
   end
 
-  defp validate_head!(expr, caller) do
-    call =
-      case expr do
-        {:when, _, [call, _guards]} -> call
-        call -> call
-      end
+  defp component_head?(expr) do
+    match?({_name, _meta, [{:assigns, _, ctx}]} when is_atom(ctx), call(expr))
+  end
 
-    case call do
-      {_name, _meta, [{:assigns, _, ctx}]} when is_atom(ctx) ->
-        :ok
+  defp call({:when, _, [call, _guards]}), do: call
+  defp call(call), do: call
 
-      {name, _meta, args} ->
-        raise ArgumentError, """
-        change_track_body/0 can only be used on a function component, that is, a \
-        function taking a single argument named "assigns", got: #{name}/#{length(args || [])}
-          #{Exception.format_file_line(caller.file, caller.line)}
-        """
-    end
+  defp raise_bad_head!(expr, caller) do
+    {name, _meta, args} = call(expr)
+
+    raise ArgumentError, """
+    change_track_body can only be used on a function component, that is, a \
+    function taking a single argument named "assigns", got: #{name}/#{length(args || [])}
+      #{Exception.format_file_line(caller.file, caller.line)}
+    """
   end
 
   defp rewrite_block({:__block__, meta, stmts}, caller) do
@@ -124,7 +156,18 @@ defmodule Phoenix.Component.ChangeTrackBody do
       :never ->
         [
           capture(prev),
-          {:=, meta, [var, quote(do: %{unquote(rhs) | __changed__: unquote(prev)})]}
+          {:=, meta, [var, rhs]},
+          {:=, meta,
+           [
+             var,
+             quote(generated: true) do
+               if unquote(prev) do
+                 %{unquote(@assigns_var) | __changed__: unquote(prev)}
+               else
+                 unquote(@assigns_var)
+               end
+             end
+           ]}
         ]
 
       {:sometimes, check} ->
@@ -141,8 +184,18 @@ defmodule Phoenix.Component.ChangeTrackBody do
     end
   end
 
+  # A nil `__changed__` means change tracking is off, so every branch below
+  # leaves the statement exactly as it was. Matching rather than fetching also
+  # keeps the module wide default harmless on a single argument function that
+  # is not a component after all and never carries a `__changed__` at all.
   defp capture(prev) do
-    quote(do: unquote(prev) = unquote(@assigns_var).__changed__)
+    quote generated: true do
+      unquote(prev) =
+        case unquote(@assigns_var) do
+          %{__changed__: changed} -> changed
+          _ -> nil
+        end
+    end
   end
 
   defp restore(changed, prev) do
