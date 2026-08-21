@@ -1559,6 +1559,133 @@ defmodule Phoenix.Component do
   end
 
   @doc """
+  Assigns the given expression if its dependencies changed.
+
+  This works similar to change tracking in `sigil_H/2` in that
+  it only executes if the expression accesses a key in `assigns`
+  that is marked as changed.
+
+  ## Examples
+
+      assign_computed(assigns, :full_name, assigns.first_name <> " " <> assigns.last_name)
+
+  """
+  defmacro assign_computed(assigns, key, expression) do
+    case assigns do
+      {:assigns, _, _} -> assign_computed_analyze(assigns, key, expression, __CALLER__)
+
+      _ ->
+        quote do
+          Phoenix.Component.assign(unquote(assigns), unquote(key), unquote(expression))
+        end
+    end
+  end
+
+  defp assign_computed_analyze(assigns, key, expression, caller) do
+    case Phoenix.LiveView.Assigns.analyze_and_return_tainted_keys(expression, {:untainted, %{}}, %{}, caller, &maybe_warn_taint/3) do
+      {ast, keys, _vars} ->
+        to_conditional_assign(keys, assigns, key, ast)
+    end
+  end
+
+  defp to_conditional_assign(:all, assigns, key, expression) do
+    quote do
+      Phoenix.Component.assign(unquote(assigns), unquote(key), unquote(expression))
+    end
+  end
+
+  defp to_conditional_assign(keys, assigns, key, expression) when keys == %{} do
+    quote generated: true do
+      case unquote(assigns).__changed__ do
+        %{} -> unquote(assigns)
+        _ -> Phoenix.Component.assign(unquote(assigns), unquote(key), unquote(expression))
+      end
+    end
+  end
+
+  defp to_conditional_assign(keys, assigns, key, expression) do
+    quote do
+      case unquote(changed_assigns(keys, assigns)) do
+        true -> Phoenix.Component.assign(unquote(assigns), unquote(key), unquote(expression))
+        false -> unquote(assigns)
+      end
+    end
+  end
+
+  defp changed_assigns(keys, assigns) do
+    checks =
+      for {{changed_var, key}, _} <- keys,
+          not Phoenix.LiveView.Assigns.nested_and_parent_is_checked?(changed_var, key, keys) do
+        changed = quote do
+          unquote(assigns).__changed__
+        end
+
+        case key do
+          [assign] ->
+            quote do
+              dbg(unquote(changed))
+              Phoenix.LiveView.Assigns.changed_assign?(unquote(changed), unquote(assign))
+            end
+
+          [assign | tail] ->
+            assigns_var =
+              case changed_var do
+                :changed ->
+                  assigns
+
+                :vars_changed ->
+                  # we pass a map %{var: var} for nested change tracking
+                  quote do
+                    %{unquote(assign) => unquote(Macro.var(assign, nil))}
+                  end
+              end
+
+            quote do
+              Phoenix.LiveView.Assigns.nested_changed_assign?(
+                unquote(tail),
+                unquote(assign),
+                unquote(assigns_var),
+                unquote(changed)
+              )
+            end
+        end
+      end
+
+    Enum.reduce(checks, &{:or, [], [&1, &2]})
+  end
+
+  defp maybe_warn_taint(name, meta, caller) do
+    if caller && Macro.Env.has_var?(caller, {name, nil}) do
+      message = """
+      you are accessing the variable \"#{name}\" inside a assign_computed expression.
+
+      Using variables in assign_computed is discouraged as they disable change tracking. \
+      You are only allowed to access variables defined by Elixir control-flow structures, \
+      such as if/case/for, or those defined by the special attributes :let/:if/:for. \
+
+      Instead of:
+
+          def add(assigns) do
+            result = assigns.a + assigns.b
+            assigns = assign_computed(assigns, :result, result)
+
+            ~H"the result is: {result}"
+          end
+
+      You must do:
+
+          def add(assigns) do
+            assigns = assign_computed(assigns, :result, assigns.a + assigns.b)
+            ~H"the result is: {@result}"
+          end
+      """
+
+      line = meta[:line] || caller.line
+      IO.warn(message, Macro.Env.stacktrace(%{caller | line: line}))
+    end
+  end
+
+  @doc """
   Converts a given data structure to a `Phoenix.HTML.Form`.
 
   This is commonly used to convert a map or an Ecto changeset
