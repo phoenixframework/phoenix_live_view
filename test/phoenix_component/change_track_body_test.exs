@@ -130,6 +130,35 @@ defmodule Phoenix.Component.ChangeTrackBodyTest do
     def mount(_params, _session, socket), do: {:ok, socket}
   end
 
+  # the standard Phoenix `use MyAppWeb, :html` indirection
+  defmodule Web do
+    defmacro __using__(which) when is_atom(which), do: apply(__MODULE__, which, [])
+
+    def html do
+      quote do
+        use Phoenix.Component, change_track_body: true
+      end
+    end
+  end
+
+  defmodule WebHTML do
+    use Web, :html
+
+    def card(assigns) do
+      assigns = assign(assigns, :v, assigns.x + 1)
+      ~H"{@v}|{@z}"
+    end
+  end
+
+  defmodule LiveComponentDefault do
+    use Phoenix.LiveComponent, change_track_body: true
+
+    def render(assigns) do
+      assigns = assign(assigns, :v, assigns.x + 1)
+      ~H"{@v}|{@z}"
+    end
+  end
+
   defp dynamic(mod, fun, assigns, changed) do
     %{dynamic: dynamic} = apply(mod, fun, [Map.put(assigns, :__changed__, changed)])
     dynamic.(true)
@@ -236,6 +265,15 @@ defmodule Phoenix.Component.ChangeTrackBodyTest do
     test "use Phoenix.LiveView, change_track_body: true reaches render/1" do
       assert [nil, "z"] = dynamic(LiveViewDefault, :render, %{x: 1, z: "z"}, %{z: true})
       assert ["2", nil] = dynamic(LiveViewDefault, :render, %{x: 1, z: "z"}, %{x: true})
+    end
+
+    test "survives the use MyAppWeb, :html indirection" do
+      assert [nil, "z"] = dynamic(WebHTML, :card, %{x: 1, z: "z"}, %{z: true})
+      assert ["2", nil] = dynamic(WebHTML, :card, %{x: 1, z: "z"}, %{x: true})
+    end
+
+    test "use Phoenix.LiveComponent, change_track_body: true reaches render/1" do
+      assert [nil, "z"] = dynamic(LiveComponentDefault, :render, %{x: 1, z: "z"}, %{z: true})
     end
 
     test "rejects a non boolean option" do
