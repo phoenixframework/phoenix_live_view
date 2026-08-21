@@ -131,6 +131,27 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       Agent.update(observer, &Map.put(&1, :live_view_pid, lv.pid))
     end
 
+    test "graceful shutdown awaits async tasks of removed components", %{conn: conn} do
+      telemetry_ref =
+        :telemetry_test.attach_event_handlers(self(), [[:phoenix, :live_component, :destroyed]])
+
+      {:ok, lv, _html} =
+        live_isolated(conn, Phoenix.LiveViewTest.Support.StartAsyncLive.RemovedComponent,
+          session: %{"test_pid" => self()}
+        )
+
+      assert_receive {:async_started, task_pid}, 1000
+      task_ref = Process.monitor(task_pid)
+
+      render_click(lv, "hide")
+      assert_receive {[:phoenix, :live_component, :destroyed], ^telemetry_ref, _, _}, 1000
+
+      :ok = GenServer.stop(lv.pid, :shutdown)
+
+      assert_received :async_finished
+      assert_receive {:DOWN, ^task_ref, :process, ^task_pid, :normal}, 1000
+    end
+
     test "patch", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/start_async?test=patch")
 
