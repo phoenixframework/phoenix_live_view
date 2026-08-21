@@ -424,6 +424,10 @@ defmodule Phoenix.LiveView do
   """
 
   defmacro __using__(opts) do
+    # taken here rather than passed down to Phoenix.Component, because by then
+    # the options are no longer a literal this macro could read
+    opts = Phoenix.Component.ChangeTrackBody.take_option(__CALLER__, opts)
+
     # Expand layout if possible to avoid compile-time dependencies
     opts =
       with true <- Keyword.keyword?(opts),
