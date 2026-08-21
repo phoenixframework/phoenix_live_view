@@ -75,20 +75,12 @@ defmodule Phoenix.Component.ChangeTrackBodyTest do
     end
 
     alias Phoenix.Component, as: PC
-    alias Phoenix.Component.ChangeTrackBodyTest.Lookalike
 
     change_track_body(true)
 
     def aliased(assigns) do
       assigns = assigns |> PC.assign(:a, assigns.x) |> PC.assign(:b, assigns.x)
       ~H"{@a}|{@b}|{@z}"
-    end
-
-    change_track_body(true)
-
-    def lookalike(assigns) do
-      assigns = Lookalike.Component.assign(assigns, :a, assigns.x)
-      ~H"{@a}|{@z}"
     end
   end
 
@@ -157,6 +149,25 @@ defmodule Phoenix.Component.ChangeTrackBodyTest do
       assigns = assign(assigns, :v, assigns.x + 1)
       ~H"{@v}|{@z}"
     end
+  end
+
+  # Defining a component whose body cannot be change tracked warns on purpose, so
+  # it must be compiled inside the test rather than when this file is loaded.
+  defp compile_component(body) do
+    name = "ChangeTrackBodyFixture#{System.unique_integer([:positive])}"
+
+    warning =
+      capture_io(:stderr, fn ->
+        Code.eval_string("""
+        defmodule #{name} do
+          use Phoenix.Component
+          alias Phoenix.Component.ChangeTrackBodyTest.Lookalike
+          #{body}
+        end
+        """)
+      end)
+
+    {Module.concat([name]), warning}
   end
 
   defp dynamic(mod, fun, assigns, changed) do
@@ -233,11 +244,21 @@ defmodule Phoenix.Component.ChangeTrackBodyTest do
     end
 
     test "does not thread through a look-alike module that only ends in Component" do
-      # Lookalike.Component.assign/3 reads assigns.suffix, so treating its first
-      # argument as a threading position would silently under-track it
-      assigns = %{x: 1, suffix: "B", z: "z"}
+      {module, warning} =
+        compile_component("""
+        change_track_body true
 
-      assert ["1-B", nil] = dynamic(:lookalike, assigns, %{suffix: true})
+        def c(assigns) do
+          assigns = Lookalike.Component.assign(assigns, :a, assigns.x)
+          ~H"{@a}|{@z}"
+        end
+        """)
+
+      assert warning =~ "cannot be change tracked"
+
+      # Lookalike.Component.assign/3 also reads assigns.suffix, so treating its
+      # first argument as a threading position would silently under-track it
+      assert ["1-B", nil] = dynamic(module, :c, %{x: 1, suffix: "B", z: "z"}, %{suffix: true})
     end
   end
 
@@ -299,20 +320,17 @@ defmodule Phoenix.Component.ChangeTrackBodyTest do
 
   describe "expressions that cannot be tracked" do
     defp compile(body) do
-      capture_io(:stderr, fn ->
-        Code.eval_string("""
-        defmodule Test#{System.unique_integer([:positive])} do
-          use Phoenix.Component
+      {_module, warning} =
+        compile_component("""
+        change_track_body true
 
-          change_track_body true
-
-          def c(assigns) do
-            #{body}
-            ~H"{@v}|{@z}"
-          end
+        def c(assigns) do
+          #{body}
+          ~H"{@v}|{@z}"
         end
         """)
-      end)
+
+      warning
     end
 
     test "warns and stays correct when the expression reads a variable" do
