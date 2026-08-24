@@ -375,3 +375,57 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive.LC do
     {:noreply, socket |> put_flash(:info, flash) |> push_navigate(to: "/start_async?test=ok")}
   end
 end
+
+defmodule Phoenix.LiveViewTest.Support.StartAsyncLive.RemovedComponent do
+  use Phoenix.LiveView
+
+  alias Phoenix.LiveViewTest.Support.StartAsyncLive.RemovedComponent
+
+  def render(assigns) do
+    ~H"""
+    <div>
+      <.live_component :if={@show} module={RemovedComponent.LC} id="lc" test_pid={@test_pid} />
+      <button phx-click="hide">hide</button>
+    </div>
+    """
+  end
+
+  def mount(_params, %{"test_pid" => test_pid}, socket) do
+    {:ok, assign(socket, show: true, test_pid: test_pid)}
+  end
+
+  def handle_event("hide", _params, socket) do
+    {:noreply, assign(socket, show: false)}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.Support.StartAsyncLive.RemovedComponent.LC do
+  use Phoenix.LiveComponent
+
+  def render(assigns) do
+    ~H"<div id={@id}>result: {inspect(@result)}</div>"
+  end
+
+  def update(%{test_pid: test_pid} = assigns, socket) do
+    {:ok,
+     socket
+     |> assign(assigns)
+     |> assign_new(:result, fn -> :loading end)
+     |> start_async(:result_task, fn ->
+       send(test_pid, {:async_started, self()})
+
+       receive do
+         :proceed -> :ok
+       after
+         5_000 -> :ok
+       end
+
+       send(test_pid, :async_finished)
+       :finished
+     end)}
+  end
+
+  def handle_async(:result_task, {:ok, result}, socket) do
+    {:noreply, assign(socket, result: result)}
+  end
+end

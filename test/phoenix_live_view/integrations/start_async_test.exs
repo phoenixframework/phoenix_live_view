@@ -131,6 +131,56 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       Agent.update(observer, &Map.put(&1, :live_view_pid, lv.pid))
     end
 
+    test "removing a component cancels its async tasks", %{conn: conn} do
+      telemetry_ref =
+        :telemetry_test.attach_event_handlers(self(), [[:phoenix, :live_component, :destroyed]])
+
+      {:ok, lv, _html} =
+        live_isolated(conn, Phoenix.LiveViewTest.Support.StartAsyncLive.RemovedComponent,
+          session: %{"test_pid" => self()}
+        )
+
+      assert_receive {:async_started, task_pid}, 1000
+      task_ref = Process.monitor(task_pid)
+
+      # the client acks cids_destroyed asynchronously, so wait for the deletion itself
+      render_click(lv, "hide")
+      assert_receive {[:phoenix, :live_component, :destroyed], ^telemetry_ref, _, _}, 1000
+
+      assert_receive {:DOWN, ^task_ref, :process, ^task_pid, {:shutdown, :cancel}}, 500
+      refute_received :async_finished
+
+      assert {:ok, []} = Phoenix.LiveView.Channel.async_pids(lv.pid)
+
+      assert {elapsed, :ok} =
+               :timer.tc(fn -> GenServer.stop(lv.pid, :shutdown) end, :millisecond)
+
+      assert elapsed < 500
+      refute_received :async_finished
+    end
+
+    test "async tasks awaited before the component is removed still deliver", %{conn: conn} do
+      telemetry_ref =
+        :telemetry_test.attach_event_handlers(self(), [[:phoenix, :live_component, :destroyed]])
+
+      {:ok, lv, _html} =
+        live_isolated(conn, Phoenix.LiveViewTest.Support.StartAsyncLive.RemovedComponent,
+          session: %{"test_pid" => self()}
+        )
+
+      assert_receive {:async_started, task_pid}, 1000
+      send(task_pid, :proceed)
+
+      assert render_async(lv) =~ "result: :finished"
+      assert_received :async_finished
+
+      render_click(lv, "hide")
+      assert_receive {[:phoenix, :live_component, :destroyed], ^telemetry_ref, _, _}, 1000
+
+      assert {:ok, []} = Phoenix.LiveView.Channel.async_pids(lv.pid)
+      assert :ok = GenServer.stop(lv.pid, :shutdown)
+    end
+
     test "patch", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/start_async?test=patch")
 
