@@ -108,7 +108,7 @@ export default class View {
   private childJoins: number;
   private loaderTimer: ReturnType<typeof setTimeout> | null;
   private disconnectedTimer: ReturnType<typeof setTimeout> | null;
-  private pendingDiffs: any[];
+  private pendingDiffs: { diff: any; events: any; joinCount: number }[];
   private redirect: boolean;
   private href: string | null;
   private joinCount: number;
@@ -962,7 +962,10 @@ export default class View {
     ) {
       // don't mutate if this is already a pending diff
       if (!isPending) {
-        this.pendingDiffs.push({ diff, events });
+        // A diff only applies to the tree it was computed against. Remember
+        // which join produced that tree, so a rejoin in the meantime can tell
+        // this diff apart from one belonging to the tree it replaced.
+        this.pendingDiffs.push({ diff, events, joinCount: this.joinCount });
       }
       return false;
     }
@@ -1149,7 +1152,24 @@ export default class View {
     // navigation or the join is still pending, `this.update` returns false
     // if the diff was not applied.
     this.pendingDiffs = this.pendingDiffs.filter(
-      ({ diff, events }) => !this.update(diff, events, true),
+      ({ diff, events, joinCount }) => {
+        // A rejoin mounts a new LiveView: its full render replaced this.rendered
+        // and its fingerprints start over. A diff buffered against the previous
+        // tree is not merge-compatible with the one that replaced it, so drop it
+        // rather than merge it into a tree it was never computed against.
+        if (joinCount !== this.joinCount) {
+          this.log(
+            "update",
+            () => ["discarded diff from previous join", diff],
+            {
+              code: "view.stale-diff-discarded",
+              metadata: () => ({ joinCount, currentJoinCount: this.joinCount }),
+            },
+          );
+          return false;
+        }
+        return !this.update(diff, events, true);
+      },
     );
     this.eachChild((child) => child.applyPendingUpdates());
   }
