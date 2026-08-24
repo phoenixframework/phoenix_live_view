@@ -1708,6 +1708,8 @@ defmodule Phoenix.LiveView.Channel do
               live_view_socket: acc.socket
             })
 
+            cancel_asyncs(c_socket)
+
             if deleted_cid in upload_cids do
               {_new_c_socket, canceled_confs} = Upload.maybe_cancel_uploads(c_socket)
               canceled_confs
@@ -1816,6 +1818,17 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp maybe_subscribe_to_live_reload(response), do: response
+
+  # A removed component can no longer handle its async results, so we cancel any
+  # task that is still in-flight. The tagged :DOWN then finds no component to
+  # write to and is dropped.
+  defp cancel_asyncs(c_socket) do
+    c_socket.private
+    |> Map.get(:live_async, %{})
+    |> Enum.each(fn {key, _ref_pid_kind} ->
+      Async.cancel_async(c_socket, key, {:shutdown, :cancel})
+    end)
+  end
 
   defp component_asyncs(state) do
     %{components: {components, _ids, _}} = state
