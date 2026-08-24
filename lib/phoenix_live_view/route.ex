@@ -18,14 +18,18 @@ defmodule Phoenix.LiveView.Route do
     route.opts[:container] || route.view.__live__()[:container]
   end
 
+  def invalid_handle_params!(view) do
+    raise ArgumentError,
+          "cannot invoke handle_params/3 on #{inspect(view)} " <>
+            "because it is not mounted nor accessed through the router live/3 macro"
+  end
+
   @doc """
   Returns the internal or external matched LiveView route info for the given socket
   and uri, raises if none is available.
   """
   def live_link_info!(%Socket{router: nil}, view, _uri) do
-    raise ArgumentError,
-          "cannot invoke handle_params/3 on #{inspect(view)} " <>
-            "because it is not mounted nor accessed through the router live/3 macro"
+    invalid_handle_params!(view)
   end
 
   def live_link_info!(%Socket{} = socket, view, uri) do

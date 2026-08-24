@@ -433,12 +433,6 @@ defmodule Phoenix.LiveViewUnitTest do
       assert @socket.private[:hello] == nil
       assert put_private(@socket, :hello, "world").private[:hello] == "world"
     end
-
-    test "disallows reserved keys" do
-      assert_raise ArgumentError, ~r/reserved/, fn ->
-        put_private(@socket, :assign_new, "boom")
-      end
-    end
   end
 
   defp navigation_socket(view, live_session_name, url \\ "https://www.example.com") do

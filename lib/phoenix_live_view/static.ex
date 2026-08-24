@@ -347,7 +347,7 @@ defmodule Phoenix.LiveView.Static do
 
       is_nil(socket.router) ->
         # Let the callback fail for the usual reasons
-        Route.live_link_info!(socket, view, uri)
+        Route.invalid_handle_params!(view)
 
       true ->
         Utils.call_handle_params!(socket, view, lifecycle.exported?, params, uri)

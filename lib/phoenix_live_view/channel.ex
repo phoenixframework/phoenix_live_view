@@ -630,7 +630,7 @@ defmodule Phoenix.LiveView.Channel do
 
       socket.root_pid != self() or is_nil(router) ->
         # Let the callback fail for the usual reasons
-        Route.live_link_info!(%{socket | router: nil}, view, url)
+        Route.invalid_handle_params!(view)
 
       params == @not_mounted_at_router ->
         raise "cannot invoke handle_params/3 for #{inspect(view)} because #{inspect(view)}" <>
