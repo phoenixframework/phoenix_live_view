@@ -5276,7 +5276,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     update(diff, events, isPending = false) {
       if (this.isJoinPending() || this.liveSocket.hasPendingLink() && this.root.isMain()) {
         if (!isPending) {
-          this.pendingDiffs.push({ diff, events });
+          this.pendingDiffs.push({ diff, events, joinCount: this.joinCount });
         }
         return false;
       }
@@ -5413,7 +5413,20 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     }
     applyPendingUpdates() {
       this.pendingDiffs = this.pendingDiffs.filter(
-        ({ diff, events }) => !this.update(diff, events, true)
+        ({ diff, events, joinCount }) => {
+          if (joinCount !== this.joinCount) {
+            this.log(
+              "update",
+              () => ["discarded diff from previous join", diff],
+              {
+                code: "view.stale-diff-discarded",
+                metadata: () => ({ joinCount, currentJoinCount: this.joinCount })
+              }
+            );
+            return false;
+          }
+          return !this.update(diff, events, true);
+        }
       );
       this.eachChild((child) => child.applyPendingUpdates());
     }
