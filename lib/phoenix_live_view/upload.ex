@@ -326,9 +326,8 @@ defmodule Phoenix.LiveView.Upload do
   defp consume_entries(%UploadConfig{} = conf, entries, func)
        when is_list(entries) and is_function(func) do
     if conf.external do
-      results =
-        entries
-        |> Enum.map(fn entry ->
+      {results, consumed_refs} =
+        Enum.map_reduce(entries, [], fn entry, consumed_refs ->
           meta = Map.fetch!(conf.entry_refs_to_metas, entry.ref)
 
           result =
@@ -339,10 +338,10 @@ defmodule Phoenix.LiveView.Upload do
 
           case result do
             {:ok, return} ->
-              {entry.ref, return}
+              {return, [entry.ref | consumed_refs]}
 
             {:postpone, return} ->
-              {:postpone, return}
+              {return, consumed_refs}
 
             return ->
               IO.warn("""
@@ -355,19 +354,12 @@ defmodule Phoenix.LiveView.Upload do
                   #{inspect(return)}
               """)
 
-              {entry.ref, return}
+              {return, [entry.ref | consumed_refs]}
           end
         end)
 
-      consumed_refs =
-        Enum.flat_map(results, fn
-          {:postpone, _result} -> []
-          {ref, _result} -> [ref]
-        end)
-
       Phoenix.LiveView.Channel.drop_consumed_upload_entries(conf, consumed_refs)
-
-      Enum.map(results, fn {_ref, result} -> result end)
+      results
     else
       for entry <- entries,
           pid = UploadConfig.entry_pid(conf, entry),
