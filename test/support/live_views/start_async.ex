@@ -200,6 +200,10 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive do
 
   def handle_info(:boom, _socket), do: exit(:boom)
 
+  def handle_info(:hide, socket) do
+    {:noreply, assign(socket, lc: false)}
+  end
+
   def handle_info(:cancel, socket) do
     {:noreply, cancel_async(socket, :result_task)}
   end
@@ -291,6 +295,15 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive.LC do
      |> assign(result: :loading)
      |> start_async(:result_task, fn ->
        register_and_sleep(:start_async_test_process, :start_async_cancel)
+     end)}
+  end
+
+  def update(%{test: "cancel_on_destroy"}, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:result_task, fn ->
+       register_and_sleep(:start_async_test_process, :start_async_destroy)
      end)}
   end
 

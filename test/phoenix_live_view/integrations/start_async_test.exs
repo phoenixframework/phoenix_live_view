@@ -207,6 +207,20 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       assert render_async(lv, 200) =~ "lc: :renewed"
     end
 
+    test "destroying the component cancels its async tasks", %{conn: conn} do
+      Process.register(self(), :start_async_test_process)
+      {:ok, lv, _html} = live(conn, "/start_async?test=lc_cancel_on_destroy")
+
+      async_ref = wait_for_async_ready_and_monitor(:start_async_destroy)
+
+      assert render(lv) =~ "lc: :loading"
+
+      send(lv.pid, :hide)
+
+      assert_receive {:DOWN, ^async_ref, :process, _pid, {:shutdown, :cancel}}, 1000
+      refute render(lv) =~ "lc:"
+    end
+
     test "complex key task", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/start_async?test=lc_complex_key")
 
