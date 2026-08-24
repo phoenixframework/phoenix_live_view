@@ -63,6 +63,81 @@ describe("View + DOM", function () {
     expect(view["rendered"]!.get()).toEqual(updateDiff);
   });
 
+  test("applies diffs buffered during a join once the join completes", async () => {
+    liveSocket = new LiveSocket("/live", Socket);
+    const el = liveViewDOM("<div>initial</div>");
+    const view = simulateJoinedView(el, liveSocket);
+
+    view.update(
+      {
+        s: ["<section>", "</section>"],
+        0: { s: ["<span>", "</span>"], k: { 0: { 0: "a" }, kc: 1 } },
+      },
+      [],
+    );
+
+    // a diff arrives while the join is still pending
+    view["joinPending"] = true;
+    view.update({ 0: { k: { 0: { 0: "b" }, kc: 1 } } }, []);
+    expect(view["pendingDiffs"].length).toBe(1);
+    expect(view.el.innerHTML).toContain("<span>a</span>");
+
+    view["joinPending"] = false;
+    view.applyPendingUpdates();
+
+    expect(view["pendingDiffs"]).toEqual([]);
+    expect(view.el.innerHTML).toContain("<span>b</span>");
+  });
+
+  test("discards diffs buffered against the tree a rejoin replaced", async () => {
+    liveSocket = new LiveSocket("/live", Socket);
+    const el = liveViewDOM("<div>initial</div>");
+    const view = simulateJoinedView(el, liveSocket);
+
+    // the tree the server computed the next diff against: a keyed comprehension
+    // nested two levels down
+    view.update(
+      {
+        s: ["<section>", "</section>"],
+        0: {
+          s: ["<div>", "</div>"],
+          0: {
+            s: ["<span>", "</span>"],
+            k: { 0: { 0: "a" }, 1: { 0: "b" }, 2: { 0: "c" }, kc: 3 },
+          },
+        },
+      },
+      [],
+    );
+
+    // a broadcast arrives while the join is pending and is buffered: a new entry
+    // at the top, so every other entry moves down one
+    view["joinPending"] = true;
+    view.update(
+      {
+        0: { 0: { k: { 0: { 0: "new" }, 1: 0, 2: 1, 3: 2, kc: 4, km: true } } },
+      },
+      [],
+    );
+    expect(view["pendingDiffs"].length).toBe(1);
+
+    // the view rejoins before that diff is applied. The new LiveView renders a
+    // plain nested struct where the previous one rendered the comprehension, so
+    // merging the buffered diff into it would walk into a subtree that has no
+    // keyed entries at all.
+    view.onJoin({
+      rendered: {
+        s: ["<section>", "</section>"],
+        0: { s: ["<div>", "</div>"], 0: { s: ["<b>", "</b>"], 0: "hello" } },
+      },
+      liveview_version,
+    });
+
+    expect(view["pendingDiffs"]).toEqual([]);
+    expect(view.el.innerHTML).toContain("<b>hello</b>");
+    expect(view.el.innerHTML).not.toContain("new");
+  });
+
   test("applyDiff with empty title uses default if present", async () => {
     appendTitle({}, "Foo");
 
