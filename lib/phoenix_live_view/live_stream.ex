@@ -14,6 +14,8 @@ defmodule Phoenix.LiveView.LiveStream do
   def new(name, ref, items, opts) when is_list(opts) do
     dom_prefix = to_string(name)
     dom_id = Keyword.get_lazy(opts, :dom_id, fn -> &default_id(dom_prefix, &1) end)
+    limit = opts[:limit]
+    update_only = opts[:update_only]
 
     if not is_function(dom_id, 1) do
       raise ArgumentError,
@@ -25,7 +27,7 @@ defmodule Phoenix.LiveView.LiveStream do
     # with manually calling stream_insert multiple times, as stream_insert prepends.
     items_list =
       for item <- items, reduce: [] do
-        items -> [{dom_id.(item), -1, item, opts[:limit], opts[:update_only]} | items]
+        items -> [{dom_id.(item), -1, item, limit, update_only} | items]
       end
 
     %LiveStream{
