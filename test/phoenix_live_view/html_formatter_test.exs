@@ -476,6 +476,54 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     assert_formatter_output(input, expected, migrate_eex_to_curly_interpolation: true)
   end
 
+  test "does not migrate expressions whose braces close before the end" do
+    # The tokenizer ends an interpolation at the first `}` that returns the
+    # brace depth to zero, so an expression is only safe to migrate when no
+    # proper prefix of it closes early. Globally balanced is not enough.
+    # See https://github.com/phoenixframework/phoenix_live_view/issues/4409.
+    assert_formatter_doesnt_change(
+      """
+      <p><%= "}" <> "{" %></p>
+      """,
+      migrate_eex_to_curly_interpolation: true
+    )
+
+    assert_formatter_doesnt_change(
+      """
+      <p><%= "}{" %></p>
+      """,
+      migrate_eex_to_curly_interpolation: true
+    )
+
+    assert_formatter_doesnt_change(
+      """
+      <p><%= "}" %></p>
+      """,
+      migrate_eex_to_curly_interpolation: true
+    )
+
+    assert_formatter_doesnt_change(
+      """
+      <p><%= "}" <> "{" <> "}" <> "{" %></p>
+      """,
+      migrate_eex_to_curly_interpolation: true
+    )
+  end
+
+  test "migrates expressions with balanced braces that never close early" do
+    assert_formatter_output(
+      """
+      <p><%= %{a: 1} %></p>
+      <p><%= inspect(%{a: %{b: 1}}) %></p>
+      """,
+      """
+      <p>{%{a: 1}}</p>
+      <p>{inspect(%{a: %{b: 1}})}</p>
+      """,
+      migrate_eex_to_curly_interpolation: true
+    )
+  end
+
   test "format when there are EEx tags" do
     input = """
       <section>
