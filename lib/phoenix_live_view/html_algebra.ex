@@ -656,6 +656,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   defp safe_to_migrate?(~S[\{] <> rest, acc), do: safe_to_migrate?(rest, acc)
   defp safe_to_migrate?(~S[\}] <> rest, acc), do: safe_to_migrate?(rest, acc)
   defp safe_to_migrate?("{" <> rest, acc), do: safe_to_migrate?(rest, acc + 1)
+  defp safe_to_migrate?("}" <> _rest, 0), do: false
   defp safe_to_migrate?("}" <> rest, acc), do: safe_to_migrate?(rest, acc - 1)
   defp safe_to_migrate?(<<_::utf8, rest::binary>>, acc), do: safe_to_migrate?(rest, acc)
   defp safe_to_migrate?(<<>>, acc), do: acc == 0
