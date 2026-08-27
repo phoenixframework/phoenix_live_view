@@ -50,6 +50,38 @@ defmodule Phoenix.LiveView.AssignsTest do
     end
   end
 
+  describe "assign_new with dependencies" do
+    test "recomputes value when dependencies change", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/deps")
+      
+      # Initial state
+      assert render(view) =~ "user_id: 123"
+      assert render(view) =~ "user_name: User 123"
+      
+      # Update user_id which should trigger recomputation of user_name
+      view |> element("button", "Change User ID") |> render_click()
+      
+      assert render(view) =~ "user_id: 456"
+      assert render(view) =~ "user_name: User 456"
+    end
+    
+    test "doesn't recompute when dependencies don't change", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/deps")
+      
+      # Initial state
+      assert render(view) =~ "counter: 0"
+      assert render(view) =~ "user_id: 123"
+      assert render(view) =~ "user_name: User 123"
+      
+      # Update counter which should not trigger recomputation of user_name
+      view |> element("button", "Increment Counter") |> render_click()
+      
+      assert render(view) =~ "counter: 1"
+      assert render(view) =~ "user_id: 123"
+      assert render(view) =~ "user_name: User 123"
+    end
+  end
+
   describe "temporary assigns" do
     test "can be configured with mount options", %{conn: conn} do
       {:ok, conf_live, html} =
