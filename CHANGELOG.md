@@ -115,6 +115,14 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.11 (2026-08-27)
+
+### Bug fixes
+
+* Ensure stale diffs are discarded when view rejoins before the initial join succeeds ([#4405](https://github.com/phoenixframework/phoenix_live_view/pull/4405))
+* Ensure a LiveComponent's async tasks are cancelled when it is removed ([#4401](https://github.com/phoenixframework/phoenix_live_view/pull/4401))
+* Ensure formatter does not migrate expressions that close early ([#4409](https://github.com/phoenixframework/phoenix_live_view/issues/4409))
+
 ## v1.2.10 (2026-08-20)
 
 ### Bug fixes
