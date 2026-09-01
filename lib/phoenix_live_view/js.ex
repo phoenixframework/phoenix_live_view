@@ -206,6 +206,19 @@ defmodule Phoenix.LiveView.JS do
   it is guaranteed that the event will be pushed first and the patch will only be handled after
   the first event was handled by the LiveView.
 
+  > #### A note on navigation {: .warning}
+  >
+  > When [`JS.push`](`Phoenix.LiveView.JS.push/1`) is followed by navigation
+  > that replaces the current LiveView, such as [`JS.navigate`](`Phoenix.LiveView.JS.navigate/1`),
+  > the navigation may terminate the LiveView while it is
+  > still handling the pushed event. The commands are executed in order, but the
+  > event handler is not guaranteed to complete. If the event must finish before
+  > navigation, initiate the navigation from [`handle_event`](`c:Phoenix.LiveView.handle_event/3`)
+  > instead, for example with [`push_navigate`](`Phoenix.LiveView.push_navigate/2`).
+  >
+  > This does not apply to [`JS.patch`](`Phoenix.LiveView.JS.patch/1`), which keeps the
+  > current LiveView process running.
+
   '''
   alias Phoenix.LiveView.JS
 
