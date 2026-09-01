@@ -167,7 +167,13 @@ defmodule Phoenix.LiveView.Diff do
     {cid_to_component, _, _} = components
 
     {cdiffs, components} =
-      render_pending_components(socket, pending, cid_to_component, %{}, components)
+      render_pending_components(
+        socket,
+        put_parent_cid(pending, nil),
+        cid_to_component,
+        %{},
+        components
+      )
 
     diff =
       diff
@@ -902,7 +908,8 @@ defmodule Phoenix.LiveView.Diff do
 
         {assigns_sockets, metadata, components, seen_ids} =
           Enum.reduce(entries, {[], [], components, seen_ids}, fn
-            {cid, id, new?, new_assigns}, {assigns_sockets, metadata, components, seen_ids} ->
+            {cid, id, new?, new_assigns, parent_cid},
+            {assigns_sockets, metadata, components, seen_ids} ->
               if Map.has_key?(seen_ids, [component | id]) do
                 raise "found duplicate ID #{inspect(id)} " <>
                         "for component #{inspect(component)} when rendering template"
@@ -928,6 +935,7 @@ defmodule Phoenix.LiveView.Diff do
                      put_cid(components, component, id, cid), new_fingerprints(), false}
                 end
 
+              socket = %{socket | private: Map.put(socket.private, :parent_cid, parent_cid)}
               assigns_sockets = [{new_assigns, socket} | assigns_sockets]
               # or revived? forces a full render in render_component
               metadata = [{cid, id, prints, new? or revived?} | metadata]
@@ -993,7 +1001,10 @@ defmodule Phoenix.LiveView.Diff do
   defp maybe_preload_components(component, entries) do
     if function_exported?(component, :preload, 1) do
       IO.warn("#{inspect(component)}.preload/1 is deprecated, use update_many/1 instead")
-      list_of_assigns = Enum.map(entries, fn {_cid, _id, _new?, new_assigns} -> new_assigns end)
+
+      list_of_assigns =
+        Enum.map(entries, fn {_cid, _id, _new?, new_assigns, _parent} -> new_assigns end)
+
       result = component.preload(list_of_assigns)
       zip_preloads(result, entries, component, result)
     else
@@ -1011,9 +1022,14 @@ defmodule Phoenix.LiveView.Diff do
     end
   end
 
-  defp zip_preloads([new_assigns | assigns], [{cid, id, new?, _} | entries], component, preloaded)
+  defp zip_preloads(
+         [new_assigns | assigns],
+         [{cid, id, new?, _, parent} | entries],
+         component,
+         preloaded
+       )
        when is_map(new_assigns) do
-    [{cid, id, new?, new_assigns} | zip_preloads(assigns, entries, component, preloaded)]
+    [{cid, id, new?, new_assigns, parent} | zip_preloads(assigns, entries, component, preloaded)]
   end
 
   defp zip_preloads([], [], _component, _preloaded) do
@@ -1039,15 +1055,10 @@ defmodule Phoenix.LiveView.Diff do
         {diff, prints, pending, components, nil} =
           traverse(rendered, prints, %{}, components, nil, changed?)
 
-        children_cids =
-          for {_component, list} <- pending,
-              entry <- list,
-              do: elem(entry, 0)
-
         diff = if linked_cid, do: Map.put(diff, @static, linked_cid), else: diff
 
         socket =
-          put_in(socket.private.children_cids, children_cids)
+          socket
           |> Lifecycle.after_render()
           |> Utils.clear_changed()
 
@@ -1070,7 +1081,20 @@ defmodule Phoenix.LiveView.Diff do
 
     {cid_to_component, id_to_cid, uuids} = components
     cid_to_component = Map.put(cid_to_component, cid, dump)
-    {pending, diffs, {cid_to_component, id_to_cid, uuids}}
+    {put_parent_cid(pending, cid), diffs, {cid_to_component, id_to_cid, uuids}}
+  end
+
+  # traverse_component/3 does not know which component it is rendering inside of,
+  # so the parent is stamped on the entries once the traversal returns
+  defp put_parent_cid(pending, parent_cid) do
+    Map.new(pending, fn {component, entries} ->
+      entries =
+        Enum.map(entries, fn {cid, id, new?, assigns} ->
+          {cid, id, new?, assigns, parent_cid}
+        end)
+
+      {component, entries}
+    end)
   end
 
   # 32 is one bucket from large maps
@@ -1154,7 +1178,7 @@ defmodule Phoenix.LiveView.Diff do
       root_view: parent_private[:root_view],
       live_session_name: parent_private[:live_session_name],
       live_temp: %{},
-      children_cids: [],
+      parent_cid: nil,
       lifecycle: %Phoenix.LiveView.Lifecycle{}
     })
     |> Utils.assign(:flash, %{})
