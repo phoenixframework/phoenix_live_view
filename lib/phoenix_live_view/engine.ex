@@ -384,13 +384,8 @@ defmodule Phoenix.LiveView.Engine do
       static =
         case Keyword.fetch(meta, :template_annotation) do
           {:ok, {before, aft}} ->
-            case static do
-              [] ->
-                ["#{before}#{aft}"]
-
-              [first | rest] ->
-                List.update_at([to_string(before) <> first | rest], -1, &(&1 <> to_string(aft)))
-            end
+            [first | rest] = static
+            List.update_at([to_string(before) <> first | rest], -1, &(&1 <> to_string(aft)))
 
           :error ->
             static
