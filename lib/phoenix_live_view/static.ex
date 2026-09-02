@@ -159,7 +159,7 @@ defmodule Phoenix.LiveView.Static do
           phx_static: sign_static_token(socket)
         ]
 
-        data_attrs = if(router, do: [phx_main: true], else: []) ++ data_attrs
+        data_attrs = if router, do: [phx_main: true] ++ data_attrs, else: data_attrs
 
         attrs = [
           {:id, socket.id},
