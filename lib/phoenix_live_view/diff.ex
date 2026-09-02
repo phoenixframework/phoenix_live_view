@@ -691,14 +691,10 @@ defmodule Phoenix.LiveView.Diff do
       end
 
     children =
-      if child_fingerprint do
-        Map.put(children, counter, child_fingerprint)
-      else
-        if child do
-          Map.delete(children, counter)
-        else
-          children
-        end
+      cond do
+        child_fingerprint -> Map.put(children, counter, child_fingerprint)
+        child -> Map.delete(children, counter)
+        true -> children
       end
 
     traverse_dynamic(
