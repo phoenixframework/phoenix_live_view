@@ -493,46 +493,31 @@ defmodule Phoenix.LiveView.Diff do
          template,
          changed?
        ) do
-    if template do
-      {keyed, keyed_prints, pending, components, template} =
-        traverse_keyed(
-          entries,
-          previous_prints,
-          pending,
-          components,
-          template,
-          changed?,
-          stream != nil,
-          has_key?
-        )
+    {keyed, keyed_prints, pending, components, current_template} =
+      traverse_keyed(
+        entries,
+        previous_prints,
+        pending,
+        components,
+        template || {%{}, %{}},
+        changed?,
+        stream != nil,
+        has_key?
+      )
 
-      diff =
-        %{}
-        |> maybe_add_keyed(keyed)
-        |> maybe_add_stream(stream)
+    diff =
+      %{}
+      |> maybe_add_keyed(keyed)
+      |> maybe_add_stream(stream)
 
-      {diff, {fingerprint, keyed_prints}, pending, components, template}
-    else
-      {keyed, keyed_prints, pending, components, template} =
-        traverse_keyed(
-          entries,
-          previous_prints,
-          pending,
-          components,
-          {%{}, %{}},
-          changed?,
-          stream != nil,
-          has_key?
-        )
+    {diff, template} =
+      if template do
+        {diff, current_template}
+      else
+        {maybe_add_template(diff, current_template), nil}
+      end
 
-      diff =
-        %{}
-        |> maybe_add_keyed(keyed)
-        |> maybe_add_stream(stream)
-        |> maybe_add_template(template)
-
-      {diff, {fingerprint, keyed_prints}, pending, components, nil}
-    end
+    {diff, {fingerprint, keyed_prints}, pending, components, template}
   end
 
   defp traverse(
@@ -562,45 +547,30 @@ defmodule Phoenix.LiveView.Diff do
          template,
          changed?
        ) do
-    if template do
-      {keyed, keyed_prints, pending, components, template} =
-        traverse_keyed(
-          entries,
-          %{},
-          pending,
-          components,
-          template,
-          changed?,
-          stream != nil,
-          has_key?
-        )
+    {keyed, keyed_prints, pending, components, current_template} =
+      traverse_keyed(
+        entries,
+        %{},
+        pending,
+        components,
+        template || {%{}, %{}},
+        changed?,
+        stream != nil,
+        has_key?
+      )
 
-      {diff, template} =
-        %{@keyed => keyed}
-        |> maybe_add_stream(stream)
-        |> maybe_share_template(fingerprint, static, template)
+    diff =
+      %{@keyed => keyed}
+      |> maybe_add_stream(stream)
 
-      {diff, {fingerprint, keyed_prints}, pending, components, template}
-    else
-      {keyed, keyed_prints, pending, components, template} =
-        traverse_keyed(
-          entries,
-          %{},
-          pending,
-          components,
-          {%{}, %{}},
-          changed?,
-          stream != nil,
-          has_key?
-        )
+    {diff, template} =
+      if template do
+        maybe_share_template(diff, fingerprint, static, current_template)
+      else
+        {diff |> Map.put(@static, static) |> maybe_add_template(current_template), nil}
+      end
 
-      diff =
-        %{@static => static, @keyed => keyed}
-        |> maybe_add_stream(stream)
-        |> maybe_add_template(template)
-
-      {diff, {fingerprint, keyed_prints}, pending, components, nil}
-    end
+    {diff, {fingerprint, keyed_prints}, pending, components, template}
   end
 
   defp traverse(nil, fingerprint_tree, pending, components, template, _changed?) do
