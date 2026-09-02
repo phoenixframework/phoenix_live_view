@@ -818,12 +818,6 @@ const DOM = {
     }
   },
 
-  deleteSticky(el, name) {
-    this.updatePrivate(el, "sticky", [], (ops) => {
-      return ops.filter(([existingName, _]) => existingName !== name);
-    });
-  },
-
   putSticky(el, name, op) {
     const stashedResult = op(el);
     this.updatePrivate(el, "sticky", [], (ops) => {
