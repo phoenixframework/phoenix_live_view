@@ -856,10 +856,6 @@ export default class DOMPatch {
     DOM.putPrivate(fromEl, PHX_REF_LOCK, DOM.private(toEl, PHX_REF_LOCK));
   }
 
-  private indexOf(parent, child) {
-    return Array.from(parent.children).indexOf(child);
-  }
-
   private teleport(el, morph) {
     const targetSelector = el.getAttribute(PHX_PORTAL);
     const portalContainer = document.querySelector(targetSelector);
