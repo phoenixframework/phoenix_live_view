@@ -594,7 +594,7 @@ defmodule Phoenix.LiveView.Engine do
       case {call, args} do
         # If we have a component, we provide change tracking to individual keys.
         {:component, [fun, expr, metadata]} ->
-          [fun, to_component_tracking(meta, fun, expr, [], vars, state), metadata]
+          [fun, to_component_tracking(meta, fun, expr, vars, state), metadata]
 
         {_, _} ->
           args
@@ -772,7 +772,7 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Component keys change tracking
 
-  defp to_component_tracking(meta, fun, expr, extra, vars, state) do
+  defp to_component_tracking(meta, fun, expr, vars, state) do
     caller = state.caller
 
     # Separate static and dynamic parts
@@ -797,21 +797,19 @@ defmodule Phoenix.LiveView.Engine do
         {[], expr}
       end
 
-    static_extra = extra ++ static
-
     # Rewrite slots in static parts
-    static = slots_to_rendered(static, vars, state, Keyword.get(meta, :slots, []))
+    rendered_static = slots_to_rendered(static, vars, state, Keyword.get(meta, :slots, []))
 
     static =
       cond do
         # Live components have their own tracking, so we skip the logic below
         match?({:&, _, [{:/, _, [{:live_component, _, _}, 1]}]}, fun) ->
-          static
+          rendered_static
 
         # Compute change tracking for static parts
-        static_extra != [] and (dynamic == %{} or without_dependencies?(dynamic, vars, caller)) ->
+        static != [] and (dynamic == %{} or without_dependencies?(dynamic, vars, caller)) ->
           keys =
-            for {key, value} <- static_extra,
+            for {key, value} <- static,
                 # We pass empty assigns because if this code is rendered,
                 # it means that upstream assigns were change tracked.
                 {_, keys, _} = analyze_and_return_tainted_keys(value, vars, %{}, caller),
@@ -838,13 +836,13 @@ defmodule Phoenix.LiveView.Engine do
               )
             end
 
-          [__changed__: static_changed] ++ static
+          [__changed__: static_changed] ++ rendered_static
 
         true ->
           # We must disable change tracking when there is a non empty dynamic part
           # (for example `<.my_component {assigns}>`) in case the parent assigns
           # already contain a `__changed__` key
-          [__changed__: nil] ++ static
+          [__changed__: nil] ++ rendered_static
       end
 
     if dynamic == %{} do
