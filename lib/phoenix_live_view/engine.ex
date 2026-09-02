@@ -1508,9 +1508,6 @@ defmodule Phoenix.LiveView.Engine do
   # Constructs from TagEngine
   defp classify_taint(:inner_block, [_, [do: _]]), do: :live
 
-  # Constructs from Phoenix.View
-  defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :live
-
   # Special forms are forbidden and raise.
   defp classify_taint(:alias, [_]), do: :special_form
   defp classify_taint(:import, [_]), do: :special_form
