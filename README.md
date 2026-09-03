@@ -139,44 +139,7 @@ anywhere else:
 
 ## Browser Support
 
-All current Chrome, Safari, Firefox, and MS Edge are supported.
-IE11 support is available with the following polyfills:
-
-```shell
-$ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill formdata-polyfill child-replace-with-polyfill classlist-polyfill new-event-polyfill @webcomponents/template shim-keyboard-event-key core-js
-```
-
-Note: The `shim-keyboard-event-key` polyfill is also required for [MS Edge 12-18](https://caniuse.com/#feat=keyboardevent-key).
-
-Note: The `event-submitter-polyfill` package is also required for [MS Edge 12-80 &amp; Safari &lt; 15.4](https://caniuse.com/mdn-api_submitevent_submitter).
-
-```javascript
-// assets/js/app.js
-import "mdn-polyfills/Object.assign"
-import "mdn-polyfills/CustomEvent"
-import "mdn-polyfills/String.prototype.startsWith"
-import "mdn-polyfills/Array.from"
-import "mdn-polyfills/Array.prototype.find"
-import "mdn-polyfills/Array.prototype.some"
-import "mdn-polyfills/NodeList.prototype.forEach"
-import "mdn-polyfills/Element.prototype.closest"
-import "mdn-polyfills/Element.prototype.matches"
-import "mdn-polyfills/Node.prototype.remove"
-import "child-replace-with-polyfill"
-import "url-search-params-polyfill"
-import "formdata-polyfill"
-import "classlist-polyfill"
-import "new-event-polyfill"
-import "@webcomponents/template"
-import "shim-keyboard-event-key"
-import "event-submitter-polyfill"
-import "core-js/features/set"
-import "core-js/features/url"
-
-import {Socket} from "phoenix"
-import {LiveSocket} from "phoenix_live_view"
-...
-```
+Phoenix LiveView supports current versions of Chrome, Edge, Firefox, and Safari. Internet Explorer and EdgeHTML are not supported.
 
 ## Contributing
 
