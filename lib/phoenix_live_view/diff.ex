@@ -78,10 +78,6 @@ defmodule Phoenix.LiveView.Diff do
     {mapper.(cid, iodata), components}
   end
 
-  defp to_iodata(binary, components, _template, _mapper) when is_binary(binary) do
-    {binary, components}
-  end
-
   defp to_iodata_parts(parts, static, components, template, mapper) do
     [head | tail] = template_static(static, template)
     one_to_iodata(tail, parts, 0, [head], components, template, mapper)
