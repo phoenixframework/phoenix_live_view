@@ -69,6 +69,53 @@ defmodule Phoenix.ComponentRenderingTest do
       """
     end
 
+    attr :title, :string
+    attr :rest, :global
+    def global_card(assigns), do: ~H|<div {@rest}>{@title}</div>|
+
+    defp global_static(assigns), do: ~H|<.global_card data-slot="sc" title={@title} />|
+    defp global_none(assigns), do: ~H|<.global_card title={@title} />|
+    defp global_dynamic(assigns), do: ~H|<.global_card data-id={@id} title={@title} />|
+    defp global_spread(assigns), do: ~H|<.global_card {@attrs} title={@title} />|
+
+    defp global_spread_const(assigns),
+      do: ~H|<.global_card {%{"data-x" => "1"}} title={@title} />|
+
+    test "does not mark global attributes as changed when what they collect did not change" do
+      changed = %{title: true}
+
+      assert [[nil, "two"]] = eval(global_static(%{title: "two", __changed__: changed}))
+      assert [[nil, "two"]] = eval(global_none(%{title: "two", __changed__: changed}))
+      assert [[nil, "two"]] = eval(global_dynamic(%{title: "two", id: 1, __changed__: changed}))
+
+      assert [[nil, "two"]] =
+               eval(global_spread_const(%{title: "two", __changed__: changed}))
+    end
+
+    defp global_parts(rendered) do
+      [[rest, title]] = eval(rendered)
+      {rest && IO.iodata_to_binary(rest), title}
+    end
+
+    test "marks global attributes as changed when a collected attribute changed" do
+      assigns = %{title: "one", id: 9, __changed__: %{id: true}}
+
+      assert global_parts(global_dynamic(assigns)) == {~s| data-id="9"|, nil}
+    end
+
+    test "computes global attributes on the first render" do
+      assert global_parts(global_static(%{title: "one", __changed__: nil})) ==
+               {~s| data-slot="sc"|, "one"}
+    end
+
+    test "leaves a spread that depends on assigns fully untracked" do
+      # the engine disables change tracking for the whole call in that case,
+      # because the set of collected attributes is not known statically
+      assigns = %{title: "two", attrs: %{"data-a" => "1"}, __changed__: %{title: true}}
+
+      assert global_parts(global_spread(assigns)) == {~s| data-a="1"|, "two"}
+    end
+
     test "without changed assigns on root" do
       assigns = %{foo: 1}
       assert eval(~H"<.changed foo={@foo} />") == [["nil"]]
