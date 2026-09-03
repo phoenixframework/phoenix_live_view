@@ -3026,9 +3026,6 @@ var DOMPatch = class {
       return;
     dom_default.putPrivate(fromEl, PHX_REF_LOCK, dom_default.private(toEl, PHX_REF_LOCK));
   }
-  indexOf(parent, child) {
-    return Array.from(parent.children).indexOf(child);
-  }
   teleport(el, morph) {
     const targetSelector = el.getAttribute(PHX_PORTAL);
     const portalContainer = document.querySelector(targetSelector);
@@ -3684,7 +3681,9 @@ var Rendered = class {
         output.onlyCids
       );
       output.buffer.write(str);
-      output.streams = /* @__PURE__ */ new Set([...output.streams, ...streams]);
+      for (const s of streams) {
+        output.streams.add(s);
+      }
     } else if (isObject(rendered)) {
       this.toOutputBuffer(rendered, templates, output, changeTracking, {});
     } else {
