@@ -501,11 +501,6 @@ var LiveView = (() => {
       }
       return array;
     },
-    childNodeLength(html) {
-      const template = document.createElement("template");
-      template.innerHTML = html;
-      return template.content.childElementCount;
-    },
     isUploadInput(el) {
       return el.type === "file" && el.getAttribute(PHX_UPLOAD_REF) !== null;
     },
