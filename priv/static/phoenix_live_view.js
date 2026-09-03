@@ -2577,6 +2577,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           },
           // tell morphdom how to add a child
           addChild: (parent, child) => {
+            var _a;
             const { ref, streamAt } = this.getStreamInsert(child);
             if (ref === void 0) {
               return parent.appendChild(child);
@@ -2587,15 +2588,15 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
             } else if (streamAt === -1) {
               const lastChild = parent.lastElementChild;
               if (lastChild && !lastChild.hasAttribute(PHX_STREAM_REF)) {
-                const nonStreamChild = Array.from(parent.children).find(
-                  (c) => !c.hasAttribute(PHX_STREAM_REF)
+                const nonStreamChild = parent.querySelector(
+                  `:scope > :not([${PHX_STREAM_REF}])`
                 );
-                parent.insertBefore(child, nonStreamChild != null ? nonStreamChild : null);
+                parent.insertBefore(child, nonStreamChild);
               } else {
                 parent.appendChild(child);
               }
             } else if (streamAt > 0) {
-              const sibling = Array.from(parent.children)[streamAt];
+              const sibling = (_a = parent.children[streamAt]) != null ? _a : null;
               parent.insertBefore(child, sibling);
             }
           },
