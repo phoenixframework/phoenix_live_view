@@ -482,7 +482,9 @@ export default class Rendered {
         output.onlyCids,
       );
       output.buffer.write(str);
-      output.streams = new Set([...output.streams, ...streams]);
+      for (const s of streams) {
+        output.streams.add(s);
+      }
     } else if (isObject(rendered)) {
       this.toOutputBuffer(rendered, templates, output, changeTracking, {});
     } else {
