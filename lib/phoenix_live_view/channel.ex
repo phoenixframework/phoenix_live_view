@@ -47,8 +47,11 @@ defmodule Phoenix.LiveView.Channel do
     send(monitor_ref, {@prefix, :async_result, {kind, {ref, cid, keys, result}}})
   end
 
-  def async_pids(lv_pid) do
-    GenServer.call(lv_pid, {@prefix, :async_pids})
+  def async_pids(
+        lv_pid,
+        timeout \\ Application.get_env(:phoenix_live_view, :async_pids_timeout, 5_000)
+      ) do
+    GenServer.call(lv_pid, {@prefix, :async_pids}, timeout)
   end
 
   def graceful_exit(lv_pid, reason) do

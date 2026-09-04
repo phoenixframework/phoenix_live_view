@@ -275,6 +275,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, _} = live(conn, "/thermo")
       assert render_hook(view, :save, %{temp: 20}) =~ "The temp is: 20"
     end
+
+    test "render_async errors with too short a timeout", %{conn: conn} do
+      {:ok, view, _} = live(conn, "/assign_async?test=ok")
+
+      assert_raise RuntimeError, ~r/expected async process lookup to finish within 0ms/, fn ->
+        render_async(view, 0)
+      end
+    end
   end
 
   describe "container" do
