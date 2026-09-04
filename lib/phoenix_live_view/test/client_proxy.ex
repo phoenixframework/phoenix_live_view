@@ -673,10 +673,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end)
   end
 
-  def handle_call({:async_pids, topic_or_element}, _from, state) do
+  def handle_call({:async_pids, topic_or_element, timeout}, _from, state) do
     topic = proxy_topic(topic_or_element)
     %{pid: pid} = fetch_view_by_topic!(state, topic)
-    {:reply, Phoenix.LiveView.Channel.async_pids(pid), state}
+
+    # If the GenServer call times out while looking up PIDs, we'd like to
+    # report a nice error to the user.
+    try do
+      {:reply, Phoenix.LiveView.Channel.async_pids(pid, timeout), state}
+    catch
+      :exit, {:timeout, _} ->
+        message = "expected async process lookup to finish within #{timeout}ms"
+        {:reply, {:raise, RuntimeError.exception(message)}, state}
+    end
   end
 
   def handle_call({:render_event, topic_or_element, type, value}, from, state) do

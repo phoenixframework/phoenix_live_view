@@ -1050,7 +1050,8 @@ defmodule Phoenix.LiveViewTest do
   for a given LiveView or element.
 
   It renders the LiveView or Element once complete and returns the result.
-  The default `timeout` is [ExUnit](https://ex-unit.hexdocs.pm/ExUnit.html#configure/1)'s
+  The default `timeout` is the sum of the time allotted to fetch the LiveView's async processes
+  (5 seconds) and [ExUnit](https://ex-unit.hexdocs.pm/ExUnit.html#configure/1)'s
   `assert_receive_timeout` (100 ms).
 
   ## Examples
@@ -1061,16 +1062,17 @@ defmodule Phoenix.LiveViewTest do
   """
   def render_async(
         view_or_element,
-        timeout \\ Application.fetch_env!(:ex_unit, :assert_receive_timeout)
+        timeout \\ Application.get_env(:phoenix_live_view, :async_pids_timeout, 5_000) +
+          Application.fetch_env!(:ex_unit, :assert_receive_timeout)
       ) do
-    pids =
-      case view_or_element do
-        %View{} = view -> call(view, {:async_pids, {proxy_topic(view), nil, nil}})
-        %Element{} = element -> call(element, {:async_pids, element})
-      end
-
     timeout_ref = make_ref()
     Process.send_after(self(), {timeout_ref, :timeout}, timeout)
+
+    pids =
+      case view_or_element do
+        %View{} = view -> call(view, {:async_pids, {proxy_topic(view), nil, nil}, timeout})
+        %Element{} = element -> call(element, {:async_pids, element, timeout})
+      end
 
     pids
     |> Enum.map(&Process.monitor(&1))
