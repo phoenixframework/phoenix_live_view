@@ -410,7 +410,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_call({@prefix, :async_pids}, _from, state) do
-    pids = state |> all_asyncs() |> Map.keys()
+    pids = all_async_pids(state)
     {:reply, {:ok, pids}, state}
   end
 
@@ -523,8 +523,7 @@ defmodule Phoenix.LiveView.Channel do
     deadline = System.monotonic_time(:millisecond) + @async_shutdown_timeout
 
     state
-    |> all_asyncs()
-    |> Map.keys()
+    |> all_async_pids()
     |> Enum.map(&Process.monitor/1)
     |> Enum.each(fn ref ->
       timeout = max(deadline - System.monotonic_time(:millisecond), 0)
@@ -1830,29 +1829,27 @@ defmodule Phoenix.LiveView.Channel do
     end)
   end
 
-  defp component_asyncs(state) do
+  defp all_async_pids(state) do
+    %{socket: socket} = state
+    pids = collect_async_pids(socket.private, %{})
     %{components: {components, _ids, _}} = state
 
-    Enum.reduce(components, %{}, fn {cid, {_mod, _id, _assigns, private, _prints}}, acc ->
-      Map.merge(acc, socket_asyncs(private, cid))
+    components
+    |> Enum.reduce(pids, fn {_cid, {_mod, _id, _assigns, private, _prints}}, acc ->
+      collect_async_pids(private, acc)
     end)
+    |> Map.keys()
   end
 
-  defp all_asyncs(state) do
-    %{socket: socket} = state
-
-    socket.private
-    |> socket_asyncs(nil)
-    |> Map.merge(component_asyncs(state))
-  end
-
-  defp socket_asyncs(private, cid) do
+  defp collect_async_pids(private, pids) do
     case private do
       %{live_async: ref_pids} ->
-        Enum.into(ref_pids, %{}, fn {key, {ref, pid, kind}} -> {pid, {key, ref, cid, kind}} end)
+        Enum.reduce(ref_pids, pids, fn {_key, {_ref, pid, _kind}}, acc ->
+          Map.put(acc, pid, true)
+        end)
 
       %{} ->
-        %{}
+        pids
     end
   end
 end
