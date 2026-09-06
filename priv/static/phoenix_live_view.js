@@ -20,6 +20,18 @@ var LiveView = (() => {
     return a;
   };
   var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+  var __objRest = (source, exclude) => {
+    var target = {};
+    for (var prop in source)
+      if (__hasOwnProp.call(source, prop) && exclude.indexOf(prop) < 0)
+        target[prop] = source[prop];
+    if (source != null && __getOwnPropSymbols)
+      for (var prop of __getOwnPropSymbols(source)) {
+        if (exclude.indexOf(prop) < 0 && __propIsEnum.call(source, prop))
+          target[prop] = source[prop];
+      }
+    return target;
+  };
   var __export = (target, all) => {
     for (var name in all)
       __defProp(target, name, { get: all[name], enumerable: true });
@@ -4340,10 +4352,10 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       },
       push(el, type, opts = {}) {
         liveSocket.withinOwners(el, (view) => {
-          const data = opts.value || {};
-          delete opts.value;
+          const _a = opts, { value } = _a, rest = __objRest(_a, ["value"]);
+          const data = value || {};
           let e = new CustomEvent("phx:exec", { detail: { sourceElement: el } });
-          js_default.exec(e, eventType, type, view, el, ["push", __spreadValues({ data }, opts)]);
+          js_default.exec(e, eventType, type, view, el, ["push", __spreadValues({ data }, rest)]);
         });
       },
       navigate(href, opts = {}) {
@@ -4512,8 +4524,10 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     }
     /** @internal */
     __disconnected() {
-      this.__isDisconnected = true;
-      this.disconnected();
+      if (!this.__isDisconnected) {
+        this.__isDisconnected = true;
+        this.disconnected();
+      }
     }
     js() {
       return __spreadProps(__spreadValues({}, js_commands_default(this.__view().liveSocket, "hook")), {

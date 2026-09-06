@@ -4285,10 +4285,10 @@ var js_commands_default = (liveSocket, eventType) => {
     },
     push(el, type, opts = {}) {
       liveSocket.withinOwners(el, (view) => {
-        const data = opts.value || {};
-        delete opts.value;
+        const { value, ...rest } = opts;
+        const data = value || {};
         let e = new CustomEvent("phx:exec", { detail: { sourceElement: el } });
-        js_default.exec(e, eventType, type, view, el, ["push", { data, ...opts }]);
+        js_default.exec(e, eventType, type, view, el, ["push", { data, ...rest }]);
       });
     },
     navigate(href, opts = {}) {
@@ -4457,8 +4457,10 @@ var ViewHook = class _ViewHook {
   }
   /** @internal */
   __disconnected() {
-    this.__isDisconnected = true;
-    this.disconnected();
+    if (!this.__isDisconnected) {
+      this.__isDisconnected = true;
+      this.disconnected();
+    }
   }
   js() {
     return {
