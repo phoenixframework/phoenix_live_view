@@ -1036,7 +1036,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp push_pending_events_on_redirect(state, socket) do
-    if diff = Diff.get_push_events_diff(socket), do: push_diff(state, diff, nil)
+    push_diff(state, Diff.get_push_events_diff(socket), nil)
     state
   end
 
