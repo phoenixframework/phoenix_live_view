@@ -711,6 +711,36 @@ describe("liveSocket.js()", () => {
     JS.exec = originalExec;
   });
 
+  test("push does not mutate reusable options", () => {
+    const el = document.createElement("div");
+    const opts = { value: { key: "value" }, target: "#target" };
+    view.el.appendChild(el);
+
+    const originalWithinOwners = liveSocket.withinOwners;
+    liveSocket.withinOwners = (_el, callback) => {
+      callback(view);
+    };
+
+    const originalExec = JS.exec;
+    JS.exec = jest.fn();
+
+    js.push(el, "custom-event", opts);
+    js.push(el, "custom-event", opts);
+
+    expect(opts).toEqual({ value: { key: "value" }, target: "#target" });
+    expect((JS.exec as jest.Mock).mock.calls[0][5][1]).toEqual({
+      data: { key: "value" },
+      target: "#target",
+    });
+    expect((JS.exec as jest.Mock).mock.calls[1][5][1]).toEqual({
+      data: { key: "value" },
+      target: "#target",
+    });
+
+    liveSocket.withinOwners = originalWithinOwners;
+    JS.exec = originalExec;
+  });
+
   test("navigate", () => {
     const originalHistoryRedirect = liveSocket.historyRedirect;
     liveSocket.historyRedirect = jest.fn();
