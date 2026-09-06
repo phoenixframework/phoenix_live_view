@@ -18,6 +18,15 @@ defmodule Phoenix.LiveView.UtilsTest do
     assert Utils.verify_flash(Endpoint, nil) == %{}
   end
 
+  test "verify with expired flash token" do
+    token =
+      Phoenix.Token.sign(Endpoint, "flash:" <> Utils.salt!(Endpoint), %{"info" => "hi"},
+        signed_at: System.system_time(:second) - 61
+      )
+
+    assert Utils.verify_flash(Endpoint, token) == %{}
+  end
+
   test "valid_destination!/2" do
     assert Utils.valid_destination!("/foo", "")
     assert Utils.valid_destination!("http://example.com/foo", "")

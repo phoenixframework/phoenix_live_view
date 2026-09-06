@@ -8,7 +8,7 @@ defmodule Phoenix.LiveView.Utils do
   # All available mount options
   @mount_opts [:temporary_assigns, :layout]
 
-  @max_flash_age :timer.seconds(60)
+  @max_flash_age 60
 
   @valid_uri_schemes [
     "http:",
