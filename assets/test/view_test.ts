@@ -1935,8 +1935,21 @@ describe("View Hooks", function () {
     view.showLoader();
     expect(values).toEqual(["mounted", "disconnected"]);
 
+    view.showLoader();
+    // The hook is already disconnected, so it shouldn't receive another
+    // "disconnected" message
+    expect(values).toEqual(["mounted", "disconnected"]);
+
     view.triggerReconnected();
     expect(values).toEqual(["mounted", "disconnected", "reconnected"]);
+
+    view.showLoader();
+    expect(values).toEqual([
+      "mounted",
+      "disconnected",
+      "reconnected",
+      "disconnected",
+    ]);
   });
 
   test("dispatches uploads", async () => {

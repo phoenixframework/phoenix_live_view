@@ -452,8 +452,10 @@ export class ViewHook<
   }
   /** @internal */
   __disconnected() {
-    this.__isDisconnected = true;
-    this.disconnected();
+    if (!this.__isDisconnected) {
+      this.__isDisconnected = true;
+      this.disconnected();
+    }
   }
 
   js(): HookJSCommands {
