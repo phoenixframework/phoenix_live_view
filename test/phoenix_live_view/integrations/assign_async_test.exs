@@ -32,6 +32,15 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       assert render(lv)
     end
 
+    test "missing known key that is a falsy atom", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/assign_async?test=bad_ok_falsy_key")
+
+      assert render_async(lv) =~
+               "expected assign_async to return map of assigns for all keys\\nin [:data, nil]"
+
+      assert render(lv)
+    end
+
     test "keyword list return", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/assign_async?test=bad_keyword")
 

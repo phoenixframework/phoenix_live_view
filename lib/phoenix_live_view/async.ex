@@ -140,7 +140,7 @@ defmodule Phoenix.LiveView.Async do
     wrapped_func = fn ->
       case func.() do
         {:ok, %{} = assigns} ->
-          if Enum.find(keys, &(not is_map_key(assigns, &1))) do
+          if Enum.any?(keys, &(not is_map_key(assigns, &1))) do
             raise ArgumentError, """
             expected assign_async to return map of assigns for all keys
             in #{inspect(keys)}, but got: #{inspect(assigns)}
