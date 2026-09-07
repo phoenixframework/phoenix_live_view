@@ -1830,9 +1830,8 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp all_async_pids(state) do
-    %{socket: socket} = state
+    %{socket: socket, components: {components, _ids, _}} = state
     pids = collect_async_pids(socket.private, %{})
-    %{components: {components, _ids, _}} = state
 
     components
     |> Enum.reduce(pids, fn {_cid, {_mod, _id, _assigns, private, _prints}}, acc ->
