@@ -48,7 +48,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def async_pids(lv_pid) do
-    GenServer.call(lv_pid, {@prefix, :async_pids})
+    GenServer.call(lv_pid, {@prefix, :async_pids}, :infinity)
   end
 
   def graceful_exit(lv_pid, reason) do
