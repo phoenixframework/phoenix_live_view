@@ -98,6 +98,20 @@ export interface LiveSocketOptions {
    */
   bindingPrefix?: string;
   /**
+   * The optional CSS selector that scopes which root LiveViews this
+   * LiveSocket connects to.
+   *
+   * A scoped LiveSocket only joins matching roots and only handles
+   * events belonging to its own views, even when other LiveSockets'
+   * views are nested inside them. Page-level responsibilities such
+   * as navigation and the main view are left to the page's unscoped
+   * LiveSocket.
+   *
+   * Useful when running multiple LiveSockets on the same page,
+   * each connected to a different application.
+   */
+  viewSelector?: string;
+  /**
    * Callbacks for LiveView hooks.
    *
    * See [Client hooks via `phx-hook`](https://phoenix-live-view.hexdocs.pm/js-interop.html#client-hooks-via-phx-hook) for more information.
@@ -260,6 +274,7 @@ export default class LiveSocket {
   /** @internal */
   unloaded = false;
   private bindingPrefix: string;
+  private viewSelector: string | undefined;
   private viewLogger: any;
   private metadataCallbacks: any;
   private defaults: any;
@@ -359,6 +374,7 @@ export default class LiveSocket {
     }
     this.socket = new phxSocket(url, opts);
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX;
+    this.viewSelector = opts.viewSelector;
     this.params = closure(opts.params || {});
     this.viewLogger = opts.viewLogger;
     this.metadataCallbacks = opts.metadata || {};
@@ -866,6 +882,9 @@ export default class LiveSocket {
 
   /** @internal */
   joinDeadView() {
+    if (this.viewSelector) {
+      return;
+    }
     const body = document.body;
     if (
       body &&
@@ -889,25 +908,24 @@ export default class LiveSocket {
   /** @internal */
   joinRootViews() {
     let rootsFound = false;
-    DOM.all(
-      document,
-      `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`,
-      (rootEl) => {
-        if (!this.getRootById(rootEl.id)) {
-          const view = this.newRootView(rootEl);
-          // stickies cannot be mounted at the router and therefore should not
-          // get a href set on them
-          if (!DOM.isPhxSticky(rootEl)) {
-            view.setHref(this.getHref());
-          }
-          view.join();
-          if (rootEl.hasAttribute(PHX_MAIN)) {
-            this.main = view;
-          }
+    const rootSelector = this.viewSelector
+      ? `:is(${this.viewSelector})${PHX_VIEW_SELECTOR}`
+      : PHX_VIEW_SELECTOR;
+    DOM.all(document, `${rootSelector}:not([${PHX_PARENT_ID}])`, (rootEl) => {
+      if (!this.getRootById(rootEl.id)) {
+        const view = this.newRootView(rootEl);
+        // stickies cannot be mounted at the router and therefore should not
+        // get a href set on them
+        if (!DOM.isPhxSticky(rootEl)) {
+          view.setHref(this.getHref());
         }
-        rootsFound = true;
-      },
-    );
+        view.join();
+        if (rootEl.hasAttribute(PHX_MAIN)) {
+          this.main = view;
+        }
+      }
+      rootsFound = true;
+    });
     return rootsFound;
   }
 
@@ -1035,10 +1053,18 @@ export default class LiveSocket {
       // routed to the new view. A destroyed view removes its element binding,
       // in which case we DO NOT want to fallback to the main element
       view = DOM.private(viewEl, "view");
+      if (view && view.liveSocket !== this) {
+        // the nearest view root belongs to another LiveSocket on this page
+        return null;
+      }
     } else {
       if (!childEl.isConnected) {
         // if the element is not part of the DOM any more
         // there's no owner and we should not do fall back
+        return null;
+      }
+      if (this.viewSelector) {
+        // a scoped LiveSocket has no page-wide main view to fall back to
         return null;
       }
       view = this.main!;
@@ -1136,19 +1162,24 @@ export default class LiveSocket {
 
     this.boundTopLevelEvents = true;
     document.body.addEventListener("click", function () {}); // ensure all click events bubble for mobile Safari
-    window.addEventListener(
-      "pageshow",
-      (e) => {
-        if (e.persisted) {
-          // reload page if being restored from back/forward cache
-          this.getSocket().disconnect();
-          this.withPageLoading({ to: window.location.href, kind: "redirect" });
-          window.location.reload();
-        }
-      },
-      true,
-    );
-    if (!dead) {
+    if (!this.viewSelector) {
+      window.addEventListener(
+        "pageshow",
+        (e) => {
+          if (e.persisted) {
+            // reload page if being restored from back/forward cache
+            this.getSocket().disconnect();
+            this.withPageLoading({
+              to: window.location.href,
+              kind: "redirect",
+            });
+            window.location.reload();
+          }
+        },
+        true,
+      );
+    }
+    if (!dead && !this.viewSelector) {
       this.bindNav();
     }
     this.bindClicks();
@@ -1352,34 +1383,31 @@ export default class LiveSocket {
         if (!(e.target instanceof Element)) {
           return;
         }
-        if (targetPhxEvent) {
-          this.debounce(e.target, e, browserEventName, () => {
-            this.withinOwners(e.target, (view) => {
+
+        const handleEvent = (
+          el: Element,
+          phxEvent: string,
+          phxTarget: "window" | null,
+        ) => {
+          this.debounce(el, e, browserEventName, () => {
+            this.withinOwners(el, (view) => {
               callback(
                 e as HTMLElementEventMap[E[keyof E]],
                 event,
                 view,
-                e.target as Element,
-                targetPhxEvent,
-                null,
+                el,
+                phxEvent,
+                phxTarget,
               );
             });
           });
+        };
+
+        if (targetPhxEvent) {
+          handleEvent(e.target, targetPhxEvent, null);
         } else {
           DOM.all(document, `[${windowBinding}]`, (el) => {
-            const phxEvent = el.getAttribute(windowBinding)!;
-            this.debounce(el, e, browserEventName, () => {
-              this.withinOwners(el, (view) => {
-                callback(
-                  e as HTMLElementEventMap[E[keyof E]],
-                  event,
-                  view,
-                  el as Element,
-                  phxEvent,
-                  "window",
-                );
-              });
-            });
+            handleEvent(el, el.getAttribute(windowBinding)!, "window");
           });
         }
       });
@@ -1419,12 +1447,15 @@ export default class LiveSocket {
         const phxEvent = target.getAttribute(click);
         if (!phxEvent) {
           if (DOM.isNewPageClick(e, window.location)) {
-            this.unload();
+            if (!this.viewSelector || this.owner(target)) {
+              this.unload();
+            }
           }
           return;
         }
 
-        if (target.getAttribute("href") === "#") {
+        // only the owning socket may preventDefault
+        if (this.owner(target) && target.getAttribute("href") === "#") {
           e.preventDefault();
         }
 
@@ -1854,6 +1885,9 @@ export default class LiveSocket {
         }
 
         const input = e.target;
+        if (!this.owner(input)) {
+          return;
+        }
         const phxChange = this.binding("change");
         if (
           this.blockPhxChangeWhileComposing &&

@@ -6714,6 +6714,7 @@ var LiveSocket = class {
     }
     this.socket = new phxSocket(url, opts);
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX;
+    this.viewSelector = opts.viewSelector;
     this.params = closure(opts.params || {});
     this.viewLogger = opts.viewLogger;
     this.metadataCallbacks = opts.metadata || {};
@@ -7134,6 +7135,9 @@ var LiveSocket = class {
   }
   /** @internal */
   joinDeadView() {
+    if (this.viewSelector) {
+      return;
+    }
     const body = document.body;
     if (body && !this.isPhxView(body) && !this.isPhxView(document.firstElementChild)) {
       const view = this.newRootView(body);
@@ -7151,23 +7155,20 @@ var LiveSocket = class {
   /** @internal */
   joinRootViews() {
     let rootsFound = false;
-    dom_default.all(
-      document,
-      `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`,
-      (rootEl) => {
-        if (!this.getRootById(rootEl.id)) {
-          const view = this.newRootView(rootEl);
-          if (!dom_default.isPhxSticky(rootEl)) {
-            view.setHref(this.getHref());
-          }
-          view.join();
-          if (rootEl.hasAttribute(PHX_MAIN)) {
-            this.main = view;
-          }
+    const rootSelector = this.viewSelector ? `:is(${this.viewSelector})${PHX_VIEW_SELECTOR}` : PHX_VIEW_SELECTOR;
+    dom_default.all(document, `${rootSelector}:not([${PHX_PARENT_ID}])`, (rootEl) => {
+      if (!this.getRootById(rootEl.id)) {
+        const view = this.newRootView(rootEl);
+        if (!dom_default.isPhxSticky(rootEl)) {
+          view.setHref(this.getHref());
         }
-        rootsFound = true;
+        view.join();
+        if (rootEl.hasAttribute(PHX_MAIN)) {
+          this.main = view;
+        }
       }
-    );
+      rootsFound = true;
+    });
     return rootsFound;
   }
   /** @internal */
@@ -7260,8 +7261,14 @@ var LiveSocket = class {
     const viewEl = dom_default.closestViewEl(childEl);
     if (viewEl) {
       view = dom_default.private(viewEl, "view");
+      if (view && view.liveSocket !== this) {
+        return null;
+      }
     } else {
       if (!childEl.isConnected) {
+        return null;
+      }
+      if (this.viewSelector) {
         return null;
       }
       view = this.main;
@@ -7340,18 +7347,23 @@ var LiveSocket = class {
     this.boundTopLevelEvents = true;
     document.body.addEventListener("click", function() {
     });
-    window.addEventListener(
-      "pageshow",
-      (e) => {
-        if (e.persisted) {
-          this.getSocket().disconnect();
-          this.withPageLoading({ to: window.location.href, kind: "redirect" });
-          window.location.reload();
-        }
-      },
-      true
-    );
-    if (!dead) {
+    if (!this.viewSelector) {
+      window.addEventListener(
+        "pageshow",
+        (e) => {
+          if (e.persisted) {
+            this.getSocket().disconnect();
+            this.withPageLoading({
+              to: window.location.href,
+              kind: "redirect"
+            });
+            window.location.reload();
+          }
+        },
+        true
+      );
+    }
+    if (!dead && !this.viewSelector) {
       this.bindNav();
     }
     this.bindClicks();
@@ -7512,34 +7524,25 @@ var LiveSocket = class {
         if (!(e.target instanceof Element)) {
           return;
         }
-        if (targetPhxEvent) {
-          this.debounce(e.target, e, browserEventName, () => {
-            this.withinOwners(e.target, (view) => {
+        const handleEvent = (el, phxEvent, phxTarget) => {
+          this.debounce(el, e, browserEventName, () => {
+            this.withinOwners(el, (view) => {
               callback(
                 e,
                 event,
                 view,
-                e.target,
-                targetPhxEvent,
-                null
+                el,
+                phxEvent,
+                phxTarget
               );
             });
           });
+        };
+        if (targetPhxEvent) {
+          handleEvent(e.target, targetPhxEvent, null);
         } else {
           dom_default.all(document, `[${windowBinding}]`, (el) => {
-            const phxEvent = el.getAttribute(windowBinding);
-            this.debounce(el, e, browserEventName, () => {
-              this.withinOwners(el, (view) => {
-                callback(
-                  e,
-                  event,
-                  view,
-                  el,
-                  phxEvent,
-                  "window"
-                );
-              });
-            });
+            handleEvent(el, el.getAttribute(windowBinding), "window");
           });
         }
       });
@@ -7572,11 +7575,13 @@ var LiveSocket = class {
         const phxEvent = target.getAttribute(click);
         if (!phxEvent) {
           if (dom_default.isNewPageClick(e, window.location)) {
-            this.unload();
+            if (!this.viewSelector || this.owner(target)) {
+              this.unload();
+            }
           }
           return;
         }
-        if (target.getAttribute("href") === "#") {
+        if (this.owner(target) && target.getAttribute("href") === "#") {
           e.preventDefault();
         }
         if (target.hasAttribute(PHX_REF_SRC)) {
@@ -7931,6 +7936,9 @@ var LiveSocket = class {
           return;
         }
         const input = e.target;
+        if (!this.owner(input)) {
+          return;
+        }
         const phxChange = this.binding("change");
         if (this.blockPhxChangeWhileComposing && e instanceof InputEvent && e.isComposing) {
           const key = `composition-listener-${type}`;
