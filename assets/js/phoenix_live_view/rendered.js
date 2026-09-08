@@ -460,11 +460,8 @@ export default class Rendered {
     // we don't need to store the rendered tree for streams
     if (rendered[STREAM]) {
       const stream = rendered[STREAM];
-      const [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null];
-      if (
-        stream !== undefined &&
-        (rendered[KEYED][KEYED_COUNT] > 0 || deleteIds.length > 0 || reset)
-      ) {
+      const [_ref, _inserts, deleteIds, reset] = stream;
+      if (rendered[KEYED][KEYED_COUNT] > 0 || deleteIds.length > 0 || reset) {
         delete rendered[STREAM];
         rendered[KEYED] = {
           [KEYED_COUNT]: 0,
