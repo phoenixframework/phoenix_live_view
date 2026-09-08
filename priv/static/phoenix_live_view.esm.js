@@ -3622,8 +3622,8 @@ var Rendered = class {
     }
     if (rendered[STREAM]) {
       const stream = rendered[STREAM];
-      const [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null];
-      if (stream !== void 0 && (rendered[KEYED][KEYED_COUNT] > 0 || deleteIds.length > 0 || reset)) {
+      const [_ref, _inserts, deleteIds, reset] = stream;
+      if (rendered[KEYED][KEYED_COUNT] > 0 || deleteIds.length > 0 || reset) {
         delete rendered[STREAM];
         rendered[KEYED] = {
           [KEYED_COUNT]: 0
