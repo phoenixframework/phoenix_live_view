@@ -930,7 +930,7 @@ var LiveView = (() => {
       }
     },
     hasSelectionRange(el) {
-      return el.setSelectionRange && (el.type === "text" || el.type === "textarea");
+      return el.setSelectionRange && ["text", "textarea", "search", "url", "tel", "password"].includes(el.type);
     },
     restoreFocus(focused, selectionStart, selectionEnd) {
       if (focused instanceof HTMLSelectElement) {
