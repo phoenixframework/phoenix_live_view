@@ -265,6 +265,22 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     end
   end
 
+  live_session :multi_socket,
+    layout: {Phoenix.LiveViewTest.E2E.MultiSocketLive.Layout, :live},
+    on_mount: {Phoenix.LiveViewTest.E2E.Hooks, :default} do
+    scope "/", Phoenix.LiveViewTest.E2E do
+      pipe_through(:browser)
+
+      live "/multi-socket", MultiSocketLive
+    end
+  end
+
+  scope "/", Phoenix.LiveViewTest.E2E do
+    pipe_through(:browser)
+
+    get "/multi-socket/embed", MultiSocketLive.EmbedController, :show
+  end
+
   live_session :navigation, layout: {Phoenix.LiveViewTest.E2E.Navigation.Layout, :live} do
     scope "/navigation" do
       pipe_through(:browser)

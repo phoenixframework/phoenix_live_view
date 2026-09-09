@@ -115,6 +115,12 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.12 (unreleased)
+
+### Enhancements
+
+* Support multiple isolated LiveSockets on one page via the `viewSelector` option
+
 ## v1.2.11 (2026-08-27)
 
 ### Bug fixes
