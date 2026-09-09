@@ -1670,11 +1670,11 @@ var hooks_default = Hooks;
 // js/phoenix_live_view/element_ref.ts
 var ElementRef = class {
   static onUnlock(el, callback) {
-    if (!dom_default.isLocked(el) && !el.closest(`[${PHX_REF_LOCK}]`)) {
+    const closestLock = el.closest(`[${PHX_REF_LOCK}]`);
+    if (!closestLock) {
       return callback();
     }
-    const closestLock = el.closest(`[${PHX_REF_LOCK}]`);
-    const ref = closestLock.closest(`[${PHX_REF_LOCK}]`).getAttribute(PHX_REF_LOCK);
+    const ref = closestLock.getAttribute(PHX_REF_LOCK);
     closestLock.addEventListener(
       `phx:undo-lock:${ref}`,
       () => {
