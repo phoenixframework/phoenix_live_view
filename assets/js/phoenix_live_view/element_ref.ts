@@ -13,13 +13,11 @@ import DOM from "./dom";
 
 export default class ElementRef {
   static onUnlock(el, callback) {
-    if (!DOM.isLocked(el) && !el.closest(`[${PHX_REF_LOCK}]`)) {
+    const closestLock = el.closest(`[${PHX_REF_LOCK}]`);
+    if (!closestLock) {
       return callback();
     }
-    const closestLock = el.closest(`[${PHX_REF_LOCK}]`);
-    const ref = closestLock
-      .closest(`[${PHX_REF_LOCK}]`)
-      .getAttribute(PHX_REF_LOCK);
+    const ref = closestLock.getAttribute(PHX_REF_LOCK);
     closestLock.addEventListener(
       `phx:undo-lock:${ref}`,
       () => {
