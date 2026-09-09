@@ -649,7 +649,8 @@ const DOM = {
 
   hasSelectionRange(el): el is HTMLInputElement | HTMLTextAreaElement {
     return (
-      el.setSelectionRange && (el.type === "text" || el.type === "textarea")
+      el.setSelectionRange &&
+      ["text", "textarea", "search", "url", "tel", "password"].includes(el.type)
     );
   },
 

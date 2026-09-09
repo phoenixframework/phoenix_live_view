@@ -417,6 +417,23 @@ describe("DOM", () => {
     });
   });
 
+  describe("restoreFocus", () => {
+    test.each(["search", "url", "tel", "password"])(
+      "restores the selection for input type %s",
+      (type) => {
+        const input = tag("input", { type }, "") as HTMLInputElement;
+        input.value = "hello world";
+        document.body.appendChild(input);
+
+        DOM.restoreFocus(input, 2, 5);
+
+        expect(document.activeElement).toBe(input);
+        expect(input.selectionStart).toBe(2);
+        expect(input.selectionEnd).toBe(5);
+      },
+    );
+  });
+
   describe("isFormAssociated", () => {
     test("identifies inputs, selects, textareas", () => {
       expect(DOM.isFormAssociated(tag("input", { type: "text" }, ""))).toBe(
