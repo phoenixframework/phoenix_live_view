@@ -69,6 +69,29 @@ describe("Portal handling", () => {
     expect(view.portalElementIds.has("portal-content-portal1")).toBe(true);
   });
 
+  test("preserves the namespace of the teleported root", () => {
+    const { view } = createViewWithPortal();
+    const content = document.getElementById("content");
+    const portalTarget = document.getElementById("portal-target")!;
+    const html = `
+      <div>
+        <template id="svg-portal" ${PHX_PORTAL}="#portal-target">
+          <svg id="portal-content-svg-portal" viewBox="0 0 10 10">
+            <circle cx="5" cy="5" r="5" />
+          </svg>
+        </template>
+      </div>
+    `;
+
+    performPatch(view, content, html);
+
+    const svg = portalTarget.querySelector("#portal-content-svg-portal")!;
+    expect(svg.namespaceURI).toBe("http://www.w3.org/2000/svg");
+    expect(svg.firstElementChild!.namespaceURI).toBe(
+      "http://www.w3.org/2000/svg",
+    );
+  });
+
   test("updating portal content", () => {
     const { view } = createViewWithPortal();
     const content = document.getElementById("content");
