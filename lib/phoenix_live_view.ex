@@ -2506,4 +2506,32 @@ defmodule Phoenix.LiveView do
   def cancel_async(socket, async_or_keys, reason \\ {:shutdown, :cancel}) do
     Async.cancel_async(socket, async_or_keys, reason)
   end
+
+  @doc """
+  Subscribes to `Phoenix.PubSub` messages on the given topic.
+
+  This works with both LiveViews and LiveComponents. LiveView tracks each
+  subscription and globally subscribes once. It automatically unsubscribes after
+  the last subscriber unsubscribed or - in case of components - the last subscribed
+  component is removed from the page.
+  """
+  @spec subscribe(
+          socket :: Socket.t(),
+          pubsub :: Module.t(),
+          topic :: binary(),
+          callback :: (socket :: Socket.t(), message :: term() -> Socket.t())
+        ) :: :ok
+  defdelegate subscribe(socket, pubsub, topic, callback), to: Phoenix.LiveView.PubSub
+
+  @doc """
+  Unsubscribes from `Phoenix.PubSub` messages on the given topic.
+
+  See `subscribe/4`.
+  """
+  @spec unsubscribe(
+          socket :: Socket.t(),
+          pubsub :: Module.t(),
+          topic :: binary()
+        ) :: :ok
+  defdelegate unsubscribe(socket, pubsub, topic), to: Phoenix.LiveView.PubSub
 end

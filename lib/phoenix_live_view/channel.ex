@@ -380,6 +380,72 @@ defmodule Phoenix.LiveView.Channel do
     handle_changed(state, new_socket, nil)
   end
 
+  def handle_info(
+        {Phoenix.LiveView.PubSub, :subscribe, pubsub, topic, cid_or_root, callback},
+        state
+      ) do
+    state =
+      case state.pubsub_subscriptions do
+        %{{^pubsub, ^topic} => _} ->
+          update_in(state.pubsub_subscriptions, [{pubsub, topic}], fn {_ref, subscribers} ->
+            Map.put(subscribers, cid_or_root, callback)
+          end)
+
+        _ ->
+          ref = make_ref()
+          Phoenix.PubSub.subscribe(pubsub, topic, sender: {Phoenix.LiveView.PubSub, ref})
+
+          state
+          |> put_in([:pubsub_subscriptions, {pubsub, topic}], {ref, %{cid_or_root => callback}})
+          |> put_in([:pubsub_subscriptions, ref], {pubsub, topic})
+      end
+
+    {:noreply, state}
+  end
+
+  def handle_info({Phoenix.LiveView.PubSub, :unsubscribe, pubsub, topic, cid_or_root}, state) do
+    state =
+      case state.pubsub_subscriptions do
+        %{{^pubsub, ^topic} => {ref, subscribers}}
+        when is_map_key(subscribers, cid_or_root) and map_size(subscribers) == 1 ->
+          Phoenix.PubSub.unsubscribe(pubsub, topic)
+
+          update_in(state.pubsub_subscriptions, fn subscriptions ->
+            subscriptions
+            |> Map.delete({pubsub, topic})
+            |> Map.delete(ref)
+          end)
+
+        %{{^pubsub, ^topic} => subscribers} when is_map_key(subscribers, cid_or_root) ->
+          update_in(state.pubsub_subscriptions, [{pubsub, topic}], fn subscribers ->
+            Map.delete(subscribers, cid_or_root)
+          end)
+
+        _ ->
+          :ok
+      end
+
+    {:noreply, state}
+  end
+
+  def handle_info({Phoenix.LiveView.PubSub, ref, message}, state) do
+    case state do
+      %{pubsub_subscriptions: %{^ref => {_pubsub, _topic} = key}} ->
+        subscribers = Map.fetch!(state.pubsub_subscriptions, key)
+
+        Enum.reduce(subscribers, state, fn
+          {cid_or_root, callback}
+          when is_function(callback, 2) ->
+            handle_pubsub_callback(cid_or_root, callback, message, state)
+        end)
+
+      _stale ->
+        # we might still have stale messages in the mailbox
+        # so we ignore those silently
+        state
+    end
+  end
+
   def handle_info(msg, %{socket: socket} = state) do
     msg
     |> view_handle_info(socket)
@@ -1569,6 +1635,7 @@ defmodule Phoenix.LiveView.Channel do
       redirect_count: 0,
       upload_names: %{},
       upload_pids: %{},
+      pubsub_subscriptions: %{},
       await_asyncs_on_graceful_shutdown:
         phx_socket.private[:await_asyncs_on_graceful_shutdown] == true
     }
@@ -1850,5 +1917,35 @@ defmodule Phoenix.LiveView.Channel do
       %{} ->
         pids
     end
+  end
+
+  defp handle_pubsub_callback(:root, callback, msg, %{socket: socket} = state) do
+    case callback.(socket, msg) do
+      %Socket{} = new_socket ->
+        handle_changed(state, new_socket, nil)
+
+      result ->
+        raise ArgumentError, """
+        expected pubsub subscription callback to return a %Socket{}, got:
+
+        #{inspect(result)}
+        """
+    end
+  end
+
+  defp handle_pubsub_callback(%Phoenix.LiveComponent.CID{cid: cid}, callback, msg, state) do
+    component_handle(state, cid, nil, fn component_socket ->
+      case callback.(component_socket, msg) do
+        %Socket{} = new_component_socket ->
+          new_component_socket
+
+        result ->
+          raise ArgumentError, """
+          expected LiveComponent pubsub subscription callback to return a %Socket{}, got:
+
+          #{inspect(result)}
+          """
+      end
+    end)
   end
 end
