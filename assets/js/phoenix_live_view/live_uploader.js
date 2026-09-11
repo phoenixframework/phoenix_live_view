@@ -109,8 +109,7 @@ export default class LiveUploader {
   }
 
   static activeFileInputs(formEl) {
-    const fileInputs = DOM.findUploadInputs(formEl);
-    return Array.from(fileInputs).filter(
+    return DOM.findUploadInputs(formEl).filter(
       (el) => el.files && this.activeFiles(el).length > 0,
     );
   }
@@ -122,8 +121,7 @@ export default class LiveUploader {
   }
 
   static inputsAwaitingPreflight(formEl) {
-    const fileInputs = DOM.findUploadInputs(formEl);
-    return Array.from(fileInputs).filter(
+    return DOM.findUploadInputs(formEl).filter(
       (input) => this.filesAwaitingPreflight(input).length > 0,
     );
   }
