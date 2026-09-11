@@ -122,6 +122,12 @@ defmodule Phoenix.LiveViewTest.Diff do
     Map.new(rendered, fn {k, v} -> {k, resolve_templates(v, template)} end)
   end
 
+  # a keyed entry that moved and changed is sent as [old_pos, diff]
+  defp resolve_templates([old_pos, rendered], template)
+       when is_integer(old_pos) and is_map(rendered) do
+    [old_pos, resolve_templates(rendered, template)]
+  end
+
   defp resolve_templates(other, _template), do: other
 
   def extract_streams(%{} = source, streams) when not is_struct(source) do

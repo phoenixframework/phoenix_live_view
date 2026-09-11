@@ -44,6 +44,48 @@ defmodule Phoenix.LiveViewTest.DiffTest do
       assert Diff.merge_diff(base, diff) == result
     end
 
+    test "resolves templates in moved comprehensions" do
+      base = %{
+        0 => %{
+          k: %{
+            0 => %{0 => "a", 1 => ""},
+            1 => %{0 => "b", 1 => ""},
+            kc: 2
+          },
+          s: ["<div>", "", "</div>"]
+        },
+        s: ["", ""]
+      }
+
+      # "a" moves to the end and renders a nested template from the root :p
+      diff = %{
+        0 => %{
+          k: %{
+            0 => [1, %{1 => ""}],
+            1 => [0, %{1 => %{0 => "a", :s => 0}}],
+            km: true,
+            kc: 2
+          }
+        },
+        p: %{0 => ["<span>", "</span>"]}
+      }
+
+      result = %{
+        0 => %{
+          k: %{
+            0 => %{0 => "b", 1 => ""},
+            1 => %{0 => "a", 1 => %{0 => "a", :s => ["<span>", "</span>"]}},
+            kc: 2
+          },
+          s: ["<div>", "", "</div>"]
+        },
+        s: ["", ""],
+        streams: []
+      }
+
+      assert Diff.merge_diff(base, diff) == result
+    end
+
     test "no warning when keyed count is 0" do
       base = %{
         k: %{
