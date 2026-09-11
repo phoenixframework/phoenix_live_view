@@ -50,6 +50,8 @@ defmodule Phoenix.LiveView.MixProject do
       {:plug, "~> 1.15"},
       {:phoenix_template, "~> 1.0"},
       {:phoenix_html, "~> 3.3 or ~> 4.0 or ~> 4.1"},
+      {:phoenix_pubsub,
+       github: "phoenixframework/phoenix_pubsub", branch: "sd-sender", override: true},
       {:telemetry, "~> 0.4.2 or ~> 1.0"},
       {:esbuild, "~> 0.2", only: :dev},
       {:phoenix_view, "~> 2.0", optional: true},
