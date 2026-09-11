@@ -1247,8 +1247,7 @@ var LiveUploader = class _LiveUploader {
     }
   }
   static activeFileInputs(formEl) {
-    const fileInputs = dom_default.findUploadInputs(formEl);
-    return Array.from(fileInputs).filter(
+    return dom_default.findUploadInputs(formEl).filter(
       (el) => el.files && this.activeFiles(el).length > 0
     );
   }
@@ -1258,8 +1257,7 @@ var LiveUploader = class _LiveUploader {
     );
   }
   static inputsAwaitingPreflight(formEl) {
-    const fileInputs = dom_default.findUploadInputs(formEl);
-    return Array.from(fileInputs).filter(
+    return dom_default.findUploadInputs(formEl).filter(
       (input) => this.filesAwaitingPreflight(input).length > 0
     );
   }
