@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.PubSub do
   @moduledoc false
 
-  @behavior Phoenix.PubSub.Sender
+  @behaviour Phoenix.PubSub.Sender
 
   @impl true
   def send(pid, ref, message, _state) do
@@ -10,32 +10,25 @@ defmodule Phoenix.LiveView.PubSub do
   end
 
   def subscribe(%Phoenix.LiveView.Socket{} = socket, pubsub, topic, callback) do
-    verify_called_from_liveview!()
-
-    case socket do
-      %{assigns: %{myself: %Phoenix.LiveComponent.CID{} = cid}} ->
-        send(self(), {__MODULE__, :subscribe, pubsub, topic, cid, callback})
-
-      _ ->
-        send(self(), {__MODULE__, :subscribe, pubsub, topic, :root, callback})
+    if Phoenix.LiveView.connected?(socket) do
+      verify_called_from_liveview!()
+      send(self(), {__MODULE__, :subscribe, pubsub, topic, subscriber(socket), callback})
     end
 
     socket
   end
 
   def unsubscribe(%Phoenix.LiveView.Socket{} = socket, pubsub, topic) do
-    verify_called_from_liveview!()
-
-    case socket do
-      %{assigns: %{myself: %Phoenix.LiveComponent.CID{} = cid}} ->
-        send(self(), {__MODULE__, :unsubscribe, pubsub, topic, cid})
-
-      _ ->
-        send(self(), {__MODULE__, :unsubscribe, pubsub, topic, :root})
+    if Phoenix.LiveView.connected?(socket) do
+      verify_called_from_liveview!()
+      send(self(), {__MODULE__, :unsubscribe, pubsub, topic, subscriber(socket)})
     end
 
     socket
   end
+
+  defp subscriber(%{assigns: %{myself: %Phoenix.LiveComponent.CID{cid: cid}}}), do: cid
+  defp subscriber(_socket), do: :root
 
   defp verify_called_from_liveview! do
     # we use send(self(), ...) so to prevent cases where a user calls

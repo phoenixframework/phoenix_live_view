@@ -2514,13 +2514,33 @@ defmodule Phoenix.LiveView do
   subscription and globally subscribes once. It automatically unsubscribes after
   the last subscriber unsubscribed or - in case of components - the last subscribed
   component is removed from the page.
+
+  `callback` is invoked with the broadcast message and the socket, mirroring
+  `c:handle_info/2`, and must return the updated socket. For components, it
+  receives the component's own socket.
+
+  On the initial disconnected render there is no process to deliver messages to,
+  so this is a no-op and the socket is returned unchanged. It must be called from
+  the LiveView process itself and raises otherwise, for example when called from
+  a task started by `assign_async/4`.
+
+  ## Examples
+
+      def mount(_params, _session, socket) do
+        {:ok,
+         subscribe(socket, MyApp.PubSub, "room:\#{id}", &handle_room_update/2)}
+      end
+
+      defp handle_room_update(message, socket) do
+        stream_insert(socket, :messages, message)
+      end
   """
   @spec subscribe(
           socket :: Socket.t(),
-          pubsub :: Module.t(),
+          pubsub :: module(),
           topic :: binary(),
-          callback :: (socket :: Socket.t(), message :: term() -> Socket.t())
-        ) :: :ok
+          callback :: (message :: term(), socket :: Socket.t() -> Socket.t())
+        ) :: Socket.t()
   defdelegate subscribe(socket, pubsub, topic, callback), to: Phoenix.LiveView.PubSub
 
   @doc """
@@ -2530,8 +2550,8 @@ defmodule Phoenix.LiveView do
   """
   @spec unsubscribe(
           socket :: Socket.t(),
-          pubsub :: Module.t(),
+          pubsub :: module(),
           topic :: binary()
-        ) :: :ok
+        ) :: Socket.t()
   defdelegate unsubscribe(socket, pubsub, topic), to: Phoenix.LiveView.PubSub
 end
