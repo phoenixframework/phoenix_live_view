@@ -11,6 +11,7 @@ import type { Hook } from "./view_hook";
 
 import LiveUploader from "./live_uploader";
 import ARIA from "./aria";
+import DOM from "./dom";
 
 const findScrollContainer = (el): HTMLElement | null => {
   // the scroll event won't be fired on the html/body element even if overflow is set
@@ -306,6 +307,7 @@ const LiveFileUpload: Hook<object, HTMLInputElement> = {
   updated() {
     const newPreflights = this.preflightedRefs();
     const newErrorRefs = this.errorRefs();
+    const errorsCleared = this.errorRefsWas !== "" && newErrorRefs === "";
 
     if (this.errorRefsWas !== newErrorRefs) {
       this.errorRefsWas = newErrorRefs;
@@ -326,6 +328,14 @@ const LiveFileUpload: Hook<object, HTMLInputElement> = {
     }
     this.maybeRemoveRequired();
     this.el.dispatchEvent(new CustomEvent(PHX_LIVE_FILE_UPDATED));
+
+    if (
+      errorsCleared &&
+      DOM.isAutoUploadIfValid(this.el) &&
+      LiveUploader.filesAwaitingPreflight(this.el).length > 0
+    ) {
+      this.el.dispatchEvent(new Event("input", { bubbles: true }));
+    }
   },
 };
 
