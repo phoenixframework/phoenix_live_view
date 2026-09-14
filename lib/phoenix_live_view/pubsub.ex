@@ -3,6 +3,8 @@ defmodule Phoenix.LiveView.PubSub do
 
   @behaviour Phoenix.PubSub.Sender
 
+  @key {__MODULE__, :__subscriptions__}
+
   @impl true
   def send(pid, ref, message, _state) do
     send(pid, {__MODULE__, ref, message})
@@ -12,19 +14,92 @@ defmodule Phoenix.LiveView.PubSub do
   def subscribe(%Phoenix.LiveView.Socket{} = socket, pubsub, topic, callback) do
     if Phoenix.LiveView.connected?(socket) do
       verify_called_from_liveview!()
-      send(self(), {__MODULE__, :subscribe, pubsub, topic, subscriber(socket), callback})
+      do_subscribe(pubsub, topic, subscriber(socket), callback)
     end
 
     socket
   end
 
+  defp do_subscribe(pubsub, topic, cid_or_root, callback) do
+    pubsub_subscriptions = pubsub_subscriptions()
+
+    updated_subscriptions =
+      case pubsub_subscriptions do
+        %{{^pubsub, ^topic} => {ref, subscribers}} ->
+          Map.put(
+            pubsub_subscriptions,
+            {pubsub, topic},
+            {ref, Map.put(subscribers, cid_or_root, callback)}
+          )
+
+        %{} ->
+          ref = make_ref()
+          Phoenix.PubSub.subscribe(pubsub, topic, sender: {Phoenix.LiveView.PubSub, ref})
+
+          pubsub_subscriptions
+          |> Map.put({pubsub, topic}, {ref, %{cid_or_root => callback}})
+          |> Map.put(ref, {pubsub, topic})
+      end
+
+    Process.put(@key, updated_subscriptions)
+  end
+
   def unsubscribe(%Phoenix.LiveView.Socket{} = socket, pubsub, topic) do
     if Phoenix.LiveView.connected?(socket) do
       verify_called_from_liveview!()
-      send(self(), {__MODULE__, :unsubscribe, pubsub, topic, subscriber(socket)})
+      do_unsubscribe(pubsub, topic, subscriber(socket))
     end
 
     socket
+  end
+
+  defp do_unsubscribe(pubsub, topic, cid_or_root) do
+    pubsub_subscriptions = pubsub_subscriptions()
+
+    updated_subscriptions =
+      case pubsub_subscriptions do
+        %{{^pubsub, ^topic} => {ref, subscribers}} when is_map_key(subscribers, cid_or_root) ->
+          case Map.delete(subscribers, cid_or_root) do
+            empty when map_size(empty) == 0 ->
+              Phoenix.PubSub.unsubscribe(pubsub, topic)
+
+              pubsub_subscriptions
+              |> Map.delete({pubsub, topic})
+              |> Map.delete(ref)
+
+            subscribers ->
+              Map.put(pubsub_subscriptions, {pubsub, topic}, {ref, subscribers})
+          end
+
+        %{} ->
+          pubsub_subscriptions
+      end
+
+    Process.put(@key, updated_subscriptions)
+  end
+
+  defp pubsub_subscriptions do
+    Process.get(@key, %{})
+  end
+
+  def subscribers(ref) do
+    case pubsub_subscriptions() do
+      %{^ref => key} = subscriptions ->
+        {^ref, subscribers} = Map.fetch!(subscriptions, key)
+        subscribers
+
+      %{} ->
+        # we might still have stale messages in the mailbox
+        # so we ignore those silently
+        []
+    end
+  end
+
+  def unsubscribe_cid(cid) do
+    for {{pubsub, topic}, {_ref, subscribers}} <- pubsub_subscriptions(),
+        Map.has_key?(subscribers, cid) do
+      do_unsubscribe(pubsub, topic, cid)
+    end
   end
 
   defp subscriber(%{assigns: %{myself: %Phoenix.LiveComponent.CID{cid: cid}}}), do: cid
