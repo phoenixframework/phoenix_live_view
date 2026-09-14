@@ -3,6 +3,22 @@ defmodule Phoenix.LiveView.PubSub do
 
   @behaviour Phoenix.PubSub.Sender
 
+  # We use the process dictionary because pubsub subscriptions
+  # are side effects by design.
+  #
+  # If someone does
+  #
+  #   def mount(...) do
+  #     socket
+  #     |> subscribe("items", ...)
+  #     |> assign(..., load_items(...))
+  #
+  # the expectation is that the subscription happens before loading
+  # items. Otherwise there is a gap where updates can be missed.
+  #
+  # If this implementation deferred subscriptions by looking at the
+  # socket after mount returns (or used the process mailbox), this
+  # immediate subscription behavior could not be achieved.
   @key {__MODULE__, :__subscriptions__}
 
   @impl true
@@ -106,7 +122,7 @@ defmodule Phoenix.LiveView.PubSub do
   defp subscriber(_socket), do: :root
 
   defp verify_called_from_liveview! do
-    # we use send(self(), ...) so to prevent cases where a user calls
+    # we use the process dicationary so to prevent cases where a user calls
     # subscribe in assign_async or a custom Task, we check and raise
     # if this process is not demonstrably a LiveView
     case Process.get(:"$process_label") do
