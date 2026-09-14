@@ -3074,7 +3074,10 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         }
         portalTarget = existing;
       } else {
-        portalTarget = document.createElement(toTeleport.tagName);
+        portalTarget = document.createElementNS(
+          toTeleport.namespaceURI,
+          toTeleport.localName
+        );
         portalContainer.appendChild(portalTarget);
       }
       toTeleport.setAttribute(PHX_TELEPORTED_REF, this.view.id);
