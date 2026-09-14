@@ -887,7 +887,10 @@ export default class DOMPatch {
       portalTarget = existing;
     } else {
       // create empty target and morph it recursively
-      portalTarget = document.createElement(toTeleport.tagName);
+      portalTarget = document.createElementNS(
+        toTeleport.namespaceURI,
+        toTeleport.localName,
+      );
       portalContainer.appendChild(portalTarget);
     }
     // mark the target as teleported;
