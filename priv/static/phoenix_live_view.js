@@ -3082,7 +3082,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       }
       toTeleport.setAttribute(PHX_TELEPORTED_REF, this.view.id);
       toTeleport.setAttribute(PHX_TELEPORTED_SRC, el.id);
-      morph(portalTarget, toTeleport, true);
+      morph(portalTarget, toTeleport.cloneNode(true), true);
       toTeleport.removeAttribute(PHX_TELEPORTED_REF);
       toTeleport.removeAttribute(PHX_TELEPORTED_SRC);
       this.view.pushPortalElementId(toTeleport.id);
