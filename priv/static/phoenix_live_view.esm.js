@@ -2473,7 +2473,7 @@ var DOMPatch = class {
     let targetContainer = this.targetContainer;
     if (this.targetCID) {
       const closestLock = targetContainer.closest(`[${PHX_REF_LOCK}]`);
-      if (closestLock && !closestLock.isSameNode(targetContainer)) {
+      if (closestLock && !closestLock.isSameNode(targetContainer) && view.ownsElement(closestLock)) {
         const clonedTree = dom_default.private(closestLock, PHX_REF_LOCK);
         if (clonedTree) {
           targetContainer = clonedTree.querySelector(
