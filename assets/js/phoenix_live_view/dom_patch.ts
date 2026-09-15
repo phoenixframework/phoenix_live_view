@@ -897,7 +897,10 @@ export default class DOMPatch {
     // and we'd need to set it back after each morph
     toTeleport.setAttribute(PHX_TELEPORTED_REF, this.view.id);
     toTeleport.setAttribute(PHX_TELEPORTED_SRC, el.id);
-    morph(portalTarget, toTeleport, true);
+    // We need to clone the element, because in some cases morphdom might
+    // morph the same element multiple times and morphdom modifies the source
+    // element.
+    morph(portalTarget, toTeleport.cloneNode(true), true);
     toTeleport.removeAttribute(PHX_TELEPORTED_REF);
     toTeleport.removeAttribute(PHX_TELEPORTED_SRC);
     // store a reference to the teleported element in the view
