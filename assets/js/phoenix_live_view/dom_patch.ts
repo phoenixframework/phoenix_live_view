@@ -147,7 +147,16 @@ export default class DOMPatch {
       const closestLock = targetContainer.closest(`[${PHX_REF_LOCK}]`);
       // If the targetContainer itself is locked, that's okay.
       // https://github.com/phoenixframework/phoenix_live_view/issues/4088
-      if (closestLock && !closestLock.isSameNode(targetContainer)) {
+      //
+      // A lock outside of this view (e.g. a parent LiveView locking an element that
+      // contains this nested LiveView) is ignored: its cloned tree is only maintained
+      // by the owning view, and undoing the lock does not patch nested LiveViews.
+      // https://github.com/phoenixframework/phoenix_live_view/issues/4444
+      if (
+        closestLock &&
+        !closestLock.isSameNode(targetContainer) &&
+        view.ownsElement(closestLock)
+      ) {
         const clonedTree = DOM.private(closestLock, PHX_REF_LOCK);
         if (clonedTree) {
           // if a parent is locked with a cloned tree, we need to patch the cloned tree instead
