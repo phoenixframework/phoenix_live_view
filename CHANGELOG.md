@@ -115,6 +115,24 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.12 (2026-09-16)
+
+### Bug fixes
+
+* Prevent a hook's `disconnected` method from being called again when already disconnected ([#4430](https://github.com/phoenixframework/phoenix_live_view/pull/4430))
+* Avoid mutating JS push options ([#4431](https://github.com/phoenixframework/phoenix_live_view/pull/4431))
+* Handle falsy keys in assign_async validation ([#4428](https://github.com/phoenixframework/phoenix_live_view/issues/4428))
+* Prevent flaky tests due to async pid collection timeout ([#4425](https://github.com/phoenixframework/phoenix_live_view/pull/4425))
+* Preserve caret position for additional input types ([#4436](https://github.com/phoenixframework/phoenix_live_view/pull/4436))
+* Prevent crash in LiveViewTest when keyed comprehension entry is moved and changed in the same patch ([#4440](https://github.com/phoenixframework/phoenix_live_view/pull/4440))
+* Preserve namespace for portal targets ([#4437](https://github.com/phoenixframework/phoenix_live_view/pull/4437))
+* Fix teleported elements sometimes not rendering on reset ([#4445](https://github.com/phoenixframework/phoenix_live_view/pull/4445))
+* Fix lock handling for LiveComponents in nested LiveViews ([#4444](https://github.com/phoenixframework/phoenix_live_view/issues/4444))
+
+### Enhancements
+
+* Removed the IE11 section from the README. It was outdated since before LiveView 1.0 was released.
+
 ## v1.2.11 (2026-08-27)
 
 ### Bug fixes
