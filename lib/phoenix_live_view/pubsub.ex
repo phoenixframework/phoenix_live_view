@@ -77,7 +77,8 @@ defmodule Phoenix.LiveView.PubSub do
         %{{^pubsub, ^topic} => {ref, subscribers}} when is_map_key(subscribers, cid_or_root) ->
           case Map.delete(subscribers, cid_or_root) do
             empty when map_size(empty) == 0 ->
-              Phoenix.PubSub.unsubscribe(pubsub, topic)
+              # unsubscribe/2 would also drop subscriptions the user made on the same topic
+              Phoenix.PubSub.unsubscribe_match(pubsub, topic, [__MODULE__ | ref])
 
               pubsub_subscriptions
               |> Map.delete({pubsub, topic})
