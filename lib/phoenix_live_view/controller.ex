@@ -36,7 +36,50 @@ defmodule Phoenix.LiveView.Controller do
 
   """
   def live_render(%Plug.Conn{} = conn, view, opts \\ []) do
+    respond(conn, view, LiveView.Static.render(conn, view, opts))
+  end
+
+  @doc """
+  Renders a LiveView to be embedded in another page.
+
+  The rendered view is expected to be handled with a separate LiveSocket,
+  using `LiveSocket.embed()`.
+
+  ## Options
+
+  See `Phoenix.Component.live_render/3` for all supported options.
+
+  ## Examples
+
+      def embed(conn, %{"id" => thermostat_id}) do
+        live_embed(conn, ThermostatLive, session: %{"thermostat_id" => thermostat_id})
+      end
+
+  """
+  def live_embed(%Plug.Conn{} = conn, view, opts \\ []) do
+    conn =
+      conn
+      |> Phoenix.Controller.put_root_layout(false)
+      |> Phoenix.Controller.put_layout(false)
+
     case LiveView.Static.render(conn, view, opts) do
+      {:ok, content, socket_assigns} ->
+        meta = [
+          ~s(<meta name="csrf-token" content="),
+          Plug.HTML.html_escape(Plug.CSRFProtection.get_csrf_token()),
+          ~s(">)
+        ]
+
+        fragment = {:safe, [meta, Phoenix.HTML.Safe.to_iodata(content)]}
+        respond(conn, view, {:ok, fragment, socket_assigns})
+
+      stop ->
+        respond(conn, view, stop)
+    end
+  end
+
+  defp respond(conn, view, result) do
+    case result do
       {:ok, content, socket_assigns} ->
         conn
         |> Plug.Conn.fetch_query_params()

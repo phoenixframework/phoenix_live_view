@@ -119,7 +119,7 @@ See the module documentation or `Phoenix.LiveViewTest` for more information.
 
 ### Enhancements
 
-* Support multiple isolated LiveSockets on one page via the `viewSelector` option
+* Support multiple isolated LiveSockets on one page: `LiveSocket.embed()` renders another application's LiveViews into an element and joins them, and `Phoenix.LiveView.Controller.live_embed/3` serves them
 
 ## v1.2.11 (2026-08-27)
 

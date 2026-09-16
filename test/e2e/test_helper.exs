@@ -272,6 +272,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       pipe_through(:browser)
 
       live "/multi-socket", MultiSocketLive
+      live "/multi-socket/other", MultiSocketLive.OtherLive
     end
   end
 
@@ -331,6 +332,10 @@ defmodule Phoenix.LiveViewTest.E2E.Endpoint do
   ]
 
   socket "/live", Phoenix.LiveView.Socket, websocket: [connect_info: [session: @session_options]]
+
+  # the socket of the "other application" the multi-socket fixture embeds
+  socket "/embedded/live", Phoenix.LiveView.Socket,
+    websocket: [connect_info: [session: @session_options]]
 
   plug Plug.Static, from: {:phoenix, "priv/static"}, at: "/assets/phoenix"
   plug Plug.Static, from: {:phoenix_live_view, "priv/static"}, at: "/assets/phoenix_live_view"

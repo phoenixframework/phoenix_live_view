@@ -20,6 +20,16 @@ defmodule Phoenix.LiveView.ControllerTest do
     assert html_response(conn, 200) =~ "session: %{\"custom\" => :session}"
   end
 
+  test "live embeds from controller: root alone, no layouts, csrf token first", %{conn: conn} do
+    conn = get(conn, "/controller/live-embed")
+    html = html_response(conn, 200)
+    assert html =~ ~r/\A<meta name="csrf-token" content="[^"]+"><div/
+    assert html =~ "session: %{\"custom\" => :embedded}"
+    assert html =~ "data-phx-session="
+    refute html =~ "data-phx-main"
+    refute html =~ "<html"
+  end
+
   test "live renders from controller with merged assigns", %{conn: conn} do
     conn = get(conn, "/controller/live-render-4")
     assert html_response(conn, 200) =~ "title: Dashboard"

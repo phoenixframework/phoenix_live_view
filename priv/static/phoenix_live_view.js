@@ -45,6 +45,26 @@ var LiveView = (() => {
     return to;
   };
   var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+  var __async = (__this, __arguments, generator) => {
+    return new Promise((resolve, reject) => {
+      var fulfilled = (value) => {
+        try {
+          step(generator.next(value));
+        } catch (e) {
+          reject(e);
+        }
+      };
+      var rejected = (value) => {
+        try {
+          step(generator.throw(value));
+        } catch (e) {
+          reject(e);
+        }
+      };
+      var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
+      step((generator = generator.apply(__this, __arguments)).next());
+    });
+  };
 
   // js/phoenix_live_view/index.ts
   var phoenix_live_view_exports = {};
@@ -5478,6 +5498,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     onLiveRedirect(redir) {
       const { to, kind, flash } = redir;
       const url = this.expandURL(to);
+      if (this.liveSocket.refusesPageNavigation("navigate the page", url, this)) {
+        return;
+      }
       const e = new CustomEvent("phx:server-navigate", {
         detail: { to, kind, flash }
       });
@@ -5496,6 +5519,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       flash,
       reloadToken
     }) {
+      if (this.liveSocket.refusesPageNavigation("redirect the page", to, this)) {
+        return;
+      }
       this.liveSocket.redirect(to, flash != null ? flash : null, reloadToken != null ? reloadToken : null);
     }
     isDestroyed() {
@@ -5525,6 +5551,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       });
     }
     onJoinError(resp) {
+      var _a, _b;
       if (resp.events) {
         this.liveSocket.dispatchEvents(resp.events);
       }
@@ -5543,7 +5570,8 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           }
         );
         this.onRedirect({
-          to: this.liveSocket.main.href,
+          // an embedded LiveSocket has no main; its root knows the page
+          to: ((_a = this.liveSocket.main) != null ? _a : this).href,
           reloadToken: resp.token
         });
         return;
@@ -5561,7 +5589,10 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
             context: { attribution: "app" }
           }
         );
-        this.onRedirect({ to: this.liveSocket.main.href, flash: this.flash });
+        this.onRedirect({
+          to: ((_b = this.liveSocket.main) != null ? _b : this).href,
+          flash: this.flash
+        });
         return;
       }
       if (resp.redirect || resp.live_redirect) {
@@ -6732,6 +6763,11 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     constructor(url, phxSocket, opts = {}) {
       /** @internal */
       this.unloaded = false;
+      // page: brought up with connect(); embedded: with embed(), into container
+      this.mode = null;
+      this.container = null;
+      this.embedRef = 0;
+      this.defaultSocketParams = {};
       /**
        * The buffer base classes, for tooling holding only a LiveSocket handle:
        * they are not otherwise reachable from a page it did not bundle.
@@ -6749,9 +6785,12 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           let liveSocket = new LiveSocket("/live", Socket, {...})
       `);
       }
-      this.socket = new phxSocket(url, opts);
+      const socketParams = closure(opts.params || {});
+      this.socket = new phxSocket(url, __spreadProps(__spreadValues({}, opts), {
+        // the app's connect params over the defaults picked up by embed()
+        params: () => __spreadValues(__spreadValues({}, this.defaultSocketParams), socketParams())
+      }));
       this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX;
-      this.viewSelector = opts.viewSelector;
       this.params = closure(opts.params || {});
       this.viewLogger = opts.viewLogger;
       this.metadataCallbacks = opts.metadata || {};
@@ -6916,8 +6955,15 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     }
     /**
      * Connects to the LiveView server.
+     *
+     * On a fresh LiveSocket this makes it the page's LiveSocket, joining
+     * the page's root LiveViews; on an embedded one (see `embed()`) it
+     * reconnects to the roots it currently holds.
      */
     connect() {
+      if (this.mode === null) {
+        this.mode = "page";
+      }
       const host = window.location.hostname.toLowerCase();
       if ((host === "localhost" || host.endsWith(".localhost")) && !this.isDebugDisabled()) {
         this.enableDebug();
@@ -6939,6 +6985,121 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       } else {
         document.addEventListener("DOMContentLoaded", () => doConnect());
       }
+    }
+    /**
+     * Embeds this LiveSocket in an element: renders the root LiveViews of
+     * another application into it and joins them.
+     *
+     * `source` is either the URL of a disconnected render of the roots,
+     * (see `Phoenix.LiveView.Controller.live_embed/3`), or a function
+     * returning such HTML. If the HTML carries a `meta[name="csrf-token"]`,
+     * the token is used by the LiveSocket.
+     *
+     * An embedded LiveSocket only joins the roots inside its container and
+     * only handles events belonging to its own views, so several
+     * LiveSockets can run on one page, each connected to a different
+     * application. An embedded LiveSocket cannot navigate, redirect or
+     * reload the page. When the container lives inside another LiveSocket's
+     * view it must be (or be inside) a `phx-update="ignore"` element.
+     */
+    embed(container, source, callback) {
+      if (this.mode === "page") {
+        throw new Error(
+          "the page's LiveSocket cannot be embedded; create a separate LiveSocket for the embedded application"
+        );
+      }
+      if (!(container instanceof Element)) {
+        throw new Error("embed() expects an element to embed the LiveSocket in");
+      }
+      const enclosingView = dom_default.closestViewEl(container);
+      if (enclosingView && !dom_default.isIgnored(container, this.binding(PHX_UPDATE)) && !this.ignoredAncestor(container, enclosingView)) {
+        throw new Error(
+          `the container of an embedded LiveSocket must be (or be inside) a phx-update="ignore" element when it lives inside another LiveView, so that the view's patches leave the embedded roots alone`
+        );
+      }
+      this.embedRoots(container, source, ++this.embedRef).then(
+        (embedded) => {
+          if (embedded && callback) {
+            callback();
+          }
+        },
+        (error) => {
+          logError(
+            "socket.embed-failed",
+            error.message,
+            { container, source, error },
+            { attribution: "app" }
+          );
+        }
+      );
+    }
+    // places the produced roots in the container and connects: true once
+    // they are joining, false when a later embed() superseded this one or the
+    // container left the document meanwhile
+    embedRoots(container, source, embedRef) {
+      return __async(this, null, function* () {
+        const { roots, csrfToken } = yield this.produceRoots(source);
+        if (embedRef !== this.embedRef) {
+          return false;
+        }
+        if (roots.length === 0) {
+          throw new Error("no root LiveView found in the HTML to embed");
+        }
+        const main = roots.find((el) => el.hasAttribute(PHX_MAIN));
+        if (main) {
+          throw new Error(
+            `cannot embed the main LiveView #${main.id}: embed a disconnected render of the LiveView (see Phoenix.LiveView.Controller.live_embed/3), not a page mounted at the router`
+          );
+        }
+        if (!container.isConnected) {
+          return false;
+        }
+        this.destroyAllViews();
+        this.mode = "embedded";
+        this.container = container;
+        container.replaceChildren(...roots);
+        if (csrfToken) {
+          this.defaultSocketParams._csrf_token = csrfToken;
+        }
+        this.connect();
+        return true;
+      });
+    }
+    // fetches or produces the HTML to embed and picks the roots out of it
+    produceRoots(source) {
+      return __async(this, null, function* () {
+        let produced;
+        if (typeof source === "string") {
+          const response = yield fetch(source, { credentials: "include" });
+          if (!response.ok) {
+            throw new Error(
+              `fetching the HTML to embed from ${source} failed with status ${response.status}`
+            );
+          }
+          produced = yield response.text();
+        } else {
+          produced = yield source();
+        }
+        let scope;
+        if (typeof produced === "string") {
+          scope = new DOMParser().parseFromString(produced, "text/html");
+        } else if (produced instanceof Element || produced instanceof Document || produced instanceof DocumentFragment) {
+          scope = produced;
+        } else {
+          throw new Error(
+            "the source of an embed must yield an HTML string or a node holding the root LiveViews"
+          );
+        }
+        const rootSelector = `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`;
+        const roots = scope instanceof Element && scope.matches(rootSelector) ? [scope] : dom_default.all(scope, rootSelector).filter(
+          (el) => {
+            var _a;
+            return !((_a = el.parentElement) == null ? void 0 : _a.closest(rootSelector));
+          }
+        );
+        const meta = scope.querySelector('meta[name="csrf-token"]');
+        return { roots, csrfToken: meta ? meta.getAttribute("content") : null };
+      });
     }
     /**
      * Disconnects from the LiveView server.
@@ -7057,6 +7218,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     }
     /** @internal */
     reloadWithJitter(view, log) {
+      if (this.refusesPageNavigation("reload the page", null, view)) {
+        return;
+      }
       this.reloadWithJitterTimer != null && clearTimeout(this.reloadWithJitterTimer);
       this.disconnect();
       const minMs = this.reloadJitterMin;
@@ -7172,7 +7336,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     }
     /** @internal */
     joinDeadView() {
-      if (this.viewSelector) {
+      if (this.container) {
         return;
       }
       const body = document.body;
@@ -7193,8 +7357,24 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     /** @internal */
     joinRootViews() {
       let rootsFound = false;
-      const rootSelector = this.viewSelector ? `:is(${this.viewSelector})${PHX_VIEW_SELECTOR}` : PHX_VIEW_SELECTOR;
-      dom_default.all(document, `${rootSelector}:not([${PHX_PARENT_ID}])`, (rootEl) => {
+      const rootSelector = `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`;
+      const scope = this.container || document;
+      const rootEls = this.container && this.container.matches(rootSelector) ? [this.container] : dom_default.all(scope, rootSelector);
+      rootEls.forEach((rootEl) => {
+        const owner = dom_default.private(rootEl, "view");
+        if (owner && owner.liveSocket !== this) {
+          return;
+        }
+        const ignored = this.ignoredAncestor(rootEl, scope);
+        if (ignored) {
+          if (this.isDebugEnabled()) {
+            console.log(
+              `socket: leaving root #${rootEl.id} inside a phx-update="ignore" element to an embedded LiveSocket`,
+              ignored
+            );
+          }
+          return;
+        }
         if (!this.getRootById(rootEl.id)) {
           const view = this.newRootView(rootEl);
           if (!dom_default.isPhxSticky(rootEl)) {
@@ -7209,8 +7389,49 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       });
       return rootsFound;
     }
+    // the closest phx-update="ignore" ancestor of el strictly below scope
+    ignoredAncestor(el, scope) {
+      const phxUpdate = this.binding(PHX_UPDATE);
+      let node = el === scope ? null : el.parentElement;
+      while (node && node !== scope) {
+        if (dom_default.isIgnored(node, phxUpdate)) {
+          return node;
+        }
+        node = node.parentElement;
+      }
+      return null;
+    }
+    // whether the nearest view root of el belongs to another LiveSocket
+    ownedByOther(el) {
+      const viewEl = dom_default.closestViewEl(el);
+      const view = viewEl && dom_default.private(viewEl, "view");
+      return !!view && view.liveSocket !== this;
+    }
+    /**
+     * @internal
+     */
+    refusesPageNavigation(what, to, view) {
+      if (!this.container) {
+        return false;
+      }
+      logError(
+        "socket.embedded-page-navigation",
+        `an embedded LiveSocket cannot ${what}`,
+        { to, container: this.container },
+        { attribution: "app" }
+      );
+      view == null ? void 0 : view.displayError([
+        PHX_LOADING_CLASS,
+        PHX_ERROR_CLASS,
+        PHX_SERVER_ERROR_CLASS
+      ]);
+      return true;
+    }
     /** @internal */
     redirect(to, flash, reloadToken) {
+      if (this.refusesPageNavigation("redirect the page", to)) {
+        return;
+      }
       if (reloadToken) {
         browser_default.setCookie(PHX_RELOAD_STATUS, reloadToken, 60);
       }
@@ -7224,7 +7445,12 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       }
       const liveReferer = this.currentLocation.href;
       this.outgoingMainEl = this.outgoingMainEl || this.main.el;
-      const stickies = dom_default.findPhxSticky(document) || [];
+      const stickies = (dom_default.findPhxSticky(document) || []).filter(
+        (el) => {
+          var _a;
+          return ((_a = dom_default.private(el, "view")) == null ? void 0 : _a.liveSocket) === this;
+        }
+      );
       const removeEls = this.phxRemoveElementsForNavigation(
         this.outgoingMainEl,
         stickies
@@ -7306,7 +7532,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         if (!childEl.isConnected) {
           return null;
         }
-        if (this.viewSelector) {
+        if (this.container) {
           return null;
         }
         view = this.main;
@@ -7385,7 +7611,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       this.boundTopLevelEvents = true;
       document.body.addEventListener("click", function() {
       });
-      if (!this.viewSelector) {
+      if (!this.container) {
         window.addEventListener(
           "pageshow",
           (e) => {
@@ -7401,7 +7627,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           true
         );
       }
-      if (!dead && !this.viewSelector) {
+      if (!dead && !this.container) {
         this.bindNav();
       }
       this.bindClicks();
@@ -7613,7 +7839,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           const phxEvent = target.getAttribute(click);
           if (!phxEvent) {
             if (dom_default.isNewPageClick(e, window.location)) {
-              if (!this.viewSelector || this.owner(target)) {
+              if (!this.container || this.owner(target)) {
                 this.unload();
               }
             }
@@ -7745,6 +7971,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           if (!type || !this.isConnected() || !this.main || dom_default.wantsNewTab(e)) {
             return;
           }
+          if (this.ownedByOther(target)) {
+            return;
+          }
           const href = target.href instanceof SVGAnimatedString ? target.href.baseVal : target.href;
           const linkState = target.getAttribute(PHX_LINK_STATE);
           if (linkState !== "replace" && linkState !== "push") {
@@ -7818,6 +8047,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     }
     /** @internal */
     pushHistoryPatch(e, href, linkState, targetEl) {
+      if (this.refusesPageNavigation("patch the page's URL", href)) {
+        return;
+      }
       if (!this.isConnected() || !(this.main && this.main.isMain())) {
         return browser_default.redirect(href);
       }
@@ -7831,6 +8063,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     /** @internal */
     historyPatch(href, linkState, linkRef = this.setPendingLink(href)) {
       if (!this.commitPendingLink(linkRef)) {
+        return;
+      }
+      if (this.container) {
         return;
       }
       this.currentHistoryPosition++;
@@ -7855,6 +8090,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     }
     /** @internal */
     historyRedirect(e, href, linkState, flash, targetEl) {
+      if (this.refusesPageNavigation("navigate the page", href)) {
+        return;
+      }
       const clickLoading = targetEl && e.isTrusted && e.type !== "popstate";
       if (clickLoading) {
         targetEl.classList.add("phx-click-loading");

@@ -32,6 +32,10 @@ import {
   PHX_RUNTIME_HOOK,
   PHX_DROP_TARGET_ACTIVE_CLASS,
   PHX_TELEPORTED_SRC,
+  PHX_UPDATE,
+  PHX_LOADING_CLASS,
+  PHX_ERROR_CLASS,
+  PHX_SERVER_ERROR_CLASS,
 } from "./constants";
 
 import {
@@ -61,6 +65,14 @@ import { HooksOptions } from "./view_hook";
 import { RenderingBuffer, ReportingBuffer } from "./rendered/buffer";
 
 const BUFFERS = Object.freeze({ RenderingBuffer, ReportingBuffer });
+
+/**
+ * Where `LiveSocket.embed()` takes the HTML of the roots from: the URL of
+ * a disconnected render, or a function producing the HTML or a node
+ * holding the roots.
+ */
+export type EmbedSource =
+  string | (() => string | Node | Promise<string | Node>);
 
 /**
  * Returns true if the given element was touched by a user.
@@ -97,20 +109,6 @@ export interface LiveSocketOptions {
    * Defaults to `"phx-"`.
    */
   bindingPrefix?: string;
-  /**
-   * The optional CSS selector that scopes which root LiveViews this
-   * LiveSocket connects to.
-   *
-   * A scoped LiveSocket only joins matching roots and only handles
-   * events belonging to its own views, even when other LiveSockets'
-   * views are nested inside them. Page-level responsibilities such
-   * as navigation and the main view are left to the page's unscoped
-   * LiveSocket.
-   *
-   * Useful when running multiple LiveSockets on the same page,
-   * each connected to a different application.
-   */
-  viewSelector?: string;
   /**
    * Callbacks for LiveView hooks.
    *
@@ -274,7 +272,11 @@ export default class LiveSocket {
   /** @internal */
   unloaded = false;
   private bindingPrefix: string;
-  private viewSelector: string | undefined;
+  // page: brought up with connect(); embedded: with embed(), into container
+  private mode: "page" | "embedded" | null = null;
+  private container: HTMLElement | null = null;
+  private embedRef = 0;
+  private defaultSocketParams: Record<string, string> = {};
   private viewLogger: any;
   private metadataCallbacks: any;
   private defaults: any;
@@ -372,9 +374,13 @@ export default class LiveSocket {
           let liveSocket = new LiveSocket("/live", Socket, {...})
       `);
     }
-    this.socket = new phxSocket(url, opts);
+    const socketParams = closure(opts.params || {});
+    this.socket = new phxSocket(url, {
+      ...opts,
+      // the app's connect params over the defaults picked up by embed()
+      params: () => ({ ...this.defaultSocketParams, ...socketParams() }),
+    });
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX;
-    this.viewSelector = opts.viewSelector;
     this.params = closure(opts.params || {});
     this.viewLogger = opts.viewLogger;
     this.metadataCallbacks = opts.metadata || {};
@@ -565,8 +571,15 @@ export default class LiveSocket {
 
   /**
    * Connects to the LiveView server.
+   *
+   * On a fresh LiveSocket this makes it the page's LiveSocket, joining
+   * the page's root LiveViews; on an embedded one (see `embed()`) it
+   * reconnects to the roots it currently holds.
    */
   connect(): void {
+    if (this.mode === null) {
+      this.mode = "page";
+    }
     // enable debug by default if on localhost and not explicitly disabled
     const host = window.location.hostname.toLowerCase();
     if (
@@ -594,6 +607,142 @@ export default class LiveSocket {
     } else {
       document.addEventListener("DOMContentLoaded", () => doConnect());
     }
+  }
+
+  /**
+   * Embeds this LiveSocket in an element: renders the root LiveViews of
+   * another application into it and joins them.
+   *
+   * `source` is either the URL of a disconnected render of the roots,
+   * (see `Phoenix.LiveView.Controller.live_embed/3`), or a function
+   * returning such HTML. If the HTML carries a `meta[name="csrf-token"]`,
+   * the token is used by the LiveSocket.
+   *
+   * An embedded LiveSocket only joins the roots inside its container and
+   * only handles events belonging to its own views, so several
+   * LiveSockets can run on one page, each connected to a different
+   * application. An embedded LiveSocket cannot navigate, redirect or
+   * reload the page. When the container lives inside another LiveSocket's
+   * view it must be (or be inside) a `phx-update="ignore"` element.
+   */
+  embed(
+    container: HTMLElement,
+    source: EmbedSource,
+    callback?: () => void,
+  ): void {
+    if (this.mode === "page") {
+      throw new Error(
+        "the page's LiveSocket cannot be embedded; create a separate LiveSocket for the embedded application",
+      );
+    }
+    if (!(container instanceof Element)) {
+      throw new Error("embed() expects an element to embed the LiveSocket in");
+    }
+    const enclosingView = DOM.closestViewEl(container);
+    if (
+      enclosingView &&
+      !DOM.isIgnored(container, this.binding(PHX_UPDATE)) &&
+      !this.ignoredAncestor(container, enclosingView)
+    ) {
+      throw new Error(
+        `the container of an embedded LiveSocket must be (or be inside) a phx-update="ignore" element when it lives inside another LiveView, so that the view's patches leave the embedded roots alone`,
+      );
+    }
+    this.embedRoots(container, source, ++this.embedRef).then(
+      (embedded) => {
+        if (embedded && callback) {
+          callback();
+        }
+      },
+      (error: Error) => {
+        logError(
+          "socket.embed-failed",
+          error.message,
+          { container, source, error },
+          { attribution: "app" },
+        );
+      },
+    );
+  }
+
+  // places the produced roots in the container and connects: true once
+  // they are joining, false when a later embed() superseded this one or the
+  // container left the document meanwhile
+  private async embedRoots(
+    container: HTMLElement,
+    source: EmbedSource,
+    embedRef: number,
+  ): Promise<boolean> {
+    const { roots, csrfToken } = await this.produceRoots(source);
+    if (embedRef !== this.embedRef) {
+      return false;
+    }
+    if (roots.length === 0) {
+      throw new Error("no root LiveView found in the HTML to embed");
+    }
+    const main = roots.find((el) => el.hasAttribute(PHX_MAIN));
+    if (main) {
+      throw new Error(
+        `cannot embed the main LiveView #${main.id}: embed a disconnected render of the LiveView (see Phoenix.LiveView.Controller.live_embed/3), not a page mounted at the router`,
+      );
+    }
+    if (!container.isConnected) {
+      return false;
+    }
+    // moving: leave the roots held so far
+    this.destroyAllViews();
+    this.mode = "embedded";
+    this.container = container;
+    container.replaceChildren(...roots);
+    if (csrfToken) {
+      this.defaultSocketParams._csrf_token = csrfToken;
+    }
+    this.connect();
+    return true;
+  }
+
+  // fetches or produces the HTML to embed and picks the roots out of it
+  private async produceRoots(
+    source: EmbedSource,
+  ): Promise<{ roots: Element[]; csrfToken: string | null }> {
+    let produced: string | Node;
+    if (typeof source === "string") {
+      const response = await fetch(source, { credentials: "include" });
+      if (!response.ok) {
+        throw new Error(
+          `fetching the HTML to embed from ${source} failed with status ${response.status}`,
+        );
+      }
+      produced = await response.text();
+    } else {
+      produced = await source();
+    }
+    let scope: Element | Document | DocumentFragment;
+    if (typeof produced === "string") {
+      // parsed into a separate document: its scripts never run
+      scope = new DOMParser().parseFromString(produced, "text/html");
+    } else if (
+      produced instanceof Element ||
+      produced instanceof Document ||
+      produced instanceof DocumentFragment
+    ) {
+      scope = produced;
+    } else {
+      throw new Error(
+        "the source of an embed must yield an HTML string or a node holding the root LiveViews",
+      );
+    }
+    const rootSelector = `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`;
+    // only the outermost roots: a sticky root rendered inside another root
+    // stays in place there and is joined by the scan of the container
+    const roots =
+      scope instanceof Element && scope.matches(rootSelector)
+        ? [scope]
+        : DOM.all(scope, rootSelector).filter(
+            (el) => !el.parentElement?.closest(rootSelector),
+          );
+    const meta = scope.querySelector('meta[name="csrf-token"]');
+    return { roots, csrfToken: meta ? meta.getAttribute("content") : null };
   }
 
   /**
@@ -747,6 +896,9 @@ export default class LiveSocket {
 
   /** @internal */
   reloadWithJitter(view, log?) {
+    if (this.refusesPageNavigation("reload the page", null, view)) {
+      return;
+    }
     this.reloadWithJitterTimer != null &&
       clearTimeout(this.reloadWithJitterTimer);
     this.disconnect();
@@ -882,7 +1034,7 @@ export default class LiveSocket {
 
   /** @internal */
   joinDeadView() {
-    if (this.viewSelector) {
+    if (this.container) {
       return;
     }
     const body = document.body;
@@ -908,10 +1060,30 @@ export default class LiveSocket {
   /** @internal */
   joinRootViews() {
     let rootsFound = false;
-    const rootSelector = this.viewSelector
-      ? `:is(${this.viewSelector})${PHX_VIEW_SELECTOR}`
-      : PHX_VIEW_SELECTOR;
-    DOM.all(document, `${rootSelector}:not([${PHX_PARENT_ID}])`, (rootEl) => {
+    const rootSelector = `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`;
+    const scope = this.container || document;
+    const rootEls =
+      this.container && this.container.matches(rootSelector)
+        ? [this.container]
+        : DOM.all(scope, rootSelector);
+    rootEls.forEach((rootEl) => {
+      // roots joined by another LiveSocket on this page are not ours to take
+      const owner = DOM.private(rootEl, "view");
+      if (owner && owner.liveSocket !== this) {
+        return;
+      }
+      // nor are roots below a phx-update="ignore" element: like its content
+      // is not ours to patch, its roots are an embedded LiveSocket's
+      const ignored = this.ignoredAncestor(rootEl, scope);
+      if (ignored) {
+        if (this.isDebugEnabled()) {
+          console.log(
+            `socket: leaving root #${rootEl.id} inside a phx-update="ignore" element to an embedded LiveSocket`,
+            ignored,
+          );
+        }
+        return;
+      }
       if (!this.getRootById(rootEl.id)) {
         const view = this.newRootView(rootEl);
         // stickies cannot be mounted at the router and therefore should not
@@ -929,8 +1101,56 @@ export default class LiveSocket {
     return rootsFound;
   }
 
+  // the closest phx-update="ignore" ancestor of el strictly below scope
+  private ignoredAncestor(el: Element, scope: Node): Element | null {
+    const phxUpdate = this.binding(PHX_UPDATE);
+    let node = el === scope ? null : el.parentElement;
+    while (node && node !== scope) {
+      if (DOM.isIgnored(node, phxUpdate)) {
+        return node;
+      }
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  // whether the nearest view root of el belongs to another LiveSocket
+  private ownedByOther(el: Element): boolean {
+    const viewEl = DOM.closestViewEl(el);
+    const view = viewEl && DOM.private(viewEl, "view");
+    return !!view && view.liveSocket !== this;
+  }
+
+  /**
+   * @internal
+   */
+  refusesPageNavigation(
+    what: string,
+    to: string | null,
+    view?: View | null,
+  ): boolean {
+    if (!this.container) {
+      return false;
+    }
+    logError(
+      "socket.embedded-page-navigation",
+      `an embedded LiveSocket cannot ${what}`,
+      { to, container: this.container },
+      { attribution: "app" },
+    );
+    view?.displayError([
+      PHX_LOADING_CLASS,
+      PHX_ERROR_CLASS,
+      PHX_SERVER_ERROR_CLASS,
+    ]);
+    return true;
+  }
+
   /** @internal */
   redirect(to: string, flash: string | null, reloadToken: string | null) {
+    if (this.refusesPageNavigation("redirect the page", to)) {
+      return;
+    }
     if (reloadToken) {
       Browser.setCookie(PHX_RELOAD_STATUS, reloadToken, 60);
     }
@@ -951,7 +1171,11 @@ export default class LiveSocket {
     const liveReferer = this.currentLocation.href;
     this.outgoingMainEl = this.outgoingMainEl || this.main!.el;
 
-    const stickies = DOM.findPhxSticky(document) || [];
+    // only the stickies this LiveSocket joined: those of embedded LiveSockets
+    // take no part in the page's navigation
+    const stickies = (DOM.findPhxSticky(document) || []).filter(
+      (el) => DOM.private(el, "view")?.liveSocket === this,
+    );
     const removeEls = this.phxRemoveElementsForNavigation(
       this.outgoingMainEl!,
       stickies,
@@ -1063,8 +1287,8 @@ export default class LiveSocket {
         // there's no owner and we should not do fall back
         return null;
       }
-      if (this.viewSelector) {
-        // a scoped LiveSocket has no page-wide main view to fall back to
+      if (this.container) {
+        // an embedded LiveSocket has no page-wide main view to fall back to
         return null;
       }
       view = this.main!;
@@ -1162,7 +1386,7 @@ export default class LiveSocket {
 
     this.boundTopLevelEvents = true;
     document.body.addEventListener("click", function () {}); // ensure all click events bubble for mobile Safari
-    if (!this.viewSelector) {
+    if (!this.container) {
       window.addEventListener(
         "pageshow",
         (e) => {
@@ -1179,7 +1403,7 @@ export default class LiveSocket {
         true,
       );
     }
-    if (!dead && !this.viewSelector) {
+    if (!dead && !this.container) {
       this.bindNav();
     }
     this.bindClicks();
@@ -1447,7 +1671,7 @@ export default class LiveSocket {
         const phxEvent = target.getAttribute(click);
         if (!phxEvent) {
           if (DOM.isNewPageClick(e, window.location)) {
-            if (!this.viewSelector || this.owner(target)) {
+            if (!this.container || this.owner(target)) {
               this.unload();
             }
           }
@@ -1607,6 +1831,11 @@ export default class LiveSocket {
         if (!type || !this.isConnected() || !this.main || DOM.wantsNewTab(e)) {
           return;
         }
+        // links inside an embedded LiveSocket's views are not the page's to
+        // follow live; left alone, the browser follows them like any link
+        if (this.ownedByOther(target)) {
+          return;
+        }
 
         // When wrapping an SVG element in an anchor tag, the href can be an SVGAnimatedString
         const href =
@@ -1696,6 +1925,9 @@ export default class LiveSocket {
 
   /** @internal */
   pushHistoryPatch(e, href, linkState, targetEl) {
+    if (this.refusesPageNavigation("patch the page's URL", href)) {
+      return;
+    }
     if (!this.isConnected() || !(this.main && this.main.isMain())) {
       return Browser.redirect(href);
     }
@@ -1711,6 +1943,11 @@ export default class LiveSocket {
   /** @internal */
   historyPatch(href, linkState, linkRef = this.setPendingLink(href)) {
     if (!this.commitPendingLink(linkRef)) {
+      return;
+    }
+    // a patch is complete once the view stored its new href; the page's
+    // URL and history are not an embedded LiveSocket's to update
+    if (this.container) {
       return;
     }
 
@@ -1748,6 +1985,9 @@ export default class LiveSocket {
     flash: string | null,
     targetEl?: Element | null,
   ) {
+    if (this.refusesPageNavigation("navigate the page", href)) {
+      return;
+    }
     const clickLoading = targetEl && e.isTrusted && e.type !== "popstate";
     if (clickLoading) {
       targetEl.classList.add("phx-click-loading");

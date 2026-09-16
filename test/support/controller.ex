@@ -20,6 +20,14 @@ defmodule Phoenix.LiveViewTest.Support.Controller do
     )
   end
 
+  def incoming(conn, %{"type" => "live-embed"}) do
+    conn
+    |> put_root_layout({Phoenix.LiveViewTest.Support.LayoutView, :app})
+    |> live_embed(Phoenix.LiveViewTest.Support.DashboardLive,
+      session: %{"custom" => :embedded}
+    )
+  end
+
   def incoming(conn, %{"type" => "live-render-4"}) do
     conn
     |> put_layout({Phoenix.LiveViewTest.Support.AssignsLayoutView, :app})

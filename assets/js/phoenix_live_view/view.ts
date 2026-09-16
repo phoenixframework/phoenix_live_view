@@ -1226,6 +1226,9 @@ export default class View {
   onLiveRedirect(redir) {
     const { to, kind, flash } = redir;
     const url = this.expandURL(to);
+    if (this.liveSocket.refusesPageNavigation("navigate the page", url, this)) {
+      return;
+    }
     const e = new CustomEvent("phx:server-navigate", {
       detail: { to, kind, flash },
     });
@@ -1253,6 +1256,9 @@ export default class View {
     flash?: string | null;
     reloadToken?: string;
   }) {
+    if (this.liveSocket.refusesPageNavigation("redirect the page", to, this)) {
+      return;
+    }
     this.liveSocket.redirect(to, flash ?? null, reloadToken ?? null);
   }
 
@@ -1305,7 +1311,8 @@ export default class View {
         },
       );
       this.onRedirect({
-        to: this.liveSocket.main!.href!,
+        // an embedded LiveSocket has no main; its root knows the page
+        to: (this.liveSocket.main ?? this).href!,
         reloadToken: resp.token,
       });
       return;
@@ -1323,7 +1330,10 @@ export default class View {
           context: { attribution: "app" },
         },
       );
-      this.onRedirect({ to: this.liveSocket.main!.href!, flash: this.flash });
+      this.onRedirect({
+        to: (this.liveSocket.main ?? this).href!,
+        flash: this.flash,
+      });
       return;
     }
     if (resp.redirect || resp.live_redirect) {

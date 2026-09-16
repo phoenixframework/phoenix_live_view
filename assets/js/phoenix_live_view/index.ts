@@ -8,7 +8,11 @@
  * @packageDocumentation
  */
 
-import LiveSocket, { type LiveSocketOptions, isUsedInput } from "./live_socket";
+import LiveSocket, {
+  type LiveSocketOptions,
+  type EmbedSource,
+  isUsedInput,
+} from "./live_socket";
 import DOM from "./dom";
 import { ViewHook } from "./view_hook";
 import View from "./view";
@@ -20,7 +24,13 @@ import LiveUploader from "./live_uploader";
 import { RenderingBuffer, ReportingBuffer } from "./rendered/buffer";
 import type { BufferFrame } from "./rendered/buffer";
 
-export type { LiveSocketOptions, HookInterface, HooksOptions, EncodedJS };
+export type {
+  LiveSocketOptions,
+  EmbedSource,
+  HookInterface,
+  HooksOptions,
+  EncodedJS,
+};
 
 /** Creates a hook instance for the given element and callbacks.
  *

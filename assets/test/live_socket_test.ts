@@ -8,6 +8,7 @@ import {
 } from "phoenix_live_view/rendered/buffer";
 import JS from "phoenix_live_view/js";
 import View from "phoenix_live_view/view";
+import Browser from "phoenix_live_view/browser";
 import { version as liveview_version } from "../../package.json";
 import {
   liveViewDOM,
@@ -478,6 +479,344 @@ describe("LiveSocket", () => {
 
     // liveSocket constructor reads nav history position from sessionStorage
     expect(getItemCalls).toEqual(2);
+  });
+
+  describe("embedded LiveSockets", () => {
+    const root = (id, attrs = "") =>
+      `<div id="${id}" data-phx-session="s" ${attrs}></div>`;
+    const liveRootIds = (socket) =>
+      Object.values(socket.roots as Record<string, View>)
+        .filter((view) => !view.isDead)
+        .map((view) => view.id)
+        .sort();
+    const slot = () => document.getElementById("slot")!;
+    // embed() reports back through its callback
+    const embed = (socket, container, source) =>
+      new Promise<void>((resolve) => socket.embed(container, source, resolve));
+    // lets an embed() that never calls back run its course
+    const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
+    let embedded;
+    let consoleError;
+
+    beforeEach(() => {
+      document.body.innerHTML =
+        root("page", "data-phx-main") +
+        `<div id="slot" phx-update="ignore"></div>` +
+        root("other");
+      liveSocket = new LiveSocket("/live", Socket);
+      embedded = new LiveSocket("/live", Socket);
+      consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleError.mockRestore();
+      liveSocket.disconnect();
+      embedded.disconnect();
+    });
+
+    test("place the produced roots in the container and join them", async () => {
+      const bindNav = jest.spyOn(embedded, "bindNav");
+      const connect = jest.spyOn(embedded.socket, "connect");
+
+      await embed(embedded, slot(), () => root("nested"));
+
+      expect(Object.keys(embedded.roots)).toEqual(["nested"]);
+      expect(slot().firstElementChild!.id).toBe("nested");
+      expect(embedded.main).toBeNull();
+      expect(bindNav).not.toHaveBeenCalled();
+      expect(connect).toHaveBeenCalledTimes(1);
+    });
+
+    test("leave a sticky root inside its root and join it from there", async () => {
+      const sticky = root("sticky", "data-phx-sticky");
+      const html = `<div id="nested" data-phx-session="s">${sticky}</div>`;
+
+      await embed(embedded, slot(), () => html);
+
+      expect(Object.keys(embedded.roots)).toEqual(["nested", "sticky"]);
+      expect(slot().children.length).toBe(1);
+      expect(slot().firstElementChild!.id).toBe("nested");
+      expect(embedded.roots["sticky"].el.parentElement!.id).toBe("nested");
+    });
+
+    test("fetch the roots from a URL, taking the csrf token along", async () => {
+      const fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        text: async () =>
+          `<meta name="csrf-token" content="tok">${root("nested")}<script>window.ran = true</script>`,
+      });
+      const original = global.fetch;
+      global.fetch = fetch;
+
+      try {
+        await embed(embedded, slot(), "/embed");
+
+        expect(fetch).toHaveBeenCalledWith(
+          "/embed",
+          expect.objectContaining({ credentials: "include" }),
+        );
+        expect(Object.keys(embedded.roots)).toEqual(["nested"]);
+        expect(slot().children).toHaveLength(1);
+        expect((window as any).ran).toBeUndefined();
+        expect(embedded.socket.params()).toEqual({ _csrf_token: "tok" });
+      } finally {
+        global.fetch = original;
+      }
+    });
+
+    test("keep the csrf token given in the params", async () => {
+      const withToken = new LiveSocket("/live", Socket, {
+        params: { _csrf_token: "mine" },
+      });
+
+      try {
+        await embed(
+          withToken,
+          slot(),
+          () => `<meta name="csrf-token" content="tok">${root("nested")}`,
+        );
+
+        expect((withToken.socket as any).params()._csrf_token).toBe("mine");
+      } finally {
+        withToken.disconnect();
+      }
+    });
+
+    test("report HTML without a root LiveView", async () => {
+      const callback = jest.fn();
+
+      embedded.embed(slot(), () => "<div>nothing</div>", callback);
+      await settled();
+
+      expect(consoleError).toHaveBeenCalledWith(
+        expect.stringContaining("no root LiveView"),
+        expect.anything(),
+      );
+      expect(callback).not.toHaveBeenCalled();
+      expect(embedded.roots).toEqual({});
+      expect(slot().children).toHaveLength(0);
+    });
+
+    test("report a main LiveView", async () => {
+      const callback = jest.fn();
+
+      embedded.embed(slot(), () => root("home", "data-phx-main"), callback);
+      await settled();
+
+      expect(consoleError).toHaveBeenCalledWith(
+        expect.stringContaining("cannot embed the main LiveView #home"),
+        expect.anything(),
+      );
+      expect(callback).not.toHaveBeenCalled();
+      expect(slot().children).toHaveLength(0);
+    });
+
+    test("refuse a container inside another view unless it is ignored", async () => {
+      liveSocket.connect();
+      document.getElementById("page")!.innerHTML =
+        `<div id="bare"></div><div id="ignored" phx-update="ignore"></div>`;
+
+      expect(() =>
+        embedded.embed(document.getElementById("bare")!, () => root("nested")),
+      ).toThrow('phx-update="ignore"');
+      await embed(embedded, document.getElementById("ignored")!, () =>
+        root("nested"),
+      );
+
+      expect(Object.keys(embedded.roots)).toEqual(["nested"]);
+      expect(liveRootIds(liveSocket)).toEqual(["other", "page"]);
+    });
+
+    test("do nothing when the container left the document meanwhile", async () => {
+      const connect = jest.spyOn(embedded.socket, "connect");
+      const callback = jest.fn();
+
+      embedded.embed(
+        slot(),
+        () => {
+          slot().remove();
+          return root("nested");
+        },
+        callback,
+      );
+      await settled();
+
+      expect(embedded.roots).toEqual({});
+      expect(connect).not.toHaveBeenCalled();
+      expect(callback).not.toHaveBeenCalled();
+      expect(consoleError).not.toHaveBeenCalled();
+    });
+
+    test("move to another container, leaving the previous roots", async () => {
+      await embed(embedded, slot(), () => root("nested"));
+      const first = embedded.roots["nested"];
+      document.body.insertAdjacentHTML(
+        "beforeend",
+        `<div id="slot2" phx-update="ignore"></div>`,
+      );
+
+      await embed(embedded, document.getElementById("slot2")!, () =>
+        root("moved"),
+      );
+
+      expect(Object.keys(embedded.roots)).toEqual(["moved"]);
+      expect(first.isDestroyed()).toBe(true);
+      expect(document.getElementById("slot2")!.firstElementChild!.id).toBe(
+        "moved",
+      );
+    });
+
+    test("are one thing or the other: the page's LiveSocket cannot be embedded", async () => {
+      liveSocket.connect();
+
+      expect(() => liveSocket.embed(slot(), () => root("nested"))).toThrow(
+        "page's LiveSocket cannot be embedded",
+      );
+      await embed(embedded, slot(), () => root("nested"));
+      embedded.connect(); // a reconnect
+
+      expect(Object.keys(embedded.roots)).toEqual(["nested"]);
+      expect(embedded.main).toBeNull();
+      expect(liveSocket.main).toBe(liveSocket.roots["page"]);
+    });
+
+    test("keep their roots when the page's LiveSocket connects later", async () => {
+      await embed(embedded, slot(), () => root("nested"));
+      const bindNav = jest.spyOn(liveSocket, "bindNav");
+
+      liveSocket.connect();
+
+      expect(liveRootIds(liveSocket)).toEqual(["other", "page"]);
+      expect(liveSocket.main).toBe(liveSocket.roots["page"]);
+      expect(bindNav).toHaveBeenCalledTimes(1);
+      expect(Object.keys(embedded.roots)).toEqual(["nested"]);
+    });
+
+    test("are left the roots under phx-update=ignore, whichever connects first", async () => {
+      slot().innerHTML = root("nested");
+      liveSocket.connect();
+      expect(liveRootIds(liveSocket)).toEqual(["other", "page"]);
+
+      await embed(embedded, slot(), () => root("nested"));
+
+      expect(Object.keys(embedded.roots)).toEqual(["nested"]);
+      expect(liveRootIds(liveSocket)).toEqual(["other", "page"]);
+    });
+
+    test("leave roots under a nested phx-update=ignore element alone as well", async () => {
+      await embed(embedded, slot(), () => root("nested"));
+      slot().insertAdjacentHTML(
+        "beforeend",
+        `<div phx-update="ignore">${root("deeper")}</div>`,
+      );
+
+      embedded.connect(); // rescans the container
+
+      expect(Object.keys(embedded.roots)).toEqual(["nested"]);
+    });
+
+    test("route events to their own views only, without a main fallback", async () => {
+      await embed(embedded, slot(), () => root("nested"));
+      liveSocket.connect();
+      const nested = document.getElementById("nested")!;
+      const page = document.getElementById("page")!;
+      const orphan = document.body.appendChild(document.createElement("div"));
+
+      expect(embedded.owner(nested)).toBe(embedded.roots["nested"]);
+      expect(liveSocket.owner(nested)).toBeNull();
+      expect(liveSocket.owner(page)).toBe(liveSocket.main);
+      expect(embedded.owner(page)).toBeNull();
+      expect(liveSocket.owner(orphan)).toBe(liveSocket.main);
+      expect(embedded.owner(orphan)).toBeNull();
+    });
+
+    test("refuse to navigate, redirect or reload the page for their views", async () => {
+      const redirect = jest
+        .spyOn(Browser, "redirect")
+        .mockImplementation(() => {});
+      await embed(embedded, slot(), () => root("nested"));
+      const view = embedded.roots["nested"];
+
+      try {
+        view.onLiveRedirect({ to: "/away", kind: "push" });
+        view.onRedirect({ to: "/away" });
+        embedded.reloadWithJitter(view);
+
+        expect(redirect).not.toHaveBeenCalled();
+        expect(embedded.reloadWithJitterTimer).toBeNull();
+        expect(view.el.classList.contains("phx-server-error")).toBe(true);
+        expect(consoleError.mock.calls.map(([message]) => message)).toEqual([
+          "an embedded LiveSocket cannot navigate the page",
+          "an embedded LiveSocket cannot redirect the page",
+          "an embedded LiveSocket cannot reload the page",
+        ]);
+      } finally {
+        redirect.mockRestore();
+      }
+    });
+
+    test("refuse page navigation issued from JS", async () => {
+      const redirect = jest
+        .spyOn(Browser, "redirect")
+        .mockImplementation(() => {});
+      await embed(embedded, slot(), () => root("nested"));
+
+      try {
+        embedded.historyRedirect(new Event("click"), "/away", "push", null);
+        embedded.pushHistoryPatch(new Event("click"), "/away", "push", null);
+        embedded.redirect("/away", null, null);
+
+        expect(redirect).not.toHaveBeenCalled();
+        expect(consoleError.mock.calls.map(([message]) => message)).toEqual([
+          "an embedded LiveSocket cannot navigate the page",
+          "an embedded LiveSocket cannot patch the page's URL",
+          "an embedded LiveSocket cannot redirect the page",
+        ]);
+      } finally {
+        redirect.mockRestore();
+      }
+    });
+
+    test("complete a patch without touching the page's URL", async () => {
+      const pushState = jest
+        .spyOn(Browser, "pushState")
+        .mockImplementation(() => {});
+      await embed(embedded, slot(), () => root("nested"));
+      const view = embedded.roots["nested"];
+
+      try {
+        view.onLivePatch({ to: "/nested?page=2", kind: "push" });
+
+        expect(view.href).toMatch(/\/nested\?page=2$/);
+        expect(pushState).not.toHaveBeenCalled();
+        expect(consoleError).not.toHaveBeenCalled();
+      } finally {
+        pushState.mockRestore();
+      }
+    });
+
+    test("have their links left to the browser by the page's LiveSocket", async () => {
+      liveSocket.connect();
+      liveSocket.isConnected = () => true;
+      await embed(embedded, slot(), () => root("nested"));
+      const link = (id) =>
+        `<a id="${id}" data-phx-link="redirect" data-phx-link-state="push" href="#away">go</a>`;
+      document.getElementById("nested")!.innerHTML = link("embedded-link");
+      document.getElementById("page")!.innerHTML = link("page-link");
+      const historyRedirect = jest
+        .spyOn(liveSocket, "historyRedirect")
+        .mockImplementation(() => {});
+      const click = (id) => {
+        const e = new MouseEvent("click", { bubbles: true, cancelable: true });
+        document.getElementById(id)!.dispatchEvent(e);
+        return e;
+      };
+
+      expect(click("embedded-link").defaultPrevented).toBe(false);
+      expect(historyRedirect).not.toHaveBeenCalled();
+      expect(click("page-link").defaultPrevented).toBe(true);
+      expect(historyRedirect).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("execJS", () => {
