@@ -33,7 +33,7 @@ defmodule Phoenix.LiveViewTest.Support.PubSubLive do
   end
 
   def mount(_params, _session, socket) do
-    socket = assign(socket, messages: [], children: [])
+    socket = assign(socket, messages: [], direct_messages: [], children: [])
     {:ok, LiveView.subscribe(socket, @pubsub, "lv-pubsub-test", &receive_message/2)}
   end
 
@@ -44,6 +44,7 @@ defmodule Phoenix.LiveViewTest.Support.PubSubLive do
   def render(assigns) do
     ~H"""
     <div id="root">root: {inspect(@messages)}</div>
+    <div id="direct">direct: {inspect(@direct_messages)}</div>
     <.live_component :for={id <- @children} module={Child} id={id} />
     """
   end
@@ -52,12 +53,21 @@ defmodule Phoenix.LiveViewTest.Support.PubSubLive do
     {:noreply, LiveView.unsubscribe(socket, @pubsub, "lv-pubsub-test")}
   end
 
+  def handle_event("subscribe-directly", _params, socket) do
+    :ok = Phoenix.PubSub.subscribe(@pubsub, "lv-pubsub-test")
+    {:noreply, socket}
+  end
+
   def handle_event("add-child", %{"id" => id}, socket) do
     {:noreply, assign(socket, :children, socket.assigns.children ++ [id])}
   end
 
   def handle_event("remove-child", %{"id" => id}, socket) do
     {:noreply, assign(socket, :children, socket.assigns.children -- [id])}
+  end
+
+  def handle_info(message, socket) do
+    {:noreply, assign(socket, :direct_messages, socket.assigns.direct_messages ++ [message])}
   end
 end
 
@@ -183,6 +193,21 @@ defmodule Phoenix.LiveViewTest.PubSubTest do
 
       Phoenix.PubSub.broadcast(@pubsub, "lv-pubsub-test", :hello)
       assert render(lv) =~ "root: []"
+    end
+
+    test "unsubscribe keeps subscriptions made directly through Phoenix.PubSub", %{conn: conn} do
+      {:ok, lv, _html} = live_isolated(conn, PubSubLive)
+      render_click(lv, "subscribe-directly", %{})
+      assert [_, _] = subscriptions()
+
+      render_click(lv, "unsubscribe", %{})
+      assert [_] = subscriptions()
+
+      Phoenix.PubSub.broadcast(@pubsub, "lv-pubsub-test", :hello)
+
+      html = render(lv)
+      assert html =~ "root: []"
+      assert html =~ "direct: [:hello]"
     end
 
     test "unsubscribes when the LiveView terminates", %{conn: conn} do
