@@ -380,6 +380,18 @@ defmodule Phoenix.LiveView.Channel do
     handle_changed(state, new_socket, nil)
   end
 
+  def handle_info({Phoenix.LiveView.PubSub, ref, message}, state) when is_reference(ref) do
+    subscribers = Phoenix.LiveView.PubSub.subscribers(ref)
+
+    Enum.reduce_while(subscribers, {:noreply, state}, fn
+      {cid_or_root, callback}, {:noreply, state} ->
+        case handle_pubsub_callback(cid_or_root, callback, message, state) do
+          {:noreply, _state} = result -> {:cont, result}
+          result -> {:halt, result}
+        end
+    end)
+  end
+
   def handle_info(msg, %{socket: socket} = state) do
     msg
     |> view_handle_info(socket)
@@ -1708,6 +1720,7 @@ defmodule Phoenix.LiveView.Channel do
             })
 
             cancel_asyncs(c_socket)
+            Phoenix.LiveView.PubSub.unsubscribe_cid(deleted_cid)
 
             if deleted_cid in upload_cids do
               {_new_c_socket, canceled_confs} = Upload.maybe_cancel_uploads(c_socket)
@@ -1850,5 +1863,35 @@ defmodule Phoenix.LiveView.Channel do
       %{} ->
         pids
     end
+  end
+
+  defp handle_pubsub_callback(:root, callback, msg, %{socket: socket} = state) do
+    case callback.(msg, socket) do
+      %Socket{} = new_socket ->
+        handle_changed(state, new_socket, nil)
+
+      result ->
+        raise ArgumentError, """
+        expected pubsub subscription callback to return a %Socket{}, got:
+
+        #{inspect(result)}
+        """
+    end
+  end
+
+  defp handle_pubsub_callback(cid, callback, msg, state) when is_integer(cid) do
+    component_handle(state, cid, nil, fn component_socket, _component ->
+      case callback.(msg, component_socket) do
+        %Socket{redirected: redirected, assigns: assigns} = new_component_socket ->
+          {new_component_socket, {redirected, assigns.flash}}
+
+        result ->
+          raise ArgumentError, """
+          expected LiveComponent pubsub subscription callback to return a %Socket{}, got:
+
+          #{inspect(result)}
+          """
+      end
+    end)
   end
 end
