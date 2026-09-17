@@ -1559,6 +1559,147 @@ defmodule Phoenix.Component do
   end
 
   @doc """
+  Assigns the given expression if its dependencies changed.
+
+  This works similar to change tracking in `sigil_H/2` in that
+  it only executes if the expression accesses a key in `assigns`
+  that is marked as changed.
+
+  ## Examples
+
+      assign_computed(assigns, :full_name, assigns.first_name <> " " <> assigns.last_name)
+
+  """
+  defmacro assign_computed(assigns, key, expression) do
+    case assigns do
+      {:assigns, _, _} ->
+        assign_computed_analyze(assigns, key, expression, __CALLER__)
+
+      _ ->
+        quote do
+          Phoenix.Component.assign(unquote(assigns), unquote(key), unquote(expression))
+        end
+    end
+  end
+
+  defp assign_computed_analyze(assigns, key, expression, caller) do
+    opts =
+      Phoenix.LiveView.Assigns.opts(%{
+        maybe_warn_taint: &maybe_warn_taint/3,
+        skip_module_attributes: true
+      })
+
+    case Phoenix.LiveView.Assigns.analyze_and_return_tainted_keys(
+           expression,
+           {:untainted, %{}},
+           %{},
+           caller,
+           opts
+         ) do
+      {ast, keys, _vars} ->
+        to_conditional_assign(keys, assigns, key, ast)
+    end
+  end
+
+  defp to_conditional_assign(:all, assigns, key, expression) do
+    quote do
+      Phoenix.Component.assign(unquote(assigns), unquote(key), unquote(expression))
+    end
+  end
+
+  defp to_conditional_assign(keys, assigns, key, expression) when keys == %{} do
+    quote generated: true do
+      case unquote(assigns).__changed__ do
+        %{} -> unquote(assigns)
+        _ -> Phoenix.Component.assign(unquote(assigns), unquote(key), unquote(expression))
+      end
+    end
+  end
+
+  defp to_conditional_assign(keys, assigns, key, expression) do
+    quote do
+      case unquote(changed_assigns(keys, assigns)) do
+        true -> Phoenix.Component.assign(unquote(assigns), unquote(key), unquote(expression))
+        false -> unquote(assigns)
+      end
+    end
+  end
+
+  defp changed_assigns(keys, assigns) do
+    checks =
+      for {{changed_var, key}, _} <- keys,
+          not Phoenix.LiveView.Assigns.nested_and_parent_is_checked?(changed_var, key, keys) do
+        changed =
+          quote do
+            unquote(assigns).__changed__
+          end
+
+        case key do
+          [assign] ->
+            quote do
+              dbg(unquote(changed))
+              Phoenix.LiveView.Assigns.changed_assign?(unquote(changed), unquote(assign))
+            end
+
+          [assign | tail] ->
+            assigns_var =
+              case changed_var do
+                :changed ->
+                  assigns
+
+                :vars_changed ->
+                  # we pass a map %{var: var} for nested change tracking
+                  quote do
+                    %{unquote(assign) => unquote(Macro.var(assign, nil))}
+                  end
+              end
+
+            quote do
+              Phoenix.LiveView.Assigns.nested_changed_assign?(
+                unquote(tail),
+                unquote(assign),
+                unquote(assigns_var),
+                unquote(changed)
+              )
+            end
+        end
+      end
+
+    Enum.reduce(checks, &{:or, [], [&1, &2]})
+  end
+
+  defp maybe_warn_taint(name, meta, caller) do
+    if caller && Macro.Env.has_var?(caller, {name, nil}) do
+      message = """
+      you are accessing the variable \"#{name}\" inside a assign_computed expression.
+
+      Using variables in assign_computed is discouraged as they disable change tracking. \
+      You are only allowed to access variables defined by Elixir control-flow structures, \
+      such as if/case/for, or those defined by the special attributes :let/:if/:for. \
+
+      Instead of:
+
+          def add(assigns) do
+            result = assigns.a + assigns.b
+            assigns = assign_computed(assigns, :result, result)
+
+            ~H"the result is: {result}"
+          end
+
+      You must do:
+
+          def add(assigns) do
+            assigns = assign_computed(assigns, :result, assigns.a + assigns.b)
+            ~H"the result is: {@result}"
+          end
+      """
+
+      line = meta[:line] || caller.line
+      IO.warn(message, Macro.Env.stacktrace(%{caller | line: line}))
+    end
+  end
+
+  @doc """
   Converts a given data structure to a `Phoenix.HTML.Form`.
 
   This is commonly used to convert a map or an Ecto changeset
@@ -1865,6 +2006,8 @@ defmodule Phoenix.Component do
 
   @doc false
   defmacro __using__(opts \\ []) do
+    opts = Phoenix.Component.ChangeTrackBody.take_option(__CALLER__, opts)
+
     conditional =
       if __CALLER__.module != Phoenix.LiveView.Helpers do
         quote do: import(Phoenix.LiveView.Helpers)
@@ -1884,6 +2027,58 @@ defmodule Phoenix.Component do
       end
 
     [conditional, imports]
+  end
+
+  @doc """
+  Opts the next function component into automatic change tracking of its body.
+
+  Every `assigns = expression` statement in the component body is analyzed for
+  the assigns it reads. The statement always executes, but when none of the
+  assigns it depends on changed, the values it computed are not marked as
+  changed and are therefore not sent to the client.
+
+  ## Examples
+
+      attr :title, :string, required: true
+      change_track_body true
+
+      defp step(assigns) do
+        assigns =
+          cond do
+            assigns.error? -> assign(assigns, bg: "bg-destructive/70", number: "!")
+            assigns.current_scope.subscribed? -> assign(assigns, bg: "bg-success", number: "\u2713")
+            true -> assign(assigns, bg: "bg-primary", number: nil)
+          end
+
+        ~H"..."
+      end
+
+  Here `bg` and `number` are only sent to the client when `error?` or
+  `current_scope.subscribed?` changed, even though the `cond` runs on every
+  render.
+
+  Only assigns accessed as `assigns.name` can be tracked. `@name` refers to an
+  assign inside `~H` only; in the body it keeps its regular Elixir meaning of a
+  module attribute. If the expression reads a variable, or passes `assigns` to a
+  function other than `assign/2`, `assign/3` or `assign_new/3`, the statement is
+  left untouched and a warning is emitted at compile time.
+
+  It applies to the `def`/`defp` clause that immediately follows it, so
+  multi-clause components must repeat it for each clause.
+
+  ## Setting the default for a whole module
+
+  Pass `:change_track_body` to `use Phoenix.Component` (or `use Phoenix.LiveView`)
+  to opt every function component in the module in:
+
+      use Phoenix.Component, change_track_body: true
+
+  Definitions that are not function components, such as `handle_event/3` or a
+  plain helper, are left alone. Individual components opt back out with
+  `change_track_body false`.
+  """
+  defmacro change_track_body(enabled) do
+    Phoenix.Component.ChangeTrackBody.enable(__CALLER__, enabled)
   end
 
   @doc ~S'''
