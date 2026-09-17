@@ -664,6 +664,27 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         assert {:error, :not_allowed} = render_upload(avatar, "foo2.jpeg")
       end
 
+      @tag allow: [max_entries: 1, chunk_size: 20, accept: :any, auto_upload: :if_valid]
+      test "if-valid auto upload does not preflight while the selection has errors", %{lv: lv} do
+        avatar =
+          file_input(lv, "form", :avatar, [
+            %{name: "foo1.jpeg", content: "bytes"},
+            %{name: "foo2.jpeg", content: "bytes"}
+          ])
+
+        html =
+          lv
+          |> form("form", user: %{})
+          |> render_change(avatar)
+
+        assert html =~ "config_error::too_many_files"
+        assert html =~ "foo1.jpeg:0%"
+        assert html =~ "foo2.jpeg:0%"
+
+        assert {:error, :not_allowed} = render_upload(avatar, "foo1.jpeg")
+        assert {:error, :not_allowed} = render_upload(avatar, "foo2.jpeg")
+      end
+
       @tag allow: [
              max_entries: 1,
              chunk_size: 20,
