@@ -21,6 +21,7 @@ describe("Browser", () => {
       document.cookie = "apple=1234";
       document.cookie = "orange=5678";
       expect(Browser.getCookie("apple")).toEqual("1234");
+      expect(Browser.getCookie("orange")).toEqual("5678");
     });
     test("returns an empty string for a non-existent cookie", () => {
       document.cookie = "apple=1234";

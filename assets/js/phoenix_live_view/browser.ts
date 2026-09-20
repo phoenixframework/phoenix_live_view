@@ -74,7 +74,7 @@ const Browser = {
 
   getCookie(name: string) {
     return document.cookie.replace(
-      new RegExp(`(?:(?:^|.*;\s*)${name}\s*\=\s*([^;]*).*$)|^.*$`),
+      new RegExp(`(?:(?:^|.*;\\s*)${name}\\s*\\=\\s*([^;]*).*$)|^.*$`),
       "$1",
     );
   },
