@@ -219,29 +219,73 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
     assert File.read!(manifest) == "export const hooks = {};\nexport default {};"
   end
 
-  test "symlinks node_modules folder if exists" do
-    node_path = Path.expand("../../assets/node_modules", __DIR__)
+  describe "node_modules symlink" do
+    @node_modules Path.expand("../../assets/node_modules", __DIR__)
+    @symlink Path.join(
+               Mix.Project.build_path(),
+               "phoenix-colocated/phoenix_live_view/node_modules"
+             )
 
-    if not File.exists?(node_path) do
-      on_exit(fn -> File.rm_rf!(node_path) end)
+    setup do
+      # the npm project of this repository lives in the root folder, therefore
+      # assets/node_modules is only ever created by these tests
+      File.rm_rf!(@node_modules)
+      File.rm_rf!(@symlink)
+
+      on_exit(fn ->
+        File.rm_rf!(@node_modules)
+        File.rm_rf!(@symlink)
+      end)
     end
 
-    File.mkdir_p!(Path.join(node_path, "foo"))
-    Phoenix.LiveView.ColocatedAssets.compile()
+    test "symlinks node_modules folder if exists" do
+      File.mkdir_p!(Path.join(@node_modules, "foo"))
+      Phoenix.LiveView.ColocatedAssets.compile()
 
-    symlink =
-      Path.join(
-        Mix.Project.build_path(),
-        "phoenix-colocated/phoenix_live_view/node_modules"
-      )
+      assert File.exists?(@symlink)
+      link = File.read_link!(@symlink)
 
-    assert File.exists?(symlink)
-    link = File.read_link!(symlink)
+      if function_exported?(Path, :relative_to, 3) do
+        assert String.starts_with?(link, "../")
+      end
 
-    if function_exported?(Path, :relative_to, 3) do
-      assert String.starts_with?(link, "../")
+      assert "foo" in File.ls!(@symlink)
+
+      # compiling again keeps the symlink and must never follow it when
+      # cleaning up the colocated folder
+      Phoenix.LiveView.ColocatedAssets.compile()
+
+      assert File.read_link!(@symlink) == link
+      assert "foo" in File.ls!(@symlink)
     end
 
-    assert "foo" in File.ls!(symlink)
+    test "does not symlink node_modules folder if it does not exist" do
+      Phoenix.LiveView.ColocatedAssets.compile()
+
+      # a dangling symlink would break file watchers
+      assert File.read_link(@symlink) == {:error, :enoent}
+    end
+
+    test "removes a dangling symlink when node_modules folder is gone" do
+      File.mkdir_p!(@node_modules)
+      Phoenix.LiveView.ColocatedAssets.compile()
+      assert {:ok, _} = File.read_link(@symlink)
+
+      File.rm_rf!(@node_modules)
+      Phoenix.LiveView.ColocatedAssets.compile()
+
+      assert File.read_link(@symlink) == {:error, :enoent}
+    end
+
+    test "replaces a symlink that points to an outdated location" do
+      File.mkdir_p!(Path.dirname(@symlink))
+      File.ln_s!("../outdated/node_modules", @symlink)
+      File.mkdir_p!(Path.join(@node_modules, "foo"))
+
+      Phoenix.LiveView.ColocatedAssets.compile()
+
+      assert File.read_link!(@symlink) =~ ~r"assets/node_modules$"
+      assert "foo" in File.ls!(@symlink)
+    end
   end
 end
