@@ -225,22 +225,23 @@ var LiveView = (() => {
         this.offset,
         this.chunkSize + this.offset
       );
+      const onError = () => {
+        this.entry.view.logError(
+          "upload.read-failed",
+          "Read error: " + (reader.error || "aborted"),
+          { entry: this.entry, offset: this.offset }
+        );
+        this.error("failed");
+      };
+      reader.onerror = onError;
+      reader.onabort = onError;
       reader.onload = (e) => {
-        var _a, _b;
-        if (((_a = e.target) == null ? void 0 : _a.error) === null) {
-          this.offset += /** @type {ArrayBuffer} */
-          e.target.result.byteLength;
-          this.pushChunk(
-            /** @type {ArrayBuffer} */
-            e.target.result
-          );
-        } else {
-          return this.entry.view.logError(
-            "upload.read-failed",
-            "Read error: " + ((_b = e.target) == null ? void 0 : _b.error),
-            { entry: this.entry, offset: this.offset }
-          );
-        }
+        this.offset += /** @type {ArrayBuffer} */
+        e.target.result.byteLength;
+        this.pushChunk(
+          /** @type {ArrayBuffer} */
+          e.target.result
+        );
       };
       reader.readAsArrayBuffer(blob);
     }
