@@ -1,4 +1,4 @@
-import { Channel } from "phoenix";
+import { Channel, type Socket } from "phoenix";
 
 import {
   BEFORE_UNLOAD_LOADER_TIMEOUT,
@@ -99,6 +99,7 @@ export default class View {
   isDead: boolean;
   root: View;
   portalElementIds: Set<string>;
+  private phxSocket: Socket;
   private channel: Channel;
   private rendered: Rendered | null;
   private flash: string | null;
@@ -199,18 +200,27 @@ export default class View {
     this.children = this.parent ? null : {};
     this.root.children![this.id] = {};
     this.formsForRecovery = {};
-    this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
-      const url = this.href && this.expandURL(this.href);
-      return {
-        redirect: this.redirect ? url : undefined,
-        url: this.redirect ? undefined : url || undefined,
-        params: this.connectParams(liveReferer),
-        session: this.getSession(),
-        static: this.getStatic(),
-        flash: this.flash ?? undefined,
-        sticky: this.el.hasAttribute(PHX_STICKY),
-      };
-    });
+    // a child view always speaks over its root's socket; a root resolves its
+    // own through the LiveSocket's socketFor option
+    this.phxSocket = parentView
+      ? parentView.socket()
+      : this.liveSocket.socketForRoot(el);
+    this.channel = this.liveSocket.channel(
+      `lv:${this.id}`,
+      () => {
+        const url = this.href && this.expandURL(this.href);
+        return {
+          redirect: this.redirect ? url : undefined,
+          url: this.redirect ? undefined : url || undefined,
+          params: this.connectParams(liveReferer),
+          session: this.getSession(),
+          static: this.getStatic(),
+          flash: this.flash ?? undefined,
+          sticky: this.el.hasAttribute(PHX_STICKY),
+        };
+      },
+      this,
+    );
     this.portalElementIds = new Set();
   }
 
@@ -244,6 +254,14 @@ export default class View {
     this.joinAttempts++;
 
     return params;
+  }
+
+  /**
+   * The Phoenix Socket this view - along with its child views and its uploads -
+   * runs on. See the LiveSocket `socketFor` option.
+   */
+  socket(): Socket {
+    return this.phxSocket;
   }
 
   isConnected() {
@@ -1354,7 +1372,7 @@ export default class View {
         [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS],
         { unstructuredError: resp, errorKind: "server" },
       );
-      if (this.liveSocket.isConnected()) {
+      if (this.socket().isConnected()) {
         this.liveSocket.reloadWithJitter(this);
       }
     } else {
@@ -1416,7 +1434,7 @@ export default class View {
 
   onError(reason) {
     this.onClose(reason);
-    if (this.liveSocket.isConnected()) {
+    if (this.socket().isConnected()) {
       this.log("error", () => ["view crashed", reason], {
         code: "view.crashed",
         level: "error",
@@ -1425,7 +1443,7 @@ export default class View {
       });
     }
     if (!this.liveSocket.isUnloaded()) {
-      if (this.liveSocket.isConnected()) {
+      if (this.socket().isConnected()) {
         this.displayError(
           [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS],
           { unstructuredError: reason, errorKind: "server" },

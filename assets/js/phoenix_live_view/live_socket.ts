@@ -98,6 +98,28 @@ export interface LiveSocketOptions {
    */
   bindingPrefix?: string;
   /**
+   * An optional function resolving which Phoenix `Socket` a root LiveView
+   * runs on.
+   *
+   * It is called once per root LiveView with the view's root element, before
+   * the view's channel is created. Returning a `Socket` runs that view, its
+   * child LiveViews and its uploads on it; returning nothing - the default -
+   * uses the LiveSocket's own socket.
+   *
+   *     const local = new Socket("/local", { transport: MyTransport });
+   *     local.connect();
+   *
+   *     const liveSocket = new LiveSocket("/live", Socket, {
+   *       socketFor: (rootEl) => (rootEl.hasAttribute("data-local") ? local : null),
+   *     });
+   *
+   * LiveView never connects or disconnects a socket returned here: its
+   * lifecycle belongs to whoever created it. Page-level concerns - live
+   * navigation, the main LiveView and the failsafe reload - stay with the
+   * LiveSocket's own socket.
+   */
+  socketFor?: (rootEl: Element) => Socket | null | undefined;
+  /**
    * Callbacks for LiveView hooks.
    *
    * See [Client hooks via `phx-hook`](https://phoenix-live-view.hexdocs.pm/js-interop.html#client-hooks-via-phx-hook) for more information.
@@ -260,6 +282,7 @@ export default class LiveSocket {
   /** @internal */
   unloaded = false;
   private bindingPrefix: string;
+  private resolveSocket: (rootEl: Element) => Socket | null | undefined;
   private viewLogger: any;
   private metadataCallbacks: any;
   private defaults: any;
@@ -359,6 +382,7 @@ export default class LiveSocket {
     }
     this.socket = new phxSocket(url, opts);
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX;
+    this.resolveSocket = opts.socketFor || (() => null);
     this.params = closure(opts.params || {});
     this.viewLogger = opts.viewLogger;
     this.metadataCallbacks = opts.metadata || {};
@@ -731,6 +755,11 @@ export default class LiveSocket {
 
   /** @internal */
   reloadWithJitter(view, log?) {
+    // only a view on our own socket may reload the page: a socket handed to us
+    // by socketFor speaks for its own views, not for the document they live in
+    if (view.socket() !== this.socket) {
+      return;
+    }
     this.reloadWithJitterTimer != null &&
       clearTimeout(this.reloadWithJitterTimer);
     this.disconnect();
@@ -859,9 +888,19 @@ export default class LiveSocket {
     return `${this.getBindingPrefix()}${kind}`;
   }
 
+  /**
+   * Resolves the Phoenix Socket a root LiveView runs on. See the `socketFor`
+   * option; child views inherit their root's socket.
+   *
+   * @internal
+   */
+  socketForRoot(rootEl: Element): Socket {
+    return this.resolveSocket(rootEl) || this.socket;
+  }
+
   /** @internal */
-  channel(topic, params) {
-    return this.socket.channel(topic, params);
+  channel(topic, params, view?: View) {
+    return (view ? view.socket() : this.socket).channel(topic, params);
   }
 
   /** @internal */
