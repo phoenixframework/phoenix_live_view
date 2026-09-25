@@ -720,6 +720,18 @@ defmodule Phoenix.LiveView.ComponentsTest do
                ~X|<input type="file" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="foo" data-phx-error-refs="foo">|
     end
 
+    test "renders the if-valid auto upload mode" do
+      assigns = %{
+        conf: %Phoenix.LiveView.UploadConfig{
+          auto_upload?: :if_valid,
+          entries: [%{preflighted?: false, done?: false, ref: "foo"}]
+        }
+      }
+
+      assert t2h(~H|<.live_file_input upload={@conf} />|) ==
+               ~X|<input type="file" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="" data-phx-auto-upload="if_valid">|
+    end
+
     test "renders optional webkitdirectory attribute" do
       assigns = %{
         conf: %Phoenix.LiveView.UploadConfig{
