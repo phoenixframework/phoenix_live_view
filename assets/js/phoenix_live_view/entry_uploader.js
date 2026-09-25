@@ -51,17 +51,19 @@ export default class EntryUploader {
       this.offset,
       this.chunkSize + this.offset,
     );
+    const onError = () => {
+      this.entry.view.logError(
+        "upload.read-failed",
+        "Read error: " + (reader.error || "aborted"),
+        { entry: this.entry, offset: this.offset },
+      );
+      this.error("failed");
+    };
+    reader.onerror = onError;
+    reader.onabort = onError;
     reader.onload = (e) => {
-      if (e.target?.error === null) {
-        this.offset += /** @type {ArrayBuffer} */ (e.target.result).byteLength;
-        this.pushChunk(/** @type {ArrayBuffer} */ (e.target.result));
-      } else {
-        return this.entry.view.logError(
-          "upload.read-failed",
-          "Read error: " + e.target?.error,
-          { entry: this.entry, offset: this.offset },
-        );
-      }
+      this.offset += /** @type {ArrayBuffer} */ (e.target.result).byteLength;
+      this.pushChunk(/** @type {ArrayBuffer} */ (e.target.result));
     };
     reader.readAsArrayBuffer(blob);
   }
