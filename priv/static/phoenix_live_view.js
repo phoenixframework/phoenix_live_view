@@ -448,12 +448,6 @@ var LiveView = (() => {
       const expires = typeof maxAgeSeconds === "number" ? ` max-age=${maxAgeSeconds};` : "";
       document.cookie = `${name}=${value};${expires} path=/`;
     },
-    getCookie(name) {
-      return document.cookie.replace(
-        new RegExp(`(?:(?:^|.*;s*)${name}s*=s*([^;]*).*$)|^.*$`),
-        "$1"
-      );
-    },
     deleteCookie(name) {
       document.cookie = `${name}=; max-age=-1; path=/`;
     },
