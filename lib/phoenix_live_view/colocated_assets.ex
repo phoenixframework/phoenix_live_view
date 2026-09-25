@@ -134,14 +134,20 @@ defmodule Phoenix.LiveView.ColocatedAssets do
   defp maybe_link_node_modules! do
     settings = project_settings()
 
-    case Keyword.get(settings, :node_modules_path, {:fallback, "assets/node_modules"}) do
-      {:fallback, rel_path} ->
-        location = Path.absname(rel_path)
-        do_symlink(location, true)
+    {location, is_fallback} =
+      case Keyword.get(settings, :node_modules_path, {:fallback, "assets/node_modules"}) do
+        {:fallback, rel_path} -> {Path.absname(rel_path), true}
+        path when is_binary(path) -> {Path.absname(path), false}
+      end
 
-      path when is_binary(path) ->
-        location = Path.absname(path)
-        do_symlink(location, false)
+    # a symlink pointing to a non-existing folder makes file watchers
+    # (for example the one used by tailwind) fail on some operating systems,
+    # so we only link the folder if it actually exists and otherwise remove
+    # a previously created symlink; see https://github.com/phoenixframework/phoenix_live_view/issues/4447
+    if File.dir?(location) do
+      do_symlink(location, is_fallback)
+    else
+      remove_symlink!(node_modules_link(), nil)
     end
   end
 
@@ -155,9 +161,14 @@ defmodule Phoenix.LiveView.ColocatedAssets do
 
   defp do_symlink(node_modules_path, is_fallback) do
     relative_node_modules_path = relative_to_target(node_modules_path)
+    target = node_modules_link()
+
+    # the existing symlink can point to an outdated location, for example
+    # when the :node_modules_path setting changed
+    remove_symlink!(target, relative_node_modules_path)
 
     with {:error, reason} when reason != :eexist <-
-           File.ln_s(relative_node_modules_path, Path.join(target_dir(), "node_modules")),
+           File.ln_s(relative_node_modules_path, target),
          false <- Keyword.get(global_settings(), :disable_symlink_warning, false) do
       disable_hint = """
       If you don't use colocated hooks / js / css or you don't need to import files from "assets/node_modules"
@@ -175,6 +186,22 @@ defmodule Phoenix.LiveView.ColocatedAssets do
       On Windows, you can address this issue by starting your Windows terminal at least once
       with "Run as Administrator" and then running your Phoenix application.#{is_fallback && "\n\n" <> disable_hint}
       """)
+    end
+  end
+
+  defp node_modules_link do
+    Path.join(target_dir(), "node_modules")
+  end
+
+  # removes the symlink at target, unless it already points to keep.
+  # We use File.rm_rf!/1 instead of File.rm!/1, because on Windows a symlink
+  # to a directory has to be removed with rmdir; it does not follow the symlink
+  defp remove_symlink!(target, keep) do
+    case File.read_link(target) do
+      {:ok, ^keep} -> :ok
+      {:ok, _outdated} -> File.rm_rf!(target)
+      # it does not exist or it is not a symlink, so we leave it alone
+      {:error, _reason} -> :ok
     end
   end
 
