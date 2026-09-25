@@ -72,13 +72,6 @@ const Browser = {
     document.cookie = `${name}=${value};${expires} path=/`;
   },
 
-  getCookie(name: string) {
-    return document.cookie.replace(
-      new RegExp(`(?:(?:^|.*;\s*)${name}\s*\=\s*([^;]*).*$)|^.*$`),
-      "$1",
-    );
-  },
-
   deleteCookie(name: string) {
     document.cookie = `${name}=; max-age=-1; path=/`;
   },
