@@ -636,19 +636,19 @@ describe("View + DOM", function () {
       '<form id="first" phx-change="validate"><input name="first"></form>' +
       '<form id="second" phx-change="validate"><input name="second"></form>';
     const view = new View(liveViewDOM(forms), liveSocket, null, null, null);
-    view.joinCount = 1;
+    view["joinCount"] = 1;
     view["formsForRecovery"] = view.getFormsForRecovery();
 
     let finishFirst: () => void = () => {};
-    jest.spyOn(view, "pushFormRecovery").mockImplementation(
-      (_oldForm, newForm, _templateDom, done) => {
+    jest
+      .spyOn(view, "pushFormRecovery")
+      .mockImplementation((_oldForm, newForm, _templateDom, done) => {
         if (newForm.id === "first") {
           finishFirst = done;
         } else {
           done();
         }
-      },
-    );
+      });
     const callback = jest.fn();
 
     view.maybeRecoverForms(liveViewDOM(forms).outerHTML, callback);
