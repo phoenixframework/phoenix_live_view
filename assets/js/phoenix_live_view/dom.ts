@@ -136,12 +136,13 @@ const DOM = {
     const isDownload =
       e.target instanceof HTMLAnchorElement &&
       e.target.hasAttribute("download");
-    const isTargetBlank =
-      e.target.hasAttribute("target") &&
-      e.target.getAttribute("target").toLowerCase() === "_blank";
+    const target =
+      e.submitter && e.submitter.hasAttribute("formtarget")
+        ? e.submitter.getAttribute("formtarget")
+        : e.target.getAttribute("target");
+    const isTargetBlank = target !== null && target.toLowerCase() === "_blank";
     const isTargetNamedTab =
-      e.target.hasAttribute("target") &&
-      !e.target.getAttribute("target").startsWith("_");
+      target !== null && target !== "" && !target.startsWith("_");
     return wantsNewTab || isTargetBlank || isDownload || isTargetNamedTab;
   },
 
