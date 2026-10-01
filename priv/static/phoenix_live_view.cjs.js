@@ -1694,20 +1694,21 @@ var Hooks = {
 var hooks_default = Hooks;
 
 // js/phoenix_live_view/element_ref.ts
-var ElementRef = class {
+var ElementRef = class _ElementRef {
   static onUnlock(el, callback) {
     const closestLock = el.closest(`[${PHX_REF_LOCK}]`);
     if (!closestLock) {
       return callback();
     }
     const ref = closestLock.getAttribute(PHX_REF_LOCK);
-    closestLock.addEventListener(
-      `phx:undo-lock:${ref}`,
-      () => {
-        callback();
-      },
-      { once: true }
-    );
+    const event = `phx:undo-lock:${ref}`;
+    const onUnlock = (e) => {
+      if (e.target !== closestLock)
+        return;
+      closestLock.removeEventListener(event, onUnlock);
+      _ElementRef.onUnlock(el, callback);
+    };
+    closestLock.addEventListener(event, onUnlock);
   }
   constructor(el) {
     this.el = el;
