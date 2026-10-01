@@ -517,8 +517,9 @@ var DOM = {
   wantsNewTab(e) {
     const wantsNewTab = e.ctrlKey || e.shiftKey || e.metaKey || e.button && e.button === 1;
     const isDownload = e.target instanceof HTMLAnchorElement && e.target.hasAttribute("download");
-    const isTargetBlank = e.target.hasAttribute("target") && e.target.getAttribute("target").toLowerCase() === "_blank";
-    const isTargetNamedTab = e.target.hasAttribute("target") && !e.target.getAttribute("target").startsWith("_");
+    const target = e.submitter && e.submitter.hasAttribute("formtarget") ? e.submitter.getAttribute("formtarget") : e.target.getAttribute("target");
+    const isTargetBlank = target !== null && target.toLowerCase() === "_blank";
+    const isTargetNamedTab = target !== null && target !== "" && !target.startsWith("_");
     return wantsNewTab || isTargetBlank || isDownload || isTargetNamedTab;
   },
   isUnloadableFormSubmit(e) {
