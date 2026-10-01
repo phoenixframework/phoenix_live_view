@@ -18,13 +18,16 @@ export default class ElementRef {
       return callback();
     }
     const ref = closestLock.getAttribute(PHX_REF_LOCK);
-    closestLock.addEventListener(
-      `phx:undo-lock:${ref}`,
-      () => {
-        callback();
-      },
-      { once: true },
-    );
+    const event = `phx:undo-lock:${ref}`;
+    const onUnlock = (e) => {
+      // Undo events bubble, so only react when this particular lock is undone.
+      // Once it is gone, check again in case the element is nested in another
+      // locked tree.
+      if (e.target !== closestLock) return;
+      closestLock.removeEventListener(event, onUnlock);
+      ElementRef.onUnlock(el, callback);
+    };
+    closestLock.addEventListener(event, onUnlock);
   }
 
   private el: Element;
