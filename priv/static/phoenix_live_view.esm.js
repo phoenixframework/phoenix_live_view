@@ -5137,7 +5137,8 @@ var View = class _View {
     if (formsToRecover.length === 0) {
       return callback();
     }
-    formsToRecover.forEach(([oldForm, newForm], i) => {
+    let formsRecovered = 0;
+    formsToRecover.forEach(([oldForm, newForm]) => {
       this.pendingForms.add(newForm.id);
       this.pushFormRecovery(
         oldForm,
@@ -5145,7 +5146,8 @@ var View = class _View {
         template.content.firstElementChild,
         () => {
           this.pendingForms.delete(newForm.id);
-          if (i === formsToRecover.length - 1) {
+          formsRecovered++;
+          if (formsRecovered === formsToRecover.length) {
             callback();
           }
         }

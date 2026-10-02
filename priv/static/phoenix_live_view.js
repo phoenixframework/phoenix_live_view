@@ -5205,7 +5205,8 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       if (formsToRecover.length === 0) {
         return callback();
       }
-      formsToRecover.forEach(([oldForm, newForm], i) => {
+      let formsRecovered = 0;
+      formsToRecover.forEach(([oldForm, newForm]) => {
         this.pendingForms.add(newForm.id);
         this.pushFormRecovery(
           oldForm,
@@ -5213,7 +5214,8 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           template.content.firstElementChild,
           () => {
             this.pendingForms.delete(newForm.id);
-            if (i === formsToRecover.length - 1) {
+            formsRecovered++;
+            if (formsRecovered === formsToRecover.length) {
               callback();
             }
           }
