@@ -83,6 +83,7 @@ export default class EntryUploader {
           );
         }
       })
-      .receive("error", ({ reason }) => this.error(reason));
+      .receive("error", ({ reason }) => this.error(reason))
+      .receive("timeout", () => this.error("timeout"));
   }
 }
