@@ -444,9 +444,24 @@ defmodule Phoenix.LiveView.Channel do
         _from,
         %{components: {components, _, _}} = state
       ) do
+    # each component tracks its parent, so the children are derived on demand
+    children_cids =
+      components
+      |> Enum.group_by(
+        fn {_cid, {_mod, _id, _assigns, private, _prints}} -> private[:parent_cid] end,
+        fn {cid, _component} -> cid end
+      )
+      |> Map.new(fn {parent_cid, cids} -> {parent_cid, Enum.sort(cids)} end)
+
     component_info =
-      Enum.map(components, fn {cid, {mod, id, assigns, private, _prints}} ->
-        %{id: id, cid: cid, module: mod, assigns: assigns, children_cids: private.children_cids}
+      Enum.map(components, fn {cid, {mod, id, assigns, _private, _prints}} ->
+        %{
+          id: id,
+          cid: cid,
+          module: mod,
+          assigns: assigns,
+          children_cids: Map.get(children_cids, cid, [])
+        }
       end)
 
     {:reply, {:ok, component_info}, state}
