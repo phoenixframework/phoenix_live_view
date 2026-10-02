@@ -630,6 +630,36 @@ describe("View + DOM", function () {
     expect(callback).toHaveBeenCalledTimes(1);
   });
 
+  test("maybeRecoverForms waits for every form when the last form finishes first", function () {
+    liveSocket = new LiveSocket("/live", Socket);
+    const forms =
+      '<form id="first" phx-change="validate"><input name="first"></form>' +
+      '<form id="second" phx-change="validate"><input name="second"></form>';
+    const view = new View(liveViewDOM(forms), liveSocket, null, null, null);
+    view["joinCount"] = 1;
+    view["formsForRecovery"] = view.getFormsForRecovery();
+
+    let finishFirst: () => void = () => {};
+    jest
+      .spyOn(view, "pushFormRecovery")
+      .mockImplementation((_oldForm, newForm, _templateDom, done) => {
+        if (newForm.id === "first") {
+          finishFirst = done;
+        } else {
+          done();
+        }
+      });
+    const callback = jest.fn();
+
+    view.maybeRecoverForms(liveViewDOM(forms).outerHTML, callback);
+
+    expect(callback).not.toHaveBeenCalled();
+    expect(view["pendingForms"].has("first")).toBe(true);
+    finishFirst();
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(view["pendingForms"].size).toBe(0);
+  });
+
   describe("submitForm", function () {
     test("submits payload", function () {
       expect.assertions(3);
