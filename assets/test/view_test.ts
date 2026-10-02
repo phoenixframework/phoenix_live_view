@@ -4,6 +4,7 @@ import LiveSocket from "phoenix_live_view/live_socket";
 import DOM from "phoenix_live_view/dom";
 import View from "phoenix_live_view/view";
 import ViewHook, { HooksOptions } from "phoenix_live_view/view_hook";
+import LiveUploader from "phoenix_live_view/live_uploader";
 
 import { version as liveview_version } from "../../package.json";
 
@@ -13,6 +14,8 @@ import {
   PHX_SERVER_ERROR_CLASS,
   PHX_HAS_FOCUSED,
   MAX_CHILD_JOIN_ATTEMPTS,
+  PHX_ERROR_REFS,
+  PHX_UPLOAD_REF,
 } from "phoenix_live_view/constants";
 
 import {
@@ -683,6 +686,88 @@ describe("View + DOM", function () {
       };
       (view["channel"] as unknown) = channelStub;
       view.submitForm(form, form, "submit", null, { target: form });
+    });
+
+    test("logs when invalid upload entries block submit", function () {
+      const liveSocket = new LiveSocket("/live", Socket);
+      const el = liveViewDOM(`
+        <form id="my-form">
+          <input type="file" name="avatar" ${PHX_UPLOAD_REF}="upload-ref" ${PHX_ERROR_REFS}="0" />
+        </form>
+      `);
+      const form = el.querySelector("form")!;
+      const view = simulateJoinedView(el, liveSocket);
+      const log = jest.spyOn(view, "log");
+      const channelStub = { push: jest.fn() };
+      (view["channel"] as unknown) = channelStub;
+
+      view.submitForm(form, form, "save", null, { target: form });
+
+      expect(channelStub.push).not.toHaveBeenCalled();
+      expect(log).toHaveBeenCalledWith(
+        "upload",
+        expect.any(Function),
+        expect.objectContaining({
+          code: "upload.submit-blocked",
+          metadata: expect.any(Function),
+        }),
+      );
+      const metadata = log.mock.calls[0][2].metadata();
+      expect(metadata).toEqual({
+        event: "save",
+        reason: "invalid_entries",
+        uploads: ["avatar"],
+      });
+    });
+
+    test("logs when unresolved preflight entries block submit", function () {
+      const liveSocket = new LiveSocket("/live", Socket);
+      const el = liveViewDOM(`
+        <form id="my-form">
+          <input type="file" name="avatar" ${PHX_UPLOAD_REF}="upload-ref" />
+        </form>
+      `);
+      const form = el.querySelector("form")!;
+      const input = form.querySelector("input[type=file]")!;
+      const view = simulateJoinedView(el, liveSocket);
+      const log = jest.spyOn(view, "log");
+      const pendingPreflight = jest
+        .spyOn(LiveUploader, "inputsAwaitingPreflight")
+        .mockReturnValueOnce([input])
+        .mockReturnValueOnce([input]);
+      const disableForm = jest
+        .spyOn(view, "disableForm")
+        .mockReturnValue([1, []]);
+      const undoRefs = jest
+        .spyOn(view, "undoRefs")
+        .mockImplementation(() => {});
+      const uploadFiles = jest
+        .spyOn(view, "uploadFiles")
+        .mockImplementation((_form, _event, _target, _ref, _cid, done) =>
+          done([]),
+        );
+
+      view.submitForm(form, form, "save", null, { target: form });
+
+      pendingPreflight.mockRestore();
+      disableForm.mockRestore();
+      undoRefs.mockRestore();
+      uploadFiles.mockRestore();
+
+      expect(log).toHaveBeenCalledWith(
+        "upload",
+        expect.any(Function),
+        expect.objectContaining({
+          code: "upload.submit-blocked",
+          metadata: expect.any(Function),
+        }),
+      );
+      const metadata = log.mock.calls[0][2].metadata();
+      expect(metadata).toEqual({
+        event: "save",
+        reason: "preflight_entries",
+        uploads: ["avatar"],
+      });
     });
 
     test("payload includes phx-value and JS command value", function () {

@@ -11,6 +11,7 @@ import {
   PHX_DISABLE_WITH,
   PHX_DISABLE_WITH_RESTORE,
   PHX_DISABLED,
+  PHX_ERROR_REFS,
   PHX_LOADING_CLASS,
   PHX_ERROR_CLASS,
   PHX_CLIENT_ERROR_CLASS,
@@ -2197,6 +2198,20 @@ export default class View {
     );
   }
 
+  logUploadSubmitBlocked(phxEvent, reason, inputs) {
+    const uploads = inputs.map((input) => input.name);
+    const message =
+      reason === "invalid_entries"
+        ? "phx-submit was not sent because an upload input has invalid entries. Check upload_errors/2 or cancel_upload/3 before submitting."
+        : "phx-submit was not sent because an upload input still has entries awaiting preflight.";
+
+    this.log("upload", () => [message, { event: phxEvent, uploads }], {
+      code: "upload.submit-blocked",
+      metadata: () => ({ event: phxEvent, reason, uploads }),
+      context: { attribution: "app" },
+    });
+  }
+
   disableForm(formEl: HTMLFormElement, phxEvent: string, opts = {}) {
     const filterIgnored = (el) => {
       const userIgnored = closestPhxBinding(
@@ -2263,6 +2278,10 @@ export default class View {
     DOM.putPrivate(formEl, "submitter", submitter);
     const cid = this.targetComponentID(formEl, targetCtx);
     if (LiveUploader.hasUploadErrors(formEl)) {
+      const invalidInputs = DOM.findUploadInputs(formEl).filter(
+        (input) => (input.getAttribute(PHX_ERROR_REFS) || "") !== "",
+      );
+      this.logUploadSubmitBlocked(phxEvent, "invalid_entries", invalidInputs);
       return this.cancelSubmit(formEl, phxEvent);
     } else if (LiveUploader.hasUploadsInProgress(formEl)) {
       const [ref, _els] = refGenerator();
@@ -2282,7 +2301,13 @@ export default class View {
       this.uploadFiles(formEl, phxEvent, targetCtx, ref, cid, (_uploads) => {
         // if we still having pending preflights it means we have invalid entries
         // and the phx-submit cannot be completed
-        if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
+        const pendingInputs = LiveUploader.inputsAwaitingPreflight(formEl);
+        if (pendingInputs.length > 0) {
+          this.logUploadSubmitBlocked(
+            phxEvent,
+            "preflight_entries",
+            pendingInputs,
+          );
           return this.undoRefs(ref, phxEvent);
         }
         const meta = this.extractMeta(formEl, {}, opts.value);
