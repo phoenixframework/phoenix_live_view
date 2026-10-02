@@ -867,7 +867,8 @@ export default class View {
       return callback();
     }
 
-    formsToRecover.forEach(([oldForm, newForm], i) => {
+    let formsRecovered = 0;
+    formsToRecover.forEach(([oldForm, newForm]) => {
       this.pendingForms.add(newForm.id);
       // it is important to use the firstElementChild of the template content
       // because when traversing a documentFragment using parentNode, we won't ever arrive at
@@ -880,7 +881,8 @@ export default class View {
         () => {
           this.pendingForms.delete(newForm.id);
           // we only call the callback once all forms have been recovered
-          if (i === formsToRecover.length - 1) {
+          formsRecovered++;
+          if (formsRecovered === formsToRecover.length) {
             callback();
           }
         },
