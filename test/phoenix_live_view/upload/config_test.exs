@@ -174,6 +174,26 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       end
     end
 
+    test "supports :auto_upload modes and defaults to false" do
+      socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any)
+      assert socket.assigns.uploads.avatar.auto_upload? == false
+
+      socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any, auto_upload: true)
+      assert socket.assigns.uploads.avatar.auto_upload? == true
+
+      socket =
+        LiveView.allow_upload(build_socket(), :avatar,
+          accept: :any,
+          auto_upload: :if_valid
+        )
+
+      assert socket.assigns.uploads.avatar.auto_upload? == :if_valid
+
+      assert_raise ArgumentError, ~r/invalid :auto_upload value provided/, fn ->
+        LiveView.allow_upload(build_socket(), :avatar, accept: :any, auto_upload: :invalid)
+      end
+    end
+
     test "raises when invalid :validator provided" do
       assert_raise ArgumentError, ~r/invalid :validator value provided to allow_upload/, fn ->
         LiveView.allow_upload(build_socket(), :avatar, accept: :any, validator: 0)
