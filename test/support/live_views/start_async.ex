@@ -34,6 +34,13 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive do
      |> start_async(:result_task, fn -> :good end)}
   end
 
+  def mount(%{"test" => "handle_async_raise"}, _session, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:raise_in_callback, fn -> :good end)}
+  end
+
   def mount(%{"test" => "raise"}, _session, socket) do
     {:ok,
      socket
@@ -164,6 +171,10 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive do
 
   def handle_params(_unsigned_params, _uri, socket) do
     {:noreply, socket}
+  end
+
+  def handle_async(:raise_in_callback, {:ok, _result}, _socket) do
+    raise("boom in handle_async")
   end
 
   def handle_async(:result_task, {:ok, result}, socket) do
