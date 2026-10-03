@@ -144,6 +144,60 @@ LiveView currently exposes the following [`telemetry`](https://telemetry.hexdocs
             params: unsigned_params
           }
 
+  * `[:phoenix, :live_view, :handle_async, :start]` - Dispatched by a `Phoenix.LiveView`
+    immediately before an async result is applied: a `Phoenix.LiveView.start_async/4`
+    result is passed to [`handle_async/3`](`c:Phoenix.LiveView.handle_async/3`), and
+    `Phoenix.LiveView.assign_async/4` and `Phoenix.LiveView.stream_async/4` results are
+    assigned to the socket.
+
+    * Measurement:
+
+          %{system_time: System.monotonic_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            name: term,
+            type: :start | :assign | :stream
+          }
+
+      `name` is the name given to `start_async/4` or `stream_async/4`, or the list of keys
+      given to `assign_async/4`. `type` is `:start`, `:assign` or `:stream` accordingly.
+
+  * `[:phoenix, :live_view, :handle_async, :stop]` - Dispatched by a `Phoenix.LiveView`
+    when an async result has been applied successfully.
+
+    * Measurement:
+
+          %{duration: native_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            name: term,
+            type: :start | :assign | :stream
+          }
+
+  * `[:phoenix, :live_view, :handle_async, :exception]` - Dispatched by a `Phoenix.LiveView`
+    when an exception is raised while applying an async result, such as in the
+    [`handle_async/3`](`c:Phoenix.LiveView.handle_async/3`) callback.
+
+    * Measurement:
+
+          %{duration: native_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            kind: atom,
+            reason: term,
+            name: term,
+            type: :start | :assign | :stream
+          }
+
   * `[:phoenix, :live_view, :render, :start]` - Dispatched by a `Phoenix.LiveView`
     immediately before a render starts. A render may invoke
     [`Phoenix.LiveView.render/1`](`c:Phoenix.LiveView.render/1`) or
@@ -325,6 +379,63 @@ LiveView currently exposes the following [`telemetry`](https://telemetry.hexdocs
             component: atom,
             event: String.t(),
             params: unsigned_params
+          }
+
+  * `[:phoenix, :live_component, :handle_async, :start]` - Dispatched by a `Phoenix.LiveComponent`
+    immediately before an async result is applied: a `Phoenix.LiveView.start_async/4`
+    result is passed to [`handle_async/3`](`c:Phoenix.LiveComponent.handle_async/3`), and
+    `Phoenix.LiveView.assign_async/4` and `Phoenix.LiveView.stream_async/4` results are
+    assigned to the socket.
+
+    * Measurement:
+
+          %{system_time: System.monotonic_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            component: atom,
+            name: term,
+            type: :start | :assign | :stream
+          }
+
+      `name` is the name given to `start_async/4` or `stream_async/4`, or the list of keys
+      given to `assign_async/4`. `type` is `:start`, `:assign` or `:stream` accordingly.
+
+  * `[:phoenix, :live_component, :handle_async, :stop]` - Dispatched by a `Phoenix.LiveComponent`
+    when an async result has been applied successfully.
+
+    * Measurement:
+
+          %{duration: native_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            component: atom,
+            name: term,
+            type: :start | :assign | :stream
+          }
+
+  * `[:phoenix, :live_component, :handle_async, :exception]` - Dispatched by a `Phoenix.LiveComponent`
+    when an exception is raised while applying an async result, such as in the
+    [`handle_async/3`](`c:Phoenix.LiveComponent.handle_async/3`) callback.
+
+    * Measurement:
+
+          %{duration: native_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            kind: atom,
+            reason: term,
+            component: atom,
+            name: term,
+            type: :start | :assign | :stream
           }
 
   * `[:phoenix, :live_component, :destroyed]` - Dispatched by a `Phoenix.LiveComponent`
