@@ -89,6 +89,76 @@ describe("View + DOM", function () {
     expect(view.el.innerHTML).toContain("<span>b</span>");
   });
 
+  describe("onDocumentPatch", () => {
+    let starts: (() => void)[];
+    let view: View;
+
+    beforeEach(() => {
+      starts = [];
+      liveSocket = new LiveSocket("/live", Socket, {
+        dom: {
+          onDocumentPatch(start) {
+            starts.push(start);
+          },
+        },
+      });
+      view = simulateJoinedView(liveViewDOM("<div>initial</div>"), liveSocket);
+      starts.shift()!();
+      view.update({ s: ["<main>", "</main>"], 0: "" }, []);
+    });
+
+    const update = ({ diff, events }) => view.update(diff, events);
+
+    test("applies deferred patches in the order the diffs arrived", async () => {
+      // renders a list where there was none
+      view.applyDiff(
+        "update",
+        {
+          0: {
+            s: ["<ul>", "</ul>"],
+            0: { s: ["<li>", "</li>"], k: { 0: { 0: "a" }, kc: 1 } },
+          },
+        },
+        update,
+      );
+      // only sends the new entry, so it needs the tree of the diff before
+      view.applyDiff(
+        "update",
+        { 0: { 0: { k: { 1: { 0: "b" }, kc: 2 } } } },
+        update,
+      );
+
+      // e.g. document.startViewTransition runs the second callback first
+      expect(starts.length).toBe(2);
+      starts[1]();
+      expect(view.el.innerHTML).toBe("<main></main>");
+      starts[0]();
+      expect(view.el.innerHTML).toBe(
+        "<main><ul><li>a</li><li>b</li></ul></main>",
+      );
+    });
+
+    test("applies the next ready patch when a patch throws", async () => {
+      view.applyDiff("update", { 0: "a" }, () => {
+        throw new Error("oops");
+      });
+      view.applyDiff("update", { 0: "b" }, update);
+
+      starts[1]();
+      expect(() => starts[0]()).toThrow("oops");
+      expect(view.el.innerHTML).toBe("<main>b</main>");
+    });
+
+    test("skips a deferred patch of a destroyed view", async () => {
+      const callback = jest.fn();
+      view.applyDiff("update", { 0: "a" }, callback);
+      view.destroy();
+
+      starts[0]();
+      expect(callback).not.toHaveBeenCalled();
+    });
+  });
+
   test("discards diffs buffered against the tree a rejoin replaced", async () => {
     liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM("<div>initial</div>");

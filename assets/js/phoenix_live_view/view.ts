@@ -440,17 +440,17 @@ export default class View {
     this.liveSocket.dispatchEvents(ev.pre);
 
     const update = () => {
+      // the view can be destroyed while the patch waits for onDocumentPatch
+      if (this.isDestroyed()) {
+        return;
+      }
       callback({ diff, reply, events: ev.post });
       if (typeof title === "string" || (type == "mount" && this.isMain())) {
         window.requestAnimationFrame(() => DOM.putTitle(title));
       }
     };
 
-    if ("onDocumentPatch" in this.liveSocket.domCallbacks) {
-      this.liveSocket.triggerDOM("onDocumentPatch", [update]);
-    } else {
-      update();
-    }
+    this.liveSocket.requestDocumentPatch(update);
   }
 
   onJoin(resp) {
