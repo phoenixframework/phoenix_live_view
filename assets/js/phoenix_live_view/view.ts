@@ -1453,6 +1453,7 @@ export default class View {
   }
 
   delayedDisconnected() {
+    this.disconnectedTimer != null && clearTimeout(this.disconnectedTimer);
     this.disconnectedTimer = setTimeout(() => {
       this.execAll(this.binding("disconnected"));
     }, this.liveSocket.disconnectedTimeout);
