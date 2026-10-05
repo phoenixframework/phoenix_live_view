@@ -74,6 +74,47 @@ describe("EntryUploader", () => {
     expect(entry.error).not.toHaveBeenCalled();
   });
 
+  test("fails an upload when a chunk push times out", () => {
+    let receives = new Map<string, () => void>();
+    let push = {
+      receive(kind, cb) {
+        receives.set(kind, cb);
+        return this;
+      },
+    };
+    let form = {};
+    let fakeChannel = {
+      isJoined: () => true,
+      push: jest.fn(() => push),
+      leave: jest.fn(),
+    };
+    let entry = {
+      ref: "0",
+      fileEl: { form },
+      view: { cancelSubmit: jest.fn() },
+      metadata: () => ({}),
+      error: jest.fn(),
+      progress: jest.fn(),
+    };
+    let config = { chunk_size: 1024, chunk_timeout: 5000 };
+    let uploader = new EntryUploader(entry, config, {
+      channel: () => fakeChannel,
+    });
+
+    uploader.pushChunk(new ArrayBuffer(1));
+    expect(fakeChannel.push).toHaveBeenCalledWith(
+      "chunk",
+      expect.any(ArrayBuffer),
+      config.chunk_timeout,
+    );
+    receives.get("timeout")!();
+
+    expect(entry.view.cancelSubmit).toHaveBeenCalledWith(form);
+    expect(fakeChannel.leave).toHaveBeenCalledTimes(1);
+    expect(entry.error).toHaveBeenCalledWith("timeout");
+    expect(entry.progress).not.toHaveBeenCalled();
+  });
+
   test.each([
     ["error", "NotReadableError"],
     ["abort", "aborted"],
