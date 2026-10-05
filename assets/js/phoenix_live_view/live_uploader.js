@@ -44,8 +44,8 @@ export default class LiveUploader {
     return active > 0;
   }
 
-  static hasUploadErrors(formEl) {
-    return DOM.findUploadInputs(formEl).some(
+  static inputsWithUploadErrors(formEl) {
+    return DOM.findUploadInputs(formEl).filter(
       (input) => (input.getAttribute(PHX_ERROR_REFS) || "") !== "",
     );
   }

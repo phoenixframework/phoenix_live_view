@@ -2184,6 +2184,24 @@ export default class View {
     this.formSubmits.push([formEl, ref, opts, callback]);
   }
 
+  // the submit is intentionally not sent when an upload holds invalid entries,
+  // but without a signal the click looks like a no-op to the developer
+  logBlockedSubmit(formEl, phxEvent, reason, inputs) {
+    const uploads = inputs.map((input) => input.name);
+    this.log(
+      "upload",
+      () => [
+        `${phxEvent} not sent, uploads with invalid entries: ${uploads.join(", ")}`,
+        { reason, uploads },
+      ],
+      {
+        code: "upload.submit-blocked",
+        metadata: () => ({ event: phxEvent, reason, uploads, formEl }),
+        context: { attribution: "app" },
+      },
+    );
+  }
+
   cancelSubmit(formEl, phxEvent) {
     this.formSubmits = this.formSubmits.filter(
       ([el, ref, _opts, _callback]) => {
@@ -2262,7 +2280,9 @@ export default class View {
     // for phx-trigger-action
     DOM.putPrivate(formEl, "submitter", submitter);
     const cid = this.targetComponentID(formEl, targetCtx);
-    if (LiveUploader.hasUploadErrors(formEl)) {
+    const inputsWithErrors = LiveUploader.inputsWithUploadErrors(formEl);
+    if (inputsWithErrors.length > 0) {
+      this.logBlockedSubmit(formEl, phxEvent, "entry-errors", inputsWithErrors);
       return this.cancelSubmit(formEl, phxEvent);
     } else if (LiveUploader.hasUploadsInProgress(formEl)) {
       const [ref, _els] = refGenerator();
@@ -2282,7 +2302,15 @@ export default class View {
       this.uploadFiles(formEl, phxEvent, targetCtx, ref, cid, (_uploads) => {
         // if we still having pending preflights it means we have invalid entries
         // and the phx-submit cannot be completed
-        if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
+        const stillAwaitingPreflight =
+          LiveUploader.inputsAwaitingPreflight(formEl);
+        if (stillAwaitingPreflight.length > 0) {
+          this.logBlockedSubmit(
+            formEl,
+            phxEvent,
+            "preflight-rejected",
+            stillAwaitingPreflight,
+          );
           return this.undoRefs(ref, phxEvent);
         }
         const meta = this.extractMeta(formEl, {}, opts.value);

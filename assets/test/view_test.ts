@@ -12,6 +12,7 @@ import {
   PHX_ERROR_CLASS,
   PHX_SERVER_ERROR_CLASS,
   PHX_HAS_FOCUSED,
+  PHX_LV_DEBUG,
   MAX_CHILD_JOIN_ATTEMPTS,
 } from "phoenix_live_view/constants";
 
@@ -844,6 +845,42 @@ describe("View + DOM", function () {
       expect(button.disabled).toEqual(false);
       view.pushEvent("click", button, el, "inc", {});
       expect(button.disabled).toEqual(true);
+    });
+
+    test("logs a diagnostic when a submit is blocked by invalid entries", () => {
+      const liveSocket = new LiveSocket("/live", Socket);
+      const el = liveViewDOM(`
+      <form id="upload-form" phx-submit="save">
+      <input accept="*" data-phx-active-refs="0" data-phx-done-refs="" data-phx-error-refs="0" data-phx-preflighted-refs="" data-phx-update="ignore" data-phx-upload-ref="0" id="uploads0" name="avatar" phx-hook="Phoenix.LiveFileUpload" type="file">
+      </form>
+      `);
+      const view = simulateJoinedView(el, liveSocket);
+      const formEl = view.el.querySelector("#upload-form");
+      const pushSpy = jest.spyOn(view as any, "pushWithReply");
+      const consoleLog = jest
+        .spyOn(console, "log")
+        .mockImplementation(() => {});
+      window.sessionStorage.setItem(PHX_LV_DEBUG, "true");
+      const { diagnostics, stop } = captureDiagnostics();
+
+      try {
+        view.pushFormSubmit(formEl, null, "save", null, {}, () => {});
+      } finally {
+        stop();
+        window.sessionStorage.removeItem(PHX_LV_DEBUG);
+        consoleLog.mockRestore();
+      }
+
+      expect(pushSpy).not.toHaveBeenCalled();
+      expect(diagnostics).toContainEqual(
+        expect.objectContaining({
+          level: "debug",
+          code: "upload.submit-blocked",
+          message: "save not sent, uploads with invalid entries: avatar",
+          viewId: view.id,
+          attribution: "app",
+        }),
+      );
     });
   });
 
