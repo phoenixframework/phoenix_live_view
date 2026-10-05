@@ -257,7 +257,7 @@ var LiveView = (() => {
             this.liveSocket.getLatencySim() || 0
           );
         }
-      }).receive("error", ({ reason }) => this.error(reason));
+      }).receive("error", ({ reason }) => this.error(reason)).receive("timeout", () => this.error("timeout"));
     }
   };
 
