@@ -2345,14 +2345,21 @@ export default class View {
     const joinCountAtUpload = this.joinCount;
     const inputEls = LiveUploader.activeFileInputs(formEl);
     let numFileInputsInProgress = inputEls.length;
+    let uploadFailed = false;
 
     // get each file input
     inputEls.forEach((inputEl) => {
       const uploader = new LiveUploader(inputEl, this, () => {
         this.activeUploaders.delete(uploader);
+        uploadFailed ||= uploader.entries().some((entry) => entry.isErrored());
         numFileInputsInProgress--;
         if (numFileInputsInProgress === 0) {
-          onComplete();
+          if (uploadFailed) {
+            this.cancelSubmit(formEl, phxEvent);
+            this.undoRefs(ref, phxEvent);
+          } else {
+            onComplete();
+          }
         }
       });
       this.activeUploaders.add(uploader);
