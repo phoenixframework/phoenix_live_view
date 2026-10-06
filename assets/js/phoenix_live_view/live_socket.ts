@@ -231,8 +231,6 @@ export interface LiveSocketOptions {
      * ```
      *
      * It is strongly advised to call start as quickly as possible.
-     * Patches apply in the order LiveView requested them, even when the start
-     * callbacks are called in a different order.
      */
     onDocumentPatch?: (start: () => void) => void;
     /**
@@ -308,7 +306,6 @@ export default class LiveSocket {
     onBeforeElUpdated: (fromEl: Element, toEl: Element) => void;
   };
   private transitions: TransitionSet;
-  private documentPatches: { patch: () => void; ready: boolean }[] = [];
   /** @internal */
   currentHistoryPosition: number;
 
@@ -708,34 +705,6 @@ export default class LiveSocket {
   /** @internal */
   requestDOMUpdate(callback) {
     this.transitions.after(callback);
-  }
-
-  /** @internal */
-  requestDocumentPatch(patch: () => void) {
-    if (!("onDocumentPatch" in this.domCallbacks)) {
-      patch();
-      return;
-    }
-    // a patch only applies to the tree of the patch before it
-    const entry = { patch, ready: false };
-    this.documentPatches.push(entry);
-    this.triggerDOM("onDocumentPatch", [
-      () => {
-        entry.ready = true;
-        this.applyReadyDocumentPatches();
-      },
-    ]);
-  }
-
-  private applyReadyDocumentPatches() {
-    while (this.documentPatches[0]?.ready) {
-      try {
-        this.documentPatches.shift()!.patch();
-      } catch (error) {
-        this.applyReadyDocumentPatches();
-        throw error;
-      }
-    }
   }
 
   /** @internal */
