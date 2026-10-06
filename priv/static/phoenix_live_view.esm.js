@@ -483,10 +483,10 @@ var DOM = {
   isPhxDestroyed(node) {
     return node.id && DOM.private(node, "destroyed") ? true : false;
   },
-  wantsNewTab(e) {
+  wantsNewTab(e, el = e.target) {
     const wantsNewTab = e.ctrlKey || e.shiftKey || e.metaKey || e.button && e.button === 1;
-    const isDownload = e.target instanceof HTMLAnchorElement && e.target.hasAttribute("download");
-    const target = e.submitter && e.submitter.hasAttribute("formtarget") ? e.submitter.getAttribute("formtarget") : e.target.getAttribute("target");
+    const isDownload = el instanceof HTMLAnchorElement && el.hasAttribute("download");
+    const target = e.submitter && e.submitter.hasAttribute("formtarget") ? e.submitter.getAttribute("formtarget") : el.getAttribute("target");
     const isTargetBlank = target !== null && target.toLowerCase() === "_blank";
     const isTargetNamedTab = target !== null && target !== "" && !target.startsWith("_");
     return wantsNewTab || isTargetBlank || isDownload || isTargetNamedTab;
@@ -7669,7 +7669,7 @@ var LiveSocket = class {
           PHX_LIVE_LINK
         );
         const type = target && target.getAttribute(PHX_LIVE_LINK);
-        if (!type || !this.isConnected() || !this.main || dom_default.wantsNewTab(e)) {
+        if (!type || !this.isConnected() || !this.main || dom_default.wantsNewTab(e, target)) {
           return;
         }
         const href = target.href instanceof SVGAnimatedString ? target.href.baseVal : target.href;
