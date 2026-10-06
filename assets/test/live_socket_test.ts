@@ -86,6 +86,102 @@ describe("LiveSocket", () => {
     ).toEqual(["container1"]);
   });
 
+  describe.each(["patch", "redirect"])("bindNav %s links", (type) => {
+    let clickHandler: EventListener;
+    let link: HTMLAnchorElement;
+
+    beforeEach(() => {
+      liveSocket = new LiveSocket("/live", Socket);
+      liveSocket.main = {};
+      liveSocket.isConnected = () => true;
+      liveSocket.requestDOMUpdate = (callback) => callback();
+      liveSocket.pushHistoryPatch = jest.fn();
+      liveSocket.historyRedirect = jest.fn();
+
+      const addEventListener = jest
+        .spyOn(window, "addEventListener")
+        .mockImplementation(() => {});
+      try {
+        liveSocket.bindNav();
+        clickHandler = addEventListener.mock.calls.find(
+          ([name]) => name === "click",
+        )![1] as EventListener;
+      } finally {
+        addEventListener.mockRestore();
+      }
+
+      link = document.createElement("a");
+      link.setAttribute("href", "#next");
+      link.setAttribute("data-phx-link", type);
+      link.setAttribute("data-phx-link-state", "push");
+      link.innerHTML = "<span>open</span><svg><path /></svg>";
+    });
+
+    const click = (target: Element, options: MouseEventInit = {}) => {
+      const event = new MouseEvent("click", { cancelable: true, ...options });
+      target.addEventListener("click", clickHandler, { once: true });
+      target.dispatchEvent(event);
+      return event;
+    };
+
+    test.each([
+      ["target", "_blank"],
+      ["target", "_BLANK"],
+      ["target", "reports"],
+      ["download", ""],
+      ["download", "report.txt"],
+    ])("preserves %s=%s on the anchor and its children", (attribute, value) => {
+      link.setAttribute(attribute, value);
+
+      for (const target of [
+        link,
+        link.querySelector("span")!,
+        link.querySelector("path")!,
+      ]) {
+        expect(click(target).defaultPrevented).toBe(false);
+      }
+      expect(liveSocket.pushHistoryPatch).not.toHaveBeenCalled();
+      expect(liveSocket.historyRedirect).not.toHaveBeenCalled();
+    });
+
+    test.each([null, "", "_self"])(
+      "performs live navigation from a child with target=%s",
+      (target) => {
+        if (target !== null) {
+          link.setAttribute("target", target);
+        }
+
+        const event = click(link.querySelector("span")!);
+        expect(event.defaultPrevented).toBe(true);
+        const navigate =
+          type === "patch"
+            ? liveSocket.pushHistoryPatch
+            : liveSocket.historyRedirect;
+        const args = [
+          event,
+          link.href,
+          "push",
+          ...(type === "redirect" ? [null] : []),
+          link,
+        ];
+        expect(navigate).toHaveBeenCalledWith(...args);
+      },
+    );
+
+    test.each<MouseEventInit>([
+      { ctrlKey: true },
+      { shiftKey: true },
+      { metaKey: true },
+      { button: 1 },
+    ])("preserves modified child clicks: %p", (options) => {
+      expect(click(link.querySelector("span")!, options).defaultPrevented).toBe(
+        false,
+      );
+      expect(liveSocket.pushHistoryPatch).not.toHaveBeenCalled();
+      expect(liveSocket.historyRedirect).not.toHaveBeenCalled();
+    });
+  });
+
   test("viewLogger", async () => {
     const viewLogger = jest.fn();
     liveSocket = new LiveSocket("/live", Socket, { viewLogger });
