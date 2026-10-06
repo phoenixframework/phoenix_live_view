@@ -36,7 +36,7 @@ describe("EntryUploader", () => {
     expect(entry.error).toHaveBeenCalledWith("join crashed");
   });
 
-  test("writer errors remain pending without sending a generic entry error", () => {
+  test("writer errors fail the entry without sending a generic entry error", () => {
     let errorCb;
     let channelErrorCb;
     let form = {};
@@ -59,6 +59,7 @@ describe("EntryUploader", () => {
       metadata: () => ({}),
       cancel: jest.fn(),
       error: jest.fn(),
+      fail: jest.fn(),
     };
     let config = { chunk_size: 1024, chunk_timeout: 5000 };
 
@@ -72,6 +73,8 @@ describe("EntryUploader", () => {
     expect(fakeChannel.leave).toHaveBeenCalledTimes(1);
     expect(entry.cancel).not.toHaveBeenCalled();
     expect(entry.error).not.toHaveBeenCalled();
+    expect(entry.fail).toHaveBeenCalledTimes(1);
+    expect(entry.fail).toHaveBeenCalledWith("writer_error", false);
   });
 
   test("fails an upload when a chunk push times out", () => {

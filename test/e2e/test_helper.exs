@@ -36,6 +36,7 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
     <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
     <script>
       window.hooks = {};
+      window.uploaders = {};
     </script>
     <script src="/assets/phoenix/phoenix.min.js">
     </script>
@@ -77,7 +78,7 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
         params: { _csrf_token: csrfToken },
         hooks: { ...Hooks, ...window.hooks, ...colocatedHooks },
-        uploaders: Uploaders,
+        uploaders: { ...Uploaders, ...window.uploaders },
         cascadePhxRemoveOnNavigation:
           new URLSearchParams(window.location.search).get(
             "cascadePhxRemoveOnNavigation",
@@ -256,6 +257,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/4368", Issue4368Live
       live "/4442", Issue4442Live
       live "/4444", Issue4444Live
+      live "/4465", Issue4465Live
     end
   end
 

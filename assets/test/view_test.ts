@@ -2,6 +2,8 @@ import { Socket } from "phoenix";
 import { createHook } from "phoenix_live_view/index";
 import LiveSocket from "phoenix_live_view/live_socket";
 import DOM from "phoenix_live_view/dom";
+import LiveUploader from "phoenix_live_view/live_uploader";
+import UploadEntry from "phoenix_live_view/upload_entry";
 import View from "phoenix_live_view/view";
 import ViewHook, { HooksOptions } from "phoenix_live_view/view_hook";
 
@@ -1981,6 +1983,87 @@ describe("View Hooks", function () {
       "disconnected",
     ]);
   });
+
+  test.each([
+    [false, 1],
+    [true, 1],
+    [false, 2],
+    [true, 2],
+  ])(
+    "upload errors release form refs without submitting (auto upload: %s, inputs: %s)",
+    async (autoUpload, numInputs) => {
+      const entries: UploadEntry[] = [];
+      liveSocket = new LiveSocket("/live", Socket, {
+        uploaders: { Test: (uploads) => entries.push(...uploads) },
+      });
+      const el = liveViewDOM(`
+        <form id="upload-form" phx-submit="save">
+          ${Array.from(
+            { length: Number(numInputs) },
+            (_, i) => `
+            <input id="upload-${i}" type="file" name="files-${i}" multiple
+              data-phx-upload-ref="upload-ref-${i}" data-phx-active-refs=""
+              data-phx-preflighted-refs="" data-phx-done-refs=""
+              ${autoUpload ? 'data-phx-auto-upload=""' : ""}>
+          `,
+          ).join("")}
+          <button id="submit" type="submit">Save</button>
+        </form>
+      `);
+      const view = simulateJoinedView(el, liveSocket);
+      const form = view.el.querySelector("form")!;
+      const button = form.querySelector("button")!;
+      const files = [
+        new File(["first"], "first.txt"),
+        new File(["second"], "second.txt"),
+      ];
+      form.querySelectorAll("input").forEach((input, i) => {
+        LiveUploader.trackFiles(input, numInputs === 1 ? files : [files[i]]);
+        input.setAttribute(
+          "data-phx-active-refs",
+          LiveUploader.activeFiles(input)
+            .map((file) => LiveUploader.genFileRef(file))
+            .join(","),
+        );
+      });
+      const push = jest
+        .spyOn(view, "pushWithReply")
+        .mockImplementation((_ref, event, payload) => {
+          expect(event).toBe("allow_upload");
+          return Promise.resolve({
+            type: "ok",
+            resp: {
+              entries: Object.fromEntries(
+                payload.entries.map((entry) => [
+                  entry.ref,
+                  { uploader: "Test" },
+                ]),
+              ),
+            },
+          } as any);
+        });
+      // No server progress reply is needed to release a failed upload.
+      jest.spyOn(view, "pushFileProgress").mockImplementation(() => {});
+      const onReply = jest.fn();
+      view.pushFormSubmit(form, form, "save", button, {}, onReply);
+      await Promise.resolve();
+      expect(form.classList.contains("phx-submit-loading")).toBe(true);
+      expect(button.disabled).toBe(true);
+      expect(entries).toHaveLength(2);
+
+      entries[0].error("timeout");
+      entries[0].error("closed");
+      entries[0].cancel();
+      expect(view["activeUploaders"].size).toBe(1);
+      entries[1].cancel();
+
+      expect(view["activeUploaders"].size).toBe(0);
+      expect(form.classList.contains("phx-submit-loading")).toBe(false);
+      expect(button.disabled).toBe(false);
+      expect(push).toHaveBeenCalledTimes(Number(numInputs));
+      expect(onReply).not.toHaveBeenCalled();
+    },
+  );
 
   test("dispatches uploads", async () => {
     const hooks = { Recorder: {} };

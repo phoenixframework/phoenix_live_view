@@ -42,6 +42,7 @@ export default class UploadEntry {
     this.meta = null;
     this._isCancelled = false;
     this._isDone = false;
+    this._isErrored = false;
     this._progress = 0;
     this._lastProgressSent = -1;
     this._onCancel = function () {};
@@ -93,11 +94,11 @@ export default class UploadEntry {
   }
 
   error(reason = "failed") {
-    this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
-    this.view.pushFileProgress(this.fileEl, this.ref, { error: reason });
-    if (!this.isAutoUpload()) {
-      LiveUploader.clearFiles(this.fileEl);
-    }
+    this.fail(reason, true);
+  }
+
+  isErrored() {
+    return this._isErrored;
   }
 
   isAutoUpload() {
@@ -114,8 +115,31 @@ export default class UploadEntry {
 
   //private
 
+  // notifyServer is false when the server already recorded the failure,
+  // for example for upload writer errors
+  fail(reason, notifyServer) {
+    if (this._isErrored) {
+      return;
+    }
+    this._isErrored = true;
+    this._isDone = true;
+    this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
+    try {
+      if (notifyServer) {
+        this.view.pushFileProgress(this.fileEl, this.ref, { error: reason });
+      }
+      if (!this.isAutoUpload()) {
+        LiveUploader.clearFiles(this.fileEl);
+      }
+    } finally {
+      this._onDone();
+    }
+  }
+
   onDone(callback) {
     this._onDone = () => {
+      // A late progress reply or cancellation must not complete an entry twice.
+      this._onDone = function () {};
       this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
       callback();
     };
