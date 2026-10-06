@@ -208,6 +208,7 @@ var LiveView = (() => {
       this.errored = true;
       this.chunkTimer != null && clearTimeout(this.chunkTimer);
       if (reason === "writer_error") {
+        this.entry.fail(reason, false);
         return;
       }
       this.entry.error(reason);
@@ -1095,6 +1096,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       this.meta = null;
       this._isCancelled = false;
       this._isDone = false;
+      this._isErrored = false;
       this._progress = 0;
       this._lastProgressSent = -1;
       this._onCancel = function() {
@@ -1142,11 +1144,10 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       return this._isDone;
     }
     error(reason = "failed") {
-      this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
-      this.view.pushFileProgress(this.fileEl, this.ref, { error: reason });
-      if (!this.isAutoUpload()) {
-        LiveUploader.clearFiles(this.fileEl);
-      }
+      this.fail(reason, true);
+    }
+    isErrored() {
+      return this._isErrored;
     }
     isAutoUpload() {
       return this.autoUpload;
@@ -1159,8 +1160,30 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       }
     }
     //private
+    // notifyServer is false when the server already recorded the failure,
+    // for example for upload writer errors
+    fail(reason, notifyServer) {
+      if (this._isErrored) {
+        return;
+      }
+      this._isErrored = true;
+      this._isDone = true;
+      this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
+      try {
+        if (notifyServer) {
+          this.view.pushFileProgress(this.fileEl, this.ref, { error: reason });
+        }
+        if (!this.isAutoUpload()) {
+          LiveUploader.clearFiles(this.fileEl);
+        }
+      } finally {
+        this._onDone();
+      }
+    }
     onDone(callback) {
       this._onDone = () => {
+        this._onDone = function() {
+        };
         this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
         callback();
       };
@@ -6413,12 +6436,19 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       const joinCountAtUpload = this.joinCount;
       const inputEls = LiveUploader.activeFileInputs(formEl);
       let numFileInputsInProgress = inputEls.length;
+      let uploadFailed = false;
       inputEls.forEach((inputEl) => {
         const uploader = new LiveUploader(inputEl, this, () => {
           this.activeUploaders.delete(uploader);
+          uploadFailed || (uploadFailed = uploader.entries().some((entry) => entry.isErrored()));
           numFileInputsInProgress--;
           if (numFileInputsInProgress === 0) {
-            onComplete();
+            if (uploadFailed) {
+              this.cancelSubmit(formEl, phxEvent);
+              this.undoRefs(ref, phxEvent);
+            } else {
+              onComplete();
+            }
           }
         });
         this.activeUploaders.add(uploader);
