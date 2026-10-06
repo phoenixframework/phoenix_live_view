@@ -9,9 +9,8 @@ defmodule Phoenix.LiveView.PubSub do
   # If someone does
   #
   #   def mount(...) do
-  #     socket
-  #     |> subscribe("items", ...)
-  #     |> assign(..., load_items(...))
+  #     subscribe(socket, "items", ...)
+  #     assign(socket, ..., load_items(...))
   #
   # the expectation is that the subscription happens before loading
   # items. Otherwise there is a gap where updates can be missed.
@@ -22,18 +21,23 @@ defmodule Phoenix.LiveView.PubSub do
   @key {__MODULE__, :__subscriptions__}
 
   @impl true
-  def send(pid, ref, message, _state) do
+  def send(pid, ref, message, state) do
     send(pid, {__MODULE__, ref, message})
-    :ok
+    state
   end
 
-  def subscribe(%Phoenix.LiveView.Socket{} = socket, pubsub, topic, callback) do
+  def init do
+    Process.put(@key, %{})
+  end
+
+  def subscribe(%Phoenix.LiveView.Socket{} = socket, pubsub, topic, callback)
+      when is_atom(pubsub) and is_binary(topic) and is_function(callback, 2) do
     if Phoenix.LiveView.connected?(socket) do
       verify_called_from_liveview!()
       do_subscribe(pubsub, topic, subscriber(socket), callback)
     end
 
-    socket
+    :ok
   end
 
   defp do_subscribe(pubsub, topic, cid_or_root, callback) do
@@ -60,13 +64,14 @@ defmodule Phoenix.LiveView.PubSub do
     Process.put(@key, updated_subscriptions)
   end
 
-  def unsubscribe(%Phoenix.LiveView.Socket{} = socket, pubsub, topic) do
+  def unsubscribe(%Phoenix.LiveView.Socket{} = socket, pubsub, topic)
+      when is_atom(pubsub) and is_binary(topic) do
     if Phoenix.LiveView.connected?(socket) do
       verify_called_from_liveview!()
       do_unsubscribe(pubsub, topic, subscriber(socket))
     end
 
-    socket
+    :ok
   end
 
   defp do_unsubscribe(pubsub, topic, cid_or_root) do
@@ -78,7 +83,7 @@ defmodule Phoenix.LiveView.PubSub do
           case Map.delete(subscribers, cid_or_root) do
             empty when map_size(empty) == 0 ->
               # unsubscribe/2 would also drop subscriptions the user made on the same topic
-              Phoenix.PubSub.unsubscribe_match(pubsub, topic, [__MODULE__ | ref])
+              Phoenix.PubSub.unsubscribe_sender(pubsub, topic, {__MODULE__, ref})
 
               pubsub_subscriptions
               |> Map.delete({pubsub, topic})
@@ -123,16 +128,17 @@ defmodule Phoenix.LiveView.PubSub do
   defp subscriber(_socket), do: :root
 
   defp verify_called_from_liveview! do
-    # we use the process dicationary so to prevent cases where a user calls
+    # we use the process dictionary so to prevent cases where a user calls
     # subscribe in assign_async or a custom Task, we check and raise
-    # if this process is not demonstrably a LiveView
-    case Process.get(:"$process_label") do
-      {Phoenix.LiveView, view, topic} when is_atom(view) and is_binary(topic) ->
-        :ok
-
-      _ ->
+    # if this process is not demonstrably a LiveView. The channel always
+    # initializes the pdict key to an empty map.
+    case Process.get(@key, :not_set) do
+      :not_set ->
         raise ArgumentError,
               "Phoenix.LiveView.subscribe can only be called from the LiveView process itself"
+
+      %{} ->
+        :ok
     end
   end
 end

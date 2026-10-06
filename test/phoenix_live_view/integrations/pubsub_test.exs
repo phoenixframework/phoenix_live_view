@@ -14,7 +14,8 @@ defmodule Phoenix.LiveViewTest.Support.PubSubLive do
 
     def mount(socket) do
       socket = assign(socket, :messages, [])
-      {:ok, LiveView.subscribe(socket, @pubsub, "lv-pubsub-test", &receive_message/2)}
+      LiveView.subscribe(socket, @pubsub, "lv-pubsub-test", &receive_message/2)
+      {:ok, socket}
     end
 
     def receive_message(message, socket) do
@@ -28,13 +29,15 @@ defmodule Phoenix.LiveViewTest.Support.PubSubLive do
     end
 
     def handle_event("unsubscribe", _params, socket) do
-      {:noreply, LiveView.unsubscribe(socket, @pubsub, "lv-pubsub-test")}
+      LiveView.unsubscribe(socket, @pubsub, "lv-pubsub-test")
+      {:noreply, socket}
     end
   end
 
   def mount(_params, _session, socket) do
     socket = assign(socket, messages: [], direct_messages: [], children: [])
-    {:ok, LiveView.subscribe(socket, @pubsub, "lv-pubsub-test", &receive_message/2)}
+    LiveView.subscribe(socket, @pubsub, "lv-pubsub-test", &receive_message/2)
+    {:ok, socket}
   end
 
   def receive_message(message, socket) do
@@ -50,7 +53,8 @@ defmodule Phoenix.LiveViewTest.Support.PubSubLive do
   end
 
   def handle_event("unsubscribe", _params, socket) do
-    {:noreply, LiveView.unsubscribe(socket, @pubsub, "lv-pubsub-test")}
+    LiveView.unsubscribe(socket, @pubsub, "lv-pubsub-test")
+    {:noreply, socket}
   end
 
   def handle_event("subscribe-directly", _params, socket) do
@@ -79,8 +83,9 @@ defmodule Phoenix.LiveViewTest.Support.PubSubBadCallbackLive do
   @pubsub Phoenix.LiveViewTest.PubSubTest.PubSub
 
   def mount(_params, _session, socket) do
-    {:ok,
-     LiveView.subscribe(socket, @pubsub, "lv-pubsub-test", fn _message, _socket -> :boom end)}
+    LiveView.subscribe(socket, @pubsub, "lv-pubsub-test", fn _message, _socket -> :boom end)
+
+    {:ok, socket}
   end
 
   def render(assigns) do
@@ -88,6 +93,37 @@ defmodule Phoenix.LiveViewTest.Support.PubSubBadCallbackLive do
     <div>bad callback</div>
     """
   end
+end
+
+defmodule Phoenix.LiveViewTest.Support.PubSubDefaultLive do
+  use Phoenix.LiveView
+
+  alias Phoenix.LiveView
+
+  def mount(_params, _session, socket) do
+    socket = assign(socket, :messages, [])
+    LiveView.subscribe(socket, "lv-pubsub-default-test", &receive_message/2)
+    {:ok, socket}
+  end
+
+  def receive_message(message, socket) do
+    assign(socket, :messages, socket.assigns.messages ++ [message])
+  end
+
+  def render(assigns) do
+    ~H"""
+    <div id="root">root: {inspect(@messages)}</div>
+    """
+  end
+
+  def handle_event("unsubscribe", _params, socket) do
+    LiveView.unsubscribe(socket, "lv-pubsub-default-test")
+    {:noreply, socket}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.Support.PubSubNoServerEndpoint do
+  def config(:pubsub_server), do: nil
 end
 
 defmodule Phoenix.LiveViewTest.Support.PubSubOutsideLive do
@@ -133,7 +169,13 @@ defmodule Phoenix.LiveViewTest.PubSubTest do
 
   import Phoenix.LiveViewTest
 
-  alias Phoenix.LiveViewTest.Support.{PubSubBadCallbackLive, PubSubLive, PubSubOutsideLive}
+  alias Phoenix.LiveViewTest.Support.{
+    PubSubBadCallbackLive,
+    PubSubDefaultLive,
+    PubSubLive,
+    PubSubNoServerEndpoint,
+    PubSubOutsideLive
+  }
 
   @endpoint Phoenix.LiveViewTest.Support.Endpoint
   @pubsub Phoenix.LiveViewTest.PubSubTest.PubSub
@@ -294,6 +336,47 @@ defmodule Phoenix.LiveViewTest.PubSubTest do
       render_click(lv, "remove-child", %{"id" => "child-1"})
 
       eventually(fn -> assert [] = subscriptions() end)
+    end
+  end
+
+  describe "endpoint pubsub server" do
+    setup do
+      # the test endpoint's pubsub server is not started globally
+      pubsub = @endpoint.config(:pubsub_server)
+      start_supervised!(Supervisor.child_spec({Phoenix.PubSub, name: pubsub}, id: pubsub))
+      %{pubsub: pubsub}
+    end
+
+    test "subscribe/3 receives messages through the callback", %{conn: conn, pubsub: pubsub} do
+      {:ok, lv, _html} = live_isolated(conn, PubSubDefaultLive)
+      assert [_] = Registry.lookup(pubsub, "lv-pubsub-default-test")
+
+      Phoenix.PubSub.broadcast(pubsub, "lv-pubsub-default-test", :hello)
+      assert render(lv) =~ "root: [:hello]"
+    end
+
+    test "unsubscribe/2 stops delivery and removes the global subscription",
+         %{conn: conn, pubsub: pubsub} do
+      {:ok, lv, _html} = live_isolated(conn, PubSubDefaultLive)
+      assert [_] = Registry.lookup(pubsub, "lv-pubsub-default-test")
+
+      render_click(lv, "unsubscribe", %{})
+      assert [] = Registry.lookup(pubsub, "lv-pubsub-default-test")
+
+      Phoenix.PubSub.broadcast(pubsub, "lv-pubsub-default-test", :hello)
+      assert render(lv) =~ "root: []"
+    end
+
+    test "raises when the endpoint has no pubsub server configured" do
+      socket = %Phoenix.LiveView.Socket{endpoint: PubSubNoServerEndpoint}
+
+      assert_raise ArgumentError, ~r/no :pubsub_server configured/, fn ->
+        Phoenix.LiveView.subscribe(socket, "lv-pubsub-default-test", fn _msg, socket -> socket end)
+      end
+
+      assert_raise ArgumentError, ~r/no :pubsub_server configured/, fn ->
+        Phoenix.LiveView.unsubscribe(socket, "lv-pubsub-default-test")
+      end
     end
   end
 end

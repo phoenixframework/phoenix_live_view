@@ -1304,6 +1304,7 @@ defmodule Phoenix.LiveView.Channel do
     } = phx_socket
 
     Process.put(:"$initial_call", {view, :mount, 3})
+    Phoenix.LiveView.PubSub.init()
 
     case params do
       %{"caller" => {pid, _}} when is_pid(pid) -> Process.put(:"$callers", [pid])

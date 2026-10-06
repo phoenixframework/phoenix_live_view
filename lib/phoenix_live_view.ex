@@ -2520,28 +2520,64 @@ defmodule Phoenix.LiveView do
   receives the component's own socket.
 
   On the initial disconnected render there is no process to deliver messages to,
-  so this is a no-op and the socket is returned unchanged. It must be called from
-  the LiveView process itself and raises otherwise, for example when called from
-  a task started by `assign_async/4`.
+  so this is a no-op. It must be called from the LiveView process itself and
+  raises otherwise, for example when called from a task started by `assign_async/4`.
 
   ## Examples
 
       def mount(_params, _session, socket) do
-        {:ok,
-         subscribe(socket, MyApp.PubSub, "room:\#{id}", &handle_room_update/2)}
+        subscribe(socket, MyApp.PubSub, "room:\#{id}", &handle_room_update/2)
+
+        {:ok, socket}
       end
 
       defp handle_room_update(message, socket) do
         stream_insert(socket, :messages, message)
       end
+
+  > #### Captured variables {: .warning}
+  >
+  > The callback is kept for as long as the subscription is active. If it is an
+  > anonymous function, every variable it references from the surrounding scope
+  > is kept alive with it. In particular, do not reference the `socket` from
+  > `mount/3` inside the callback: it keeps the assigns from subscription time in
+  > memory, and reading them gives you stale data. Use the socket passed to the
+  > callback instead, or a function capture:
+  >
+  >     # bad: socket.assigns.items is the value from mount
+  >     subscribe(socket, MyApp.PubSub, "topic", fn message, new_socket ->
+  >       assign(new_socket, :items, [message | socket.assigns.items])
+  >     end)
+  >
+  >     # good
+  >     subscribe(socket, MyApp.PubSub, "topic", &handle_message/2)
   """
   @spec subscribe(
           socket :: Socket.t(),
           pubsub :: module(),
           topic :: binary(),
           callback :: (message :: term(), socket :: Socket.t() -> Socket.t())
-        ) :: Socket.t()
+        ) :: :ok
   defdelegate subscribe(socket, pubsub, topic, callback), to: Phoenix.LiveView.PubSub
+
+  @doc """
+  Subscribes to `Phoenix.PubSub` messages using the default
+  pubsub for the given socket's endpoint.
+
+  This is equivalent to calling `subscribe(socket, socket.endpoint.config(:pubsub_server), "topic", ...)`.
+  Raises an `ArgumentError` if the endpoint has no `:pubsub_server` configured.
+
+  See `subscribe/4`.
+  """
+  @spec subscribe(
+          socket :: Socket.t(),
+          topic :: binary(),
+          callback :: (message :: term(), socket :: Socket.t() -> Socket.t())
+        ) :: :ok
+  def subscribe(socket, topic, callback)
+      when is_struct(socket, Socket) and is_binary(topic) and is_function(callback, 2) do
+    subscribe(socket, endpoint_pubsub_server!(socket), topic, callback)
+  end
 
   @doc """
   Unsubscribes from `Phoenix.PubSub` messages on the given topic.
@@ -2552,6 +2588,33 @@ defmodule Phoenix.LiveView do
           socket :: Socket.t(),
           pubsub :: module(),
           topic :: binary()
-        ) :: Socket.t()
+        ) :: :ok
   defdelegate unsubscribe(socket, pubsub, topic), to: Phoenix.LiveView.PubSub
+
+  @doc """
+  Unsubscribes from `Phoenix.PubSub` messages using the default
+  pubsub for the given socket's endpoint.
+
+  This is equivalent to calling `unsubscribe(socket, socket.endpoint.config(:pubsub_server), "topic")`.
+  Raises an `ArgumentError` if the endpoint has no `:pubsub_server` configured.
+
+  See `unsubscribe/3`.
+  """
+  @spec unsubscribe(
+          socket :: Socket.t(),
+          topic :: binary()
+        ) :: :ok
+  def unsubscribe(socket, topic) when is_struct(socket, Socket) and is_binary(topic) do
+    unsubscribe(socket, endpoint_pubsub_server!(socket), topic)
+  end
+
+  defp endpoint_pubsub_server!(%Socket{endpoint: endpoint}) do
+    endpoint.config(:pubsub_server) ||
+      raise ArgumentError, """
+      no :pubsub_server configured for #{inspect(endpoint)}.
+
+      Either configure a :pubsub_server for your endpoint or pass the pubsub
+      server explicitly to Phoenix.LiveView.subscribe/4 and Phoenix.LiveView.unsubscribe/3.
+      """
+  end
 end
