@@ -35,4 +35,23 @@ describe("UploadEntry", () => {
       });
     },
   );
+
+  test("a failure already known to the server completes without pushing progress", () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    const file = new File(["contents"], "file.txt");
+    LiveUploader.trackFiles(input, [file]);
+    const view = { pushFileProgress: jest.fn() };
+    const entry = new UploadEntry(input, file, view, false);
+    const onDone = jest.fn();
+    entry.onDone(onDone);
+    entry.fail("writer_error", false);
+    entry.error("failed");
+
+    expect(entry.isDone()).toBe(true);
+    expect(entry.isErrored()).toBe(true);
+    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(view.pushFileProgress).not.toHaveBeenCalled();
+    expect(LiveUploader.activeFiles(input)).toEqual([]);
+  });
 });
