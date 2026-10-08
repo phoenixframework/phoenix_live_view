@@ -2515,6 +2515,9 @@ defmodule Phoenix.LiveView do
   the last subscriber unsubscribed or - in case of components - the last subscribed
   component is removed from the page.
 
+  Calling `subscribe` is idempotent. Calling it twice from the same LiveView or
+  LiveComponent does not lead to duplicate callback invocations.
+
   `callback` is invoked with the broadcast message and the socket, mirroring
   `c:handle_info/2`, and must return the updated socket. For components, it
   receives the component's own socket.
@@ -2523,17 +2526,11 @@ defmodule Phoenix.LiveView do
   so this is a no-op. It must be called from the LiveView process itself and
   raises otherwise, for example when called from a task started by `assign_async/4`.
 
-  ## Examples
+  By default, the endpoint's configured `:pubsub_server` is used:
 
-      def mount(_params, _session, socket) do
-        subscribe(socket, MyApp.PubSub, "room:\#{id}", &handle_room_update/2)
+      socket.endpoint.config(:pubsub_server)
 
-        {:ok, socket}
-      end
-
-      defp handle_room_update(message, socket) do
-        stream_insert(socket, :messages, message)
-      end
+  If you need to pass a different one, use `subscribe/4`.
 
   > #### Captured variables {: .warning}
   >
@@ -2551,23 +2548,19 @@ defmodule Phoenix.LiveView do
   >
   >     # good
   >     subscribe(socket, MyApp.PubSub, "topic", &handle_message/2)
-  """
-  @spec subscribe(
-          socket :: Socket.t(),
-          pubsub :: module(),
-          topic :: binary(),
-          callback :: (message :: term(), socket :: Socket.t() -> Socket.t())
-        ) :: :ok
-  defdelegate subscribe(socket, pubsub, topic, callback), to: Phoenix.LiveView.PubSub
 
-  @doc """
-  Subscribes to `Phoenix.PubSub` messages using the default
-  pubsub for the given socket's endpoint.
+  ## Examples
 
-  This is equivalent to calling `subscribe(socket, socket.endpoint.config(:pubsub_server), "topic", ...)`.
-  Raises an `ArgumentError` if the endpoint has no `:pubsub_server` configured.
+      def mount(_params, _session, socket) do
+        subscribe(socket, "room:\#{id}", &handle_room_update/2)
 
-  See `subscribe/4`.
+        {:ok, socket}
+      end
+
+      defp handle_room_update({:updated, room}, socket) do
+        stream_insert(socket, :rooms, room)
+      end
+
   """
   @spec subscribe(
           socket :: Socket.t(),
@@ -2580,25 +2573,25 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Unsubscribes from `Phoenix.PubSub` messages on the given topic.
+  Subscribes to `Phoenix.PubSub` messages using the given pubsub server.
 
-  See `subscribe/4`.
+  See `subscribe/3`.
   """
-  @spec unsubscribe(
+  @spec subscribe(
           socket :: Socket.t(),
           pubsub :: module(),
-          topic :: binary()
+          topic :: binary(),
+          callback :: (message :: term(), socket :: Socket.t() -> Socket.t())
         ) :: :ok
-  defdelegate unsubscribe(socket, pubsub, topic), to: Phoenix.LiveView.PubSub
+  defdelegate subscribe(socket, pubsub, topic, callback), to: Phoenix.LiveView.PubSub
 
   @doc """
-  Unsubscribes from `Phoenix.PubSub` messages using the default
-  pubsub for the given socket's endpoint.
+  Unsubscribes from `Phoenix.PubSub` messages.
+
+  See `unsubscribe/4`.
 
   This is equivalent to calling `unsubscribe(socket, socket.endpoint.config(:pubsub_server), "topic")`.
   Raises an `ArgumentError` if the endpoint has no `:pubsub_server` configured.
-
-  See `unsubscribe/3`.
   """
   @spec unsubscribe(
           socket :: Socket.t(),
@@ -2617,4 +2610,27 @@ defmodule Phoenix.LiveView do
       server explicitly to Phoenix.LiveView.subscribe/4 and Phoenix.LiveView.unsubscribe/3.
       """
   end
+
+  @doc """
+  Unsubscribes from `Phoenix.PubSub` messages on the given topic.
+
+  ## Examples
+
+      def handle_event("toggle-live-updates", %{"enabled" => enabled}, socket) do
+        if enabled? do
+          subscribe(socket, "room:\#{socket.assigns.room_id}", &handle_room_update/2)
+        else
+          unsubscribe(socket, "room:\#{socket.assigns.room_id})
+        end
+
+        {:noreply, socket}
+      end
+
+  """
+  @spec unsubscribe(
+          socket :: Socket.t(),
+          pubsub :: module(),
+          topic :: binary()
+        ) :: :ok
+  defdelegate unsubscribe(socket, pubsub, topic), to: Phoenix.LiveView.PubSub
 end
