@@ -44,6 +44,12 @@ defmodule Phoenix.LiveViewTest.Support.PubSubLive do
     assign(socket, :messages, socket.assigns.messages ++ [message])
   end
 
+  def render(%{replaced: true} = assigns) do
+    ~H"""
+    <div id="replaced">replaced</div>
+    """
+  end
+
   def render(assigns) do
     ~H"""
     <div id="root">root: {inspect(@messages)}</div>
@@ -78,6 +84,10 @@ defmodule Phoenix.LiveViewTest.Support.PubSubLive do
 
   def handle_event("remove-child", %{"id" => id}, socket) do
     {:noreply, assign(socket, :children, socket.assigns.children -- [id])}
+  end
+
+  def handle_event("replace-root", _params, socket) do
+    {:noreply, assign(socket, :replaced, true)}
   end
 
   def handle_info(message, socket) do
@@ -378,6 +388,17 @@ defmodule Phoenix.LiveViewTest.PubSubTest do
       render_click(lv, "remove-child", %{"id" => "child-1"})
 
       eventually(fn -> assert [] = subscriptions() end)
+    end
+
+    test "unsubscribes when the root template is replaced", %{conn: conn} do
+      {:ok, lv, _html} = live_isolated(conn, PubSubLive)
+      render_click(lv, "unsubscribe", %{})
+      render_click(lv, "add-child", %{"id" => "child-1"})
+
+      assert [_] = subscriptions()
+
+      assert render_click(lv, "replace-root", %{}) =~ "replaced"
+      assert [] = subscriptions()
     end
   end
 

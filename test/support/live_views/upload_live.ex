@@ -177,6 +177,12 @@ end
 defmodule Phoenix.LiveViewTest.Support.UploadLiveWithComponent do
   use Phoenix.LiveView
 
+  def render(%{replaced: true} = assigns) do
+    ~H"""
+    <div>replaced</div>
+    """
+  end
+
   def render(assigns) do
     ~H"""
     <div>
@@ -199,6 +205,10 @@ defmodule Phoenix.LiveViewTest.Support.UploadLiveWithComponent do
 
   def handle_call({:uploads, count}, _from, socket) do
     {:reply, :ok, assign(socket, :uploads_count, count)}
+  end
+
+  def handle_call({:replace_root, replaced?}, _from, socket) do
+    {:reply, :ok, assign(socket, :replaced, replaced?)}
   end
 
   def handle_call({:run, func}, from, socket) do
