@@ -2541,8 +2541,8 @@ defmodule Phoenix.LiveView do
   > anonymous function, every variable it references from the surrounding scope
   > is kept alive with it. In particular, do not reference the `socket` from
   > `mount/3` inside the callback: it keeps the assigns from subscription time in
-  > memory, and reading them gives you stale data. Use the socket passed to the
-  > callback instead, or a function capture:
+  > memory, and reading them gives you stale data. To avoid running into such pitfalls,
+  > prefer using function captures:
   >
   >     # bad: socket.assigns.items is the value from mount
   >     subscribe(socket, MyApp.PubSub, "topic", fn message, new_socket ->
