@@ -33,7 +33,7 @@ defmodule Phoenix.LiveView.PubSub do
   def subscribe(%Phoenix.LiveView.Socket{} = socket, pubsub, topic, callback)
       when is_atom(pubsub) and is_binary(topic) and is_function(callback, 2) do
     if Phoenix.LiveView.connected?(socket) do
-      verify_called_from_liveview!()
+      verify_called_from_liveview!(:subscribe)
       do_subscribe(pubsub, topic, subscriber(socket), callback)
     end
 
@@ -45,6 +45,17 @@ defmodule Phoenix.LiveView.PubSub do
 
     updated_subscriptions =
       case pubsub_subscriptions do
+        %{{^pubsub, ^topic} => {_ref, %{^cid_or_root => ^callback}}} ->
+          pubsub_subscriptions
+
+        %{{^pubsub, ^topic} => {_ref, %{^cid_or_root => _other_callback}}} ->
+          raise ArgumentError, """
+          already subscribed to #{inspect(topic)} on #{inspect(pubsub)} with a different callback.
+
+          A LiveView or LiveComponent can only have one callback per topic. \
+          Call Phoenix.LiveView.unsubscribe first if you want to replace it.
+          """
+
         %{{^pubsub, ^topic} => {ref, subscribers}} ->
           Map.put(
             pubsub_subscriptions,
@@ -67,7 +78,7 @@ defmodule Phoenix.LiveView.PubSub do
   def unsubscribe(%Phoenix.LiveView.Socket{} = socket, pubsub, topic)
       when is_atom(pubsub) and is_binary(topic) do
     if Phoenix.LiveView.connected?(socket) do
-      verify_called_from_liveview!()
+      verify_called_from_liveview!(:unsubscribe)
       do_unsubscribe(pubsub, topic, subscriber(socket))
     end
 
@@ -127,7 +138,7 @@ defmodule Phoenix.LiveView.PubSub do
   defp subscriber(%{assigns: %{myself: %Phoenix.LiveComponent.CID{cid: cid}}}), do: cid
   defp subscriber(_socket), do: :root
 
-  defp verify_called_from_liveview! do
+  defp verify_called_from_liveview!(fun) do
     # we use the process dictionary so to prevent cases where a user calls
     # subscribe in assign_async or a custom Task, we check and raise
     # if this process is not demonstrably a LiveView. The channel always
@@ -135,7 +146,7 @@ defmodule Phoenix.LiveView.PubSub do
     case Process.get(@key, :not_set) do
       :not_set ->
         raise ArgumentError,
-              "Phoenix.LiveView.subscribe can only be called from the LiveView process itself"
+              "Phoenix.LiveView.#{fun} can only be called from the LiveView process itself"
 
       %{} ->
         :ok

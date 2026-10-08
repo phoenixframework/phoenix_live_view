@@ -105,6 +105,9 @@ defmodule Phoenix.LiveViewTest.Support.Router do
     live "/flash-root", FlashLive
     live "/flash-child", FlashChildLive
 
+    # integration pubsub
+    live "/pubsub-flash", PubSubFlashLive
+
     # integration events
     live "/events", EventsLive
     live "/events-in-mount", EventsInMountLive

@@ -1884,6 +1884,13 @@ defmodule Phoenix.LiveView.Channel do
     component_handle(state, cid, nil, fn component_socket, _component ->
       case callback.(msg, component_socket) do
         %Socket{redirected: redirected, assigns: assigns} = new_component_socket ->
+          new_component_socket =
+            if redirected do
+              Utils.clear_flash(new_component_socket)
+            else
+              new_component_socket
+            end
+
           {new_component_socket, {redirected, assigns.flash}}
 
         result ->

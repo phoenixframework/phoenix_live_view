@@ -57,6 +57,16 @@ defmodule Phoenix.LiveViewTest.Support.PubSubLive do
     {:noreply, socket}
   end
 
+  def handle_event("subscribe-again", _params, socket) do
+    LiveView.subscribe(socket, @pubsub, "lv-pubsub-test", &receive_message/2)
+    {:noreply, socket}
+  end
+
+  def handle_event("subscribe-other-callback", _params, socket) do
+    LiveView.subscribe(socket, @pubsub, "lv-pubsub-test", fn _message, socket -> socket end)
+    {:noreply, socket}
+  end
+
   def handle_event("subscribe-directly", _params, socket) do
     :ok = Phoenix.PubSub.subscribe(@pubsub, "lv-pubsub-test")
     {:noreply, socket}
@@ -167,6 +177,7 @@ end
 defmodule Phoenix.LiveViewTest.PubSubTest do
   use ExUnit.Case, async: true
 
+  import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
   alias Phoenix.LiveViewTest.Support.{
@@ -226,6 +237,26 @@ defmodule Phoenix.LiveViewTest.PubSubTest do
       assert [] = subscriptions()
     end
 
+    test "subscribing again with the same callback is a no-op", %{conn: conn} do
+      {:ok, lv, _html} = live_isolated(conn, PubSubLive)
+      render_click(lv, "subscribe-again", %{})
+      assert [_] = subscriptions()
+
+      Phoenix.PubSub.broadcast(@pubsub, "lv-pubsub-test", :hello)
+      assert render(lv) =~ "root: [:hello]"
+    end
+
+    test "raises when subscribing again with a different callback", %{conn: conn} do
+      Process.flag(:trap_exit, true)
+      {:ok, lv, _html} = live_isolated(conn, PubSubLive)
+
+      ref = Process.monitor(lv.pid)
+      catch_exit(render_click(lv, "subscribe-other-callback", %{}))
+
+      assert_receive {:DOWN, ^ref, :process, _, {%ArgumentError{message: message}, _}}
+      assert message =~ ~s(already subscribed to "lv-pubsub-test")
+    end
+
     test "unsubscribe stops delivery and removes the global subscription", %{conn: conn} do
       {:ok, lv, _html} = live_isolated(conn, PubSubLive)
       assert [_] = subscriptions()
@@ -281,7 +312,7 @@ defmodule Phoenix.LiveViewTest.PubSubTest do
       render_click(lv, "subscribe-from-task", %{})
 
       assert_receive {:task_result, {:raised, message}}
-      assert message =~ "can only be called from the LiveView process itself"
+      assert message =~ "Phoenix.LiveView.subscribe can only be called from the LiveView process"
     end
   end
 
@@ -324,6 +355,17 @@ defmodule Phoenix.LiveViewTest.PubSubTest do
       html = render(lv)
       assert html =~ "root: [:hello]"
       assert html =~ "child-1: []"
+    end
+
+    test "redirecting from the callback moves the flash to the LiveView", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/pubsub-flash")
+
+      Phoenix.PubSub.broadcast(@pubsub, "lv-pubsub-test", {:patch, "/pubsub-flash?patched"})
+      assert_patch(lv, "/pubsub-flash?patched")
+
+      html = render(lv)
+      assert html =~ ~s(root flash: %{&quot;info&quot; =&gt; &quot;patched&quot;})
+      assert html =~ "child flash: %{}"
     end
 
     test "unsubscribes when the last component is removed from the page", %{conn: conn} do
@@ -375,6 +417,18 @@ defmodule Phoenix.LiveViewTest.PubSubTest do
       end
 
       assert_raise ArgumentError, ~r/no :pubsub_server configured/, fn ->
+        Phoenix.LiveView.unsubscribe(socket, "lv-pubsub-default-test")
+      end
+    end
+
+    test "raises when the socket has no endpoint" do
+      socket = %Phoenix.LiveView.Socket{endpoint: nil}
+
+      assert_raise ArgumentError, ~r/the socket has no endpoint/, fn ->
+        Phoenix.LiveView.subscribe(socket, "lv-pubsub-default-test", fn _msg, socket -> socket end)
+      end
+
+      assert_raise ArgumentError, ~r/the socket has no endpoint/, fn ->
         Phoenix.LiveView.unsubscribe(socket, "lv-pubsub-default-test")
       end
     end

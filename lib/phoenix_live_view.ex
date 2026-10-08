@@ -2515,12 +2515,20 @@ defmodule Phoenix.LiveView do
   the last subscriber unsubscribed or - in case of components - the last subscribed
   component is removed from the page.
 
-  Calling `subscribe` is idempotent. Calling it twice from the same LiveView or
-  LiveComponent does not lead to duplicate callback invocations.
+  Calling `subscribe` again with the same callback is a no-op, so it does not lead
+  to duplicate callback invocations. A LiveView or LiveComponent can only have one
+  callback per topic: subscribing to the same topic with a different callback raises.
+  Call `unsubscribe/2` first if you want to replace it.
 
   `callback` is invoked with the broadcast message and the socket, mirroring
   `c:handle_info/2`, and must return the updated socket. For components, it
-  receives the component's own socket.
+  receives the component's own socket. Messages delivered to the callback do not
+  go through `c:handle_info/2`, so `:handle_info` hooks attached with `attach_hook/4`
+  do not see them.
+
+  If the LiveView and some of its components subscribe to the same topic, each of
+  their callbacks is invoked for every message. The order in which they are invoked
+  is not guaranteed.
 
   On the initial disconnected render there is no process to deliver messages to,
   so this is a no-op. It must be called from the LiveView process itself and
@@ -2530,6 +2538,7 @@ defmodule Phoenix.LiveView do
 
       socket.endpoint.config(:pubsub_server)
 
+  If the endpoint has no `:pubsub_server` configured, this raises an `ArgumentError`.
   If you need to pass a different one, use `subscribe/4`.
 
   > #### Captured variables {: .warning}
@@ -2549,9 +2558,20 @@ defmodule Phoenix.LiveView do
   >     # good
   >     subscribe(socket, MyApp.PubSub, "topic", &handle_message/2)
 
+  > #### Code reloading {: .info}
+  >
+  > Anonymous functions and local captures such as `&handle_message/2` point to the
+  > version of the module that was loaded when `subscribe` was called. If the module
+  > is recompiled while the LiveView keeps running, for example when LiveView
+  > re-renders in place after a code change in development, the callback keeps
+  > running the old code. Once the module is recompiled a second time, invoking the
+  > callback raises, and the LiveView crashes and remounts. Remote captures of public
+  > functions, such as `&__MODULE__.handle_message/2`, always call the latest version
+  > of the module.
+
   ## Examples
 
-      def mount(_params, _session, socket) do
+      def mount(%{"id" => id}, _session, socket) do
         subscribe(socket, "room:\#{id}", &handle_room_update/2)
 
         {:ok, socket}
@@ -2586,12 +2606,27 @@ defmodule Phoenix.LiveView do
   defdelegate subscribe(socket, pubsub, topic, callback), to: Phoenix.LiveView.PubSub
 
   @doc """
-  Unsubscribes from `Phoenix.PubSub` messages.
+  Unsubscribes from `Phoenix.PubSub` messages on the given topic.
 
-  See `unsubscribe/4`.
+  Only the subscription of the calling LiveView or LiveComponent is removed. Like
+  `subscribe/3`, this uses the endpoint's configured `:pubsub_server` and raises an
+  `ArgumentError` if there is none. If you need to pass a different one, use
+  `unsubscribe/3`.
 
-  This is equivalent to calling `unsubscribe(socket, socket.endpoint.config(:pubsub_server), "topic")`.
-  Raises an `ArgumentError` if the endpoint has no `:pubsub_server` configured.
+  ## Examples
+
+      def handle_event("toggle-live-updates", %{"enabled" => enabled}, socket) do
+        topic = "room:\#{socket.assigns.room_id}"
+
+        if enabled == "true" do
+          subscribe(socket, topic, &handle_room_update/2)
+        else
+          unsubscribe(socket, topic)
+        end
+
+        {:noreply, socket}
+      end
+
   """
   @spec unsubscribe(
           socket :: Socket.t(),
@@ -2599,6 +2634,17 @@ defmodule Phoenix.LiveView do
         ) :: :ok
   def unsubscribe(socket, topic) when is_struct(socket, Socket) and is_binary(topic) do
     unsubscribe(socket, endpoint_pubsub_server!(socket), topic)
+  end
+
+  defp endpoint_pubsub_server!(%Socket{endpoint: nil}) do
+    raise ArgumentError, """
+    cannot look up the :pubsub_server because the socket has no endpoint.
+
+    This usually happens when rendering a component with render_component/3
+    in a test module that does not set @endpoint. Either set @endpoint or pass
+    the pubsub server explicitly to Phoenix.LiveView.subscribe/4 and
+    Phoenix.LiveView.unsubscribe/3.
+    """
   end
 
   defp endpoint_pubsub_server!(%Socket{endpoint: endpoint}) do
@@ -2612,20 +2658,9 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Unsubscribes from `Phoenix.PubSub` messages on the given topic.
+  Unsubscribes from `Phoenix.PubSub` messages using the given pubsub server.
 
-  ## Examples
-
-      def handle_event("toggle-live-updates", %{"enabled" => enabled}, socket) do
-        if enabled? do
-          subscribe(socket, "room:\#{socket.assigns.room_id}", &handle_room_update/2)
-        else
-          unsubscribe(socket, "room:\#{socket.assigns.room_id})
-        end
-
-        {:noreply, socket}
-      end
-
+  See `unsubscribe/2`.
   """
   @spec unsubscribe(
           socket :: Socket.t(),
