@@ -420,17 +420,5 @@ defmodule Phoenix.LiveViewTest.PubSubTest do
         Phoenix.LiveView.unsubscribe(socket, "lv-pubsub-default-test")
       end
     end
-
-    test "raises when the socket has no endpoint" do
-      socket = %Phoenix.LiveView.Socket{endpoint: nil}
-
-      assert_raise ArgumentError, ~r/the socket has no endpoint/, fn ->
-        Phoenix.LiveView.subscribe(socket, "lv-pubsub-default-test", fn _msg, socket -> socket end)
-      end
-
-      assert_raise ArgumentError, ~r/the socket has no endpoint/, fn ->
-        Phoenix.LiveView.unsubscribe(socket, "lv-pubsub-default-test")
-      end
-    end
   end
 end

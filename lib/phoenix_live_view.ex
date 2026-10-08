@@ -2511,9 +2511,10 @@ defmodule Phoenix.LiveView do
   Subscribes to `Phoenix.PubSub` messages on the given topic.
 
   This works with both LiveViews and LiveComponents. LiveView tracks each
-  subscription and globally subscribes once. It automatically unsubscribes after
-  the last subscriber unsubscribed or - in case of components - the last subscribed
-  component is removed from the page.
+  subscription and subscribes to the given pubsub only once within a single
+  LiveView process (including all of its LiveComponents). It automatically
+  unsubscribes from PubSub once all subscriptions or - in case of components -
+  the last subscribed component is removed from the page.
 
   Calling `subscribe` again with the same callback is a no-op, so it does not lead
   to duplicate callback invocations. A LiveView or LiveComponent can only have one
