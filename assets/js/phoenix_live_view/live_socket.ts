@@ -230,6 +230,8 @@ export interface LiveSocketOptions {
      * })
      * ```
      *
+     * Note: start callbacks must be called in the order they are received.
+     *
      * It is strongly advised to call start as quickly as possible.
      */
     onDocumentPatch?: (start: () => void) => void;
