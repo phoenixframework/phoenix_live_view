@@ -66,6 +66,7 @@ import DOM, { FormInputLike, QueryableNode } from "./dom";
 import ElementRef from "./element_ref";
 import DOMPatch from "./dom_patch";
 import LiveUploader from "./live_uploader";
+import type { BlockedSubmitReason } from "./live_uploader";
 import Rendered from "./rendered";
 import { ViewHook } from "./view_hook";
 import JS from "./js";
@@ -2134,13 +2135,14 @@ export default class View {
                 inputEl.form,
                 phxEvent,
                 targetCtx,
-                ref,
-                cid,
                 (_uploads) => {
                   callback && callback(result.resp);
-                  this.triggerAwaitingSubmit(inputEl.form, phxEvent);
+                  this.triggerAwaitingSubmit(inputEl.form);
                   this.undoRefs(ref, phxEvent);
                 },
+                // the change event itself was delivered, so there is no
+                // submit to report; only release the form
+                () => this.undoRefs(ref, phxEvent),
               );
             }
           });
@@ -2162,11 +2164,11 @@ export default class View {
     });
   }
 
-  triggerAwaitingSubmit(formEl, phxEvent) {
+  triggerAwaitingSubmit(formEl) {
     const awaitingSubmit = this.getScheduledSubmit(formEl);
     if (awaitingSubmit) {
       const [_el, _ref, _opts, callback] = awaitingSubmit;
-      this.cancelSubmit(formEl, phxEvent);
+      this.cancelSubmit(formEl);
       callback();
     }
   }
@@ -2177,17 +2179,64 @@ export default class View {
     );
   }
 
-  scheduleSubmit(formEl, ref, opts, callback) {
+  scheduleSubmit(formEl, ref, opts, callback, phxEvent) {
     if (this.getScheduledSubmit(formEl)) {
       return true;
     }
-    this.formSubmits.push([formEl, ref, opts, callback]);
+    this.formSubmits.push([formEl, ref, opts, callback, phxEvent]);
   }
 
-  cancelSubmit(formEl, phxEvent) {
+  // a submit is intentionally dropped when its uploads cannot complete, but
+  // without a signal the click looks like a no-op to the developer, so we
+  // emit a debug diagnostic naming the uploads and why the submit was not sent
+  logBlockedSubmit(
+    formEl,
+    phxEvent,
+    reason: BlockedSubmitReason,
+    inputs,
+    scheduled = false,
+  ) {
+    const uploads = inputs.map((input) => input.name);
+    const what = scheduled ? `scheduled ${phxEvent}` : phxEvent;
+    this.log(
+      "upload",
+      () => [
+        `${what} not sent (${reason}): ${uploads.join(", ")}`,
+        { reason, uploads },
+      ],
+      {
+        code: "upload.submit-blocked",
+        metadata: () => ({
+          event: phxEvent,
+          reason,
+          uploads,
+          scheduled,
+          formEl,
+        }),
+      },
+    );
+  }
+
+  // cancels the submit scheduled while uploads were in progress, if any, and
+  // undoes its refs. `blocked` says why the submit is dropped for good; it is
+  // omitted when the scheduled submit is dequeued to be sent (see
+  // triggerAwaitingSubmit)
+  cancelSubmit(
+    formEl,
+    blocked?: { reason: BlockedSubmitReason; inputs: HTMLInputElement[] },
+  ) {
     this.formSubmits = this.formSubmits.filter(
-      ([el, ref, _opts, _callback]) => {
+      ([el, ref, _opts, _callback, phxEvent]) => {
         if (el.isSameNode(formEl)) {
+          if (blocked) {
+            this.logBlockedSubmit(
+              formEl,
+              phxEvent,
+              blocked.reason,
+              blocked.inputs,
+              true,
+            );
+          }
           this.undoRefs(ref, phxEvent);
           return false;
         } else {
@@ -2262,8 +2311,11 @@ export default class View {
     // for phx-trigger-action
     DOM.putPrivate(formEl, "submitter", submitter);
     const cid = this.targetComponentID(formEl, targetCtx);
-    if (LiveUploader.hasUploadErrors(formEl)) {
-      return this.cancelSubmit(formEl, phxEvent);
+    const inputsWithErrors = LiveUploader.inputsWithUploadErrors(formEl);
+    if (inputsWithErrors.length > 0) {
+      this.logBlockedSubmit(formEl, phxEvent, "entry-errors", inputsWithErrors);
+      // a submit scheduled earlier is dropped for the same reason
+      return this.cancelSubmit(formEl);
     } else if (LiveUploader.hasUploadsInProgress(formEl)) {
       const [ref, _els] = refGenerator();
       const push = () =>
@@ -2275,41 +2327,53 @@ export default class View {
           opts,
           onReply,
         );
-      return this.scheduleSubmit(formEl, ref, opts, push);
+      return this.scheduleSubmit(formEl, ref, opts, push, phxEvent);
     } else if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
       const [ref, els] = refGenerator();
       const proxyRefGen = () => [ref, els, opts];
-      this.uploadFiles(formEl, phxEvent, targetCtx, ref, cid, (_uploads) => {
-        // if we still having pending preflights it means we have invalid entries
-        // and the phx-submit cannot be completed
-        if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
-          return this.undoRefs(ref, phxEvent);
-        }
-        const meta = this.extractMeta(formEl, {}, opts.value);
-        const formData = this.serializeForm(formEl, { submitter });
-        this.pushWithReply(proxyRefGen, "event", {
-          type: "form",
-          event: phxEvent,
-          value: formData,
-          meta: meta,
-          cid: cid,
-        }).then((result) => {
-          if (result.type === "ok") {
-            onReply(result.resp);
-          } else {
-            this.logError(
-              "event.submit-push-failed",
-              "Failed to push form submit",
-              {
-                error: result.error,
-                phxEvent,
-                formEl,
-              },
-              result.context,
-            );
+      const onBlocked = (reason: BlockedSubmitReason, inputs) => {
+        this.logBlockedSubmit(formEl, phxEvent, reason, inputs);
+        this.undoRefs(ref, phxEvent);
+      };
+      this.uploadFiles(
+        formEl,
+        phxEvent,
+        targetCtx,
+        (_uploads) => {
+          // entries can still be awaiting a preflight once the uploads are done,
+          // in which case the phx-submit cannot be completed
+          const awaitingPreflight =
+            LiveUploader.inputsAwaitingPreflight(formEl);
+          if (awaitingPreflight.length > 0) {
+            return onBlocked("awaiting-preflight", awaitingPreflight);
           }
-        });
-      });
+          const meta = this.extractMeta(formEl, {}, opts.value);
+          const formData = this.serializeForm(formEl, { submitter });
+          this.pushWithReply(proxyRefGen, "event", {
+            type: "form",
+            event: phxEvent,
+            value: formData,
+            meta: meta,
+            cid: cid,
+          }).then((result) => {
+            if (result.type === "ok") {
+              onReply(result.resp);
+            } else {
+              this.logError(
+                "event.submit-push-failed",
+                "Failed to push form submit",
+                {
+                  error: result.error,
+                  phxEvent,
+                  formEl,
+                },
+                result.context,
+              );
+            }
+          });
+        },
+        onBlocked,
+      );
     } else if (!(
       formEl.hasAttribute(PHX_REF_SRC) &&
       formEl.classList.contains("phx-submit-loading")
@@ -2341,26 +2405,59 @@ export default class View {
     }
   }
 
-  uploadFiles(formEl, phxEvent, targetCtx, ref, cid, onComplete) {
+  // onComplete is called once the uploads of every input are done; onBlocked
+  // is called instead when a preflight was rejected or failed, or an upload
+  // failed, with the reason and the inputs involved. The caller is responsible
+  // for releasing the form. When inputs are blocked for different reasons, the
+  // first reason seen is reported with its inputs; the others have their own
+  // logs.
+  uploadFiles(
+    formEl,
+    phxEvent,
+    targetCtx,
+    onComplete,
+    onBlocked: (
+      reason: BlockedSubmitReason,
+      inputs: HTMLInputElement[],
+    ) => void,
+  ) {
     const joinCountAtUpload = this.joinCount;
     const inputEls = LiveUploader.activeFileInputs(formEl);
     let numFileInputsInProgress = inputEls.length;
-    let uploadFailed = false;
+    const blocked: {
+      reason: BlockedSubmitReason;
+      inputs: HTMLInputElement[];
+    }[] = [];
+    const inputBlocked = (reason: BlockedSubmitReason, inputEl) => {
+      const group = blocked.find((b) => b.reason === reason);
+      if (group) {
+        group.inputs.push(inputEl);
+      } else {
+        blocked.push({ reason, inputs: [inputEl] });
+      }
+    };
+    // called once per input, when its uploads are done or could not start
+    const inputDone = () => {
+      numFileInputsInProgress--;
+      if (numFileInputsInProgress > 0) {
+        return;
+      }
+      if (blocked.length > 0) {
+        this.cancelSubmit(formEl, blocked[0]);
+        onBlocked(blocked[0].reason, blocked[0].inputs);
+      } else {
+        onComplete();
+      }
+    };
 
     // get each file input
     inputEls.forEach((inputEl) => {
       const uploader = new LiveUploader(inputEl, this, () => {
         this.activeUploaders.delete(uploader);
-        uploadFailed ||= uploader.entries().some((entry) => entry.isErrored());
-        numFileInputsInProgress--;
-        if (numFileInputsInProgress === 0) {
-          if (uploadFailed) {
-            this.cancelSubmit(formEl, phxEvent);
-            this.undoRefs(ref, phxEvent);
-          } else {
-            onComplete();
-          }
+        if (uploader.entries().some((entry) => entry.isErrored())) {
+          inputBlocked("upload-failed", inputEl);
         }
+        inputDone();
       });
       this.activeUploaders.add(uploader);
 
@@ -2370,7 +2467,7 @@ export default class View {
 
       if (entries.length === 0) {
         this.activeUploaders.delete(uploader);
-        numFileInputsInProgress--;
+        inputDone();
         return;
       }
 
@@ -2408,12 +2505,13 @@ export default class View {
             result.resp.error ||
             Object.keys(result.resp.entries).length === 0
           ) {
-            this.undoRefs(ref, phxEvent);
             const errors = result.resp.error || [];
             errors.map(([entry_ref, reason]) => {
               this.handleFailedEntryPreflight(entry_ref, reason, uploader);
             });
             this.activeUploaders.delete(uploader);
+            inputBlocked("preflight-rejected", inputEl);
+            inputDone();
           } else {
             const onError = (callback) => {
               this.channel.onError(() => {
@@ -2425,6 +2523,9 @@ export default class View {
             uploader.initAdapterUpload(result.resp, onError, this.liveSocket);
           }
         } else {
+          // the entries are cancelled so that they are preflighted again on
+          // the next attempt instead of staying marked as in progress
+          uploader.cancel();
           this.activeUploaders.delete(uploader);
           this.logError(
             "upload.push-failed",
@@ -2436,6 +2537,8 @@ export default class View {
             },
             result.context,
           );
+          inputBlocked("preflight-failed", inputEl);
+          inputDone();
         }
       });
     });

@@ -31,8 +31,43 @@ describe("LiveFileUpload", () => {
     input.setAttribute("data-phx-error-refs", "0");
     Hooks.LiveFileUpload.updated!.call(ctx as any);
 
-    expect(cancelSubmit).toHaveBeenCalledWith(input.form);
+    expect(cancelSubmit).toHaveBeenCalledWith(input.form, {
+      reason: "entry-errors",
+      inputs: [input],
+    });
     expect(input.required).toBe(false);
+  });
+
+  test("cancels a scheduled submit when the preflighted entries are gone", () => {
+    document.body.innerHTML = `
+      <form>
+        <input
+          type="file"
+          data-phx-active-refs="0"
+          data-phx-preflighted-refs="0"
+        >
+      </form>
+    `;
+
+    const input = document.querySelector("input")!;
+    const cancelSubmit = jest.fn();
+    const ctx = {
+      ...Hooks.LiveFileUpload,
+      el: input,
+      js: () => ({ ignoreAttributes: jest.fn() }),
+      __view: () => ({ cancelSubmit }),
+    };
+
+    Hooks.LiveFileUpload.mounted!.call(ctx as any);
+    input.setAttribute("data-phx-active-refs", "");
+    input.setAttribute("data-phx-preflighted-refs", "");
+    Hooks.LiveFileUpload.updated!.call(ctx as any);
+
+    expect(cancelSubmit).toHaveBeenCalledTimes(1);
+    expect(cancelSubmit).toHaveBeenCalledWith(input.form, {
+      reason: "entries-removed",
+      inputs: [input],
+    });
   });
 
   test("removes required while the upload has selected files", () => {

@@ -32,7 +32,10 @@ describe("EntryUploader", () => {
     // Reply payload arrives as {reason: "..."}, not as a string.
     errorCb({ reason: "join crashed" });
 
-    expect(cancelSubmit).toHaveBeenCalledWith(form);
+    expect(cancelSubmit).toHaveBeenCalledWith(form, {
+      reason: "upload-failed",
+      inputs: [entry.fileEl],
+    });
     expect(entry.error).toHaveBeenCalledWith("join crashed");
   });
 
@@ -69,7 +72,10 @@ describe("EntryUploader", () => {
     channelErrorCb("closed");
 
     expect(cancelSubmit).toHaveBeenCalledTimes(1);
-    expect(cancelSubmit).toHaveBeenCalledWith(form);
+    expect(cancelSubmit).toHaveBeenCalledWith(form, {
+      reason: "upload-failed",
+      inputs: [entry.fileEl],
+    });
     expect(fakeChannel.leave).toHaveBeenCalledTimes(1);
     expect(entry.cancel).not.toHaveBeenCalled();
     expect(entry.error).not.toHaveBeenCalled();
@@ -112,7 +118,10 @@ describe("EntryUploader", () => {
     );
     receives.get("timeout")!();
 
-    expect(entry.view.cancelSubmit).toHaveBeenCalledWith(form);
+    expect(entry.view.cancelSubmit).toHaveBeenCalledWith(form, {
+      reason: "upload-failed",
+      inputs: [entry.fileEl],
+    });
     expect(fakeChannel.leave).toHaveBeenCalledTimes(1);
     expect(entry.error).toHaveBeenCalledWith("timeout");
     expect(entry.progress).not.toHaveBeenCalled();
@@ -161,7 +170,10 @@ describe("EntryUploader", () => {
       expect.stringContaining(message),
       { entry, offset: 0 },
     );
-    expect(entry.view.cancelSubmit).toHaveBeenCalledWith(form);
+    expect(entry.view.cancelSubmit).toHaveBeenCalledWith(form, {
+      reason: "upload-failed",
+      inputs: [entry.fileEl],
+    });
     expect(fakeChannel.leave).toHaveBeenCalledTimes(1);
     expect(entry.error).toHaveBeenCalledWith("failed");
   });
