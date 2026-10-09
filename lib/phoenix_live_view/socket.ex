@@ -42,6 +42,18 @@ defmodule Phoenix.LiveView.Socket do
       def runtime_opts() do
         Keyword.put(@session_options, :domain, host())
       end
+
+  ## Socket options
+
+  Options given to `use Phoenix.LiveView.Socket` are forwarded to
+  `use Phoenix.Socket`. See the "Using options" section of `Phoenix.Socket`
+  for the supported options. For example, each file upload entry joins its
+  own channel when using the default uploader, so allowing many concurrent
+  uploads may require raising `:max_channels_per_transport`:
+
+      defmodule MyAppWeb.UserSocket do
+        use Phoenix.LiveView.Socket, max_channels_per_transport: 200
+      end
   """
   use Phoenix.Socket
 
@@ -102,9 +114,9 @@ defmodule Phoenix.LiveView.Socket do
   @impl Phoenix.Socket
   def id(socket), do: socket.private.connect_info[:session]["live_socket_id"]
 
-  defmacro __using__(_opts) do
+  defmacro __using__(opts) do
     quote do
-      use Phoenix.Socket
+      use Phoenix.Socket, unquote(opts)
 
       channel "lvu:*", Phoenix.LiveView.UploadChannel
       channel "lv:*", Phoenix.LiveView.Channel

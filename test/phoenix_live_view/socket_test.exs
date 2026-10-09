@@ -34,4 +34,21 @@ defmodule Phoenix.LiveView.SocketTest do
     assert socket.assigns.info == info
     assert MyOverrides.id(socket) == "my-id"
   end
+
+  test "use forwards options to Phoenix.Socket" do
+    defmodule MyOptions do
+      use Phoenix.LiveView.Socket, max_channels_per_transport: 1
+    end
+
+    assert {:ok, {state, %Phoenix.Socket{}}} =
+             MyOptions.connect(%{
+               endpoint: Phoenix.LiveViewTest.Support.Endpoint,
+               options: [serializer: [{Phoenix.Socket.V2.JSONSerializer, "~> 2.0.0"}]],
+               transport: :websocket,
+               params: %{"vsn" => "2.0.0"},
+               connect_info: %{}
+             })
+
+    assert state.max_channels_per_transport == 1
+  end
 end
