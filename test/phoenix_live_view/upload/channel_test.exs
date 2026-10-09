@@ -1501,6 +1501,32 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end
 
     @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
+    test "cancel_upload in progress when the root template is replaced", %{lv: lv} do
+      avatar = file_input(lv, "#upload0", :avatar, build_entries(1))
+      assert render_upload(avatar, "myfile1.jpeg", 1) =~ "component:myfile1.jpeg:1%"
+      assert %{"myfile1.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
+
+      unlink(channel_pid, lv, avatar)
+      Process.monitor(channel_pid)
+
+      GenServer.call(lv.pid, {:replace_root, true})
+      assert render(lv) =~ "replaced"
+
+      assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
+
+      # retry with a new component using the same upload name
+      GenServer.call(lv.pid, {:replace_root, false})
+
+      UploadLive.run(lv, fn component_socket ->
+        new_socket = Phoenix.LiveView.allow_upload(component_socket, :avatar, accept: :any)
+        {:reply, :ok, new_socket}
+      end)
+
+      avatar = file_input(lv, "#upload0", :avatar, build_entries(1))
+      assert render_upload(avatar, "myfile1.jpeg", 100) =~ "component:myfile1.jpeg:100%"
+    end
+
+    @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
     test "cancel_upload not yet in progress when component is removed", %{lv: lv} do
       file_name = "myfile1.jpeg"
       avatar = file_input(lv, "#upload0", :avatar, [%{name: file_name, content: "ok"}])

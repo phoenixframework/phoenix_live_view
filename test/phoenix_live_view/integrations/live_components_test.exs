@@ -115,10 +115,27 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
   end
 
   test "tracks removals when whole root changes", %{conn: conn} do
+    ref =
+      :telemetry_test.attach_event_handlers(self(), [[:phoenix, :live_component, :destroyed]])
+
     {:ok, view, _html} = live(conn, "/components")
     assert render_click(view, "disable-all", %{}) =~ "Disabled\n"
     # Sync to make sure it is still alive
     assert render(view) =~ "Disabled\n"
+
+    assert_received {[:phoenix, :live_component, :destroyed], ^ref, _,
+                     %{
+                       component: StatefulComponent,
+                       cid: 1,
+                       socket: %{assigns: %{name: "chris"}}
+                     }}
+
+    assert_received {[:phoenix, :live_component, :destroyed], ^ref, _,
+                     %{
+                       component: StatefulComponent,
+                       cid: 2,
+                       socket: %{assigns: %{name: "jose"}}
+                     }}
   end
 
   test "tracks removals from a nested LiveView", %{conn: conn} do

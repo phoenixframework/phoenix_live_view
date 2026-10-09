@@ -9,6 +9,12 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive do
     {:cont, assign(socket, lc: false)}
   end
 
+  def render(%{replaced: true} = assigns) do
+    ~H"""
+    <div>replaced</div>
+    """
+  end
+
   def render(assigns) do
     ~H"""
     <.live_component
@@ -202,6 +208,10 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive do
 
   def handle_info(:hide, socket) do
     {:noreply, assign(socket, lc: false)}
+  end
+
+  def handle_info(:replace_root, socket) do
+    {:noreply, assign(socket, replaced: true)}
   end
 
   def handle_info(:cancel, socket) do
