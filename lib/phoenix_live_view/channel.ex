@@ -1725,7 +1725,7 @@ defmodule Phoenix.LiveView.Channel do
 
   # The components must still be in state.components.
   defp destroy_components(state, cids) do
-    upload_cids = Enum.into(state.upload_names, MapSet.new(), fn {_name, {_ref, cid}} -> cid end)
+    upload_cids = MapSet.new(state.upload_names, fn {_name, {_ref, cid}} -> cid end)
 
     canceled_confs =
       Enum.flat_map(cids, fn cid ->
