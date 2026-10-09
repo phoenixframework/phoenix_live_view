@@ -328,6 +328,7 @@ export default class View {
   hideLoader() {
     this.loaderTimer != null && clearTimeout(this.loaderTimer);
     this.disconnectedTimer != null && clearTimeout(this.disconnectedTimer);
+    this.disconnectedTimer = null;
     this.setContainerClasses(PHX_CONNECTED_CLASS);
     this.execAll(this.binding("connected"));
   }
@@ -1453,7 +1454,9 @@ export default class View {
   }
 
   delayedDisconnected() {
-    if (this.disconnectedTimer != null) { return };
+    if (this.disconnectedTimer != null) {
+      return;
+    }
     this.disconnectedTimer = setTimeout(() => {
       this.disconnectedTimer = null;
       this.execAll(this.binding("disconnected"));

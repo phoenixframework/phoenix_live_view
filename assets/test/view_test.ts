@@ -1470,7 +1470,7 @@ describe("View", function () {
     expect(el.classList.contains("phx-connected")).toBeTruthy();
   });
 
-  test("repeated errors replace the pending disconnected timer", () => {
+  test("repeated errors keep the pending disconnected timer", () => {
     jest.useFakeTimers();
     liveSocket = new LiveSocket("/live", Socket, { disconnectedTimeout: 1000 });
     const el = document.querySelector("[data-phx-session]")!;
@@ -1485,10 +1485,36 @@ describe("View", function () {
     view.displayError(classes);
     jest.advanceTimersByTime(100);
     view.displayError(classes);
-    jest.advanceTimersByTime(900);
+    jest.advanceTimersByTime(899);
     expect(execAll).not.toHaveBeenCalled();
 
+    jest.advanceTimersByTime(1);
+    expect(execAll).toHaveBeenCalledTimes(1);
+    expect(execAll).toHaveBeenCalledWith("phx-disconnected");
+
+    jest.runAllTimers();
+    expect(execAll).toHaveBeenCalledTimes(1);
+  });
+
+  test("errors after reconnecting schedule a new disconnected timer", () => {
+    jest.useFakeTimers();
+    liveSocket = new LiveSocket("/live", Socket, { disconnectedTimeout: 1000 });
+    const el = document.querySelector("[data-phx-session]")!;
+    const view = simulateJoinedView(el, liveSocket);
+    const execAll = jest.spyOn(view, "execAll");
+    const classes = [
+      PHX_LOADING_CLASS,
+      PHX_ERROR_CLASS,
+      PHX_SERVER_ERROR_CLASS,
+    ];
+
+    view.displayError(classes);
     jest.advanceTimersByTime(100);
+    view.hideLoader();
+    execAll.mockClear();
+
+    view.displayError(classes);
+    jest.advanceTimersByTime(1000);
     expect(execAll).toHaveBeenCalledTimes(1);
     expect(execAll).toHaveBeenCalledWith("phx-disconnected");
   });
