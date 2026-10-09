@@ -12,6 +12,19 @@ import UploadEntry from "./upload_entry";
 
 let liveUploaderFileRef = 0;
 
+/**
+ * Why a form submit was dropped because of its uploads:
+ *
+ * - `entry-errors`: upload inputs carry entries with errors
+ * - `preflight-rejected`: the server rejected the entries in the preflight
+ * - `preflight-failed`: the preflight push failed (error reply or timeout)
+ * - `upload-failed`: an upload failed after the preflight
+ * - `awaiting-preflight`: entries still need a preflight after the uploads
+ * - `entries-removed`: the entries a scheduled submit waited for are gone
+ *
+ * @typedef {"entry-errors" | "preflight-rejected" | "preflight-failed" | "upload-failed" | "awaiting-preflight" | "entries-removed"} BlockedSubmitReason
+ */
+
 export default class LiveUploader {
   static genFileRef(file) {
     const ref = file._phxRef;
@@ -44,8 +57,8 @@ export default class LiveUploader {
     return active > 0;
   }
 
-  static hasUploadErrors(formEl) {
-    return DOM.findUploadInputs(formEl).some(
+  static inputsWithUploadErrors(formEl) {
+    return DOM.findUploadInputs(formEl).filter(
       (input) => (input.getAttribute(PHX_ERROR_REFS) || "") !== "",
     );
   }

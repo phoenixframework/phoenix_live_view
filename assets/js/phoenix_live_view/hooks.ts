@@ -310,14 +310,20 @@ const LiveFileUpload: Hook<object, HTMLInputElement> = {
     if (this.errorRefsWas !== newErrorRefs) {
       this.errorRefsWas = newErrorRefs;
       if (newErrorRefs !== "") {
-        this.__view().cancelSubmit(this.el.form);
+        this.__view().cancelSubmit(this.el.form, {
+          reason: "entry-errors",
+          inputs: [this.el],
+        });
       }
     }
 
     if (this.preflightedWas !== newPreflights) {
       this.preflightedWas = newPreflights;
       if (newPreflights === "") {
-        this.__view().cancelSubmit(this.el.form);
+        this.__view().cancelSubmit(this.el.form, {
+          reason: "entries-removed",
+          inputs: [this.el],
+        });
       }
     }
 
