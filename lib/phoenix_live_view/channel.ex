@@ -370,13 +370,8 @@ defmodule Phoenix.LiveView.Channel do
       nil -> :noop
     end
 
-    assigns = Map.delete(socket.assigns, :__changed__)
-
-    new_socket =
-      Enum.reduce(assigns, socket, fn {key, val}, socket ->
-        Utils.force_assign(socket, key, val)
-      end)
-
+    new_socket = put_in(socket.assigns.__changed__, nil)
+    state = %{state | components: Diff.force_render_components(state.components)}
     handle_changed(state, new_socket, nil)
   end
 
