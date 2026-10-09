@@ -132,7 +132,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           allowed?: boolean,
           errors: list(),
           ref: String.t(),
-          auto_upload?: boolean(),
+          auto_upload?: boolean() | :if_valid,
           writer: (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
                      {module(), term()}),
           validator: (UploadEntry.t() -> :ok | {:error, atom()}) | nil,
@@ -232,6 +232,24 @@ defmodule Phoenix.LiveView.UploadConfig do
 
         :error ->
           @default_max_entries_mode
+      end
+
+    auto_upload? =
+      case Keyword.fetch(opts, :auto_upload) do
+        {:ok, mode} when mode in [false, true, :if_valid] ->
+          mode
+
+        {:ok, other} ->
+          raise ArgumentError, """
+          invalid :auto_upload value provided to allow_upload.
+
+          Only false, true, and :if_valid are supported (Defaults to false). Got:
+
+          #{inspect(other)}
+          """
+
+        :error ->
+          false
       end
 
     max_file_size =
@@ -359,7 +377,7 @@ defmodule Phoenix.LiveView.UploadConfig do
       progress_event: progress_event,
       writer: writer,
       validator: validator,
-      auto_upload?: Keyword.get(opts, :auto_upload, false),
+      auto_upload?: auto_upload?,
       allowed?: true
     }
   end
