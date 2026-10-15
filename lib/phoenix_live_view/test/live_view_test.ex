@@ -1109,6 +1109,12 @@ defmodule Phoenix.LiveViewTest do
   If a view after calling `with_target/2` or an element
   are given, only that particular context is returned.
 
+  ## Options
+
+    * `:full_document` - when `true`, returns the full HTML document,
+      including the root layout, like the HTML returned by `live/2`.
+      Only supported for views. Defaults to `false`.
+
   ## Examples
 
       {:ok, view, _html} = live(conn, "/thermo")
@@ -1117,12 +1123,29 @@ defmodule Phoenix.LiveViewTest do
       assert view
              |> element("#alarm")
              |> render() == "Snooze"
+
+      assert render(view, full_document: true) =~ "<title>Thermostat</title>"
   """
-  def render(view_or_element) do
-    case render_tree(view_or_element) do
+  def render(view_or_element, opts \\ []) do
+    tree =
+      if Keyword.get(opts, :full_document, false) do
+        render_document(view_or_element)
+      else
+        render_tree(view_or_element)
+      end
+
+    case tree do
       {:error, reason} -> {:error, reason}
       html -> TreeDOM.to_html(html)
     end
+  end
+
+  defp render_document(%View{} = view) do
+    call(view, {:render_document, proxy_topic(view)})
+  end
+
+  defp render_document(%Element{}) do
+    raise ArgumentError, "the :full_document option is only supported for views, not elements"
   end
 
   @doc """

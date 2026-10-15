@@ -337,6 +337,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
+  def handle_info({:sync_render_document, from}, state) do
+    GenServer.reply(from, {:ok, state.html_tree})
+    {:noreply, state}
+  end
+
   def handle_info({:sync_render_event, topic_or_element, type, value, from}, state) do
     {state, result} =
       case topic_or_element do
@@ -592,6 +597,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     ping!(pid, state, fn ->
       send(self(), {:sync_render_element, operation, topic_or_element, from})
+      {:noreply, state}
+    end)
+  end
+
+  def handle_call({:render_document, topic}, from, state) do
+    %{pid: pid} = fetch_view_by_topic!(state, topic)
+
+    ping!(pid, state, fn ->
+      send(self(), {:sync_render_document, from})
       {:noreply, state}
     end)
   end
