@@ -1504,17 +1504,31 @@ export default class LiveSocket {
         );
       }, 100);
     });
+    // Navigation API indexes count every history entry, even those without
+    // a position. currententrychange fires right before popstate.
+    let traversalDelta: number | null = null;
+    if (window.navigation) {
+      window.navigation.addEventListener("currententrychange", (event) => {
+        traversalDelta =
+          event.navigationType === "traverse"
+            ? window.navigation.currentEntry!.index - event.from.index
+            : null;
+      });
+    }
     window.addEventListener(
       "popstate",
       (event) => {
+        const { type, backType, id, scroll, position } = event.state || {};
+        // Without the Navigation API, compare positions to determine direction
+        const delta =
+          traversalDelta ?? (position > this.currentHistoryPosition ? 1 : -1);
+        traversalDelta = null;
         if (!this.isNewLocation(window.location)) {
           return;
         }
-        const { type, backType, id, scroll, position } = event.state || {};
         const href = window.location.href;
 
-        // Compare positions to determine direction
-        const isForward = position > this.currentHistoryPosition;
+        const isForward = delta > 0;
         const navType = isForward ? type : backType || type;
         const direction = isForward ? "forward" : "backward";
         const detail = {
@@ -1527,11 +1541,7 @@ export default class LiveSocket {
         if (!this.dispatchBeforeNavigate(detail)) {
           // Because we only register the new location afterwards,
           // the back / forward popstate event exits early in the isNewLocation check.
-          if (isForward) {
-            history.back();
-          } else {
-            history.forward();
-          }
+          history.go(-delta);
           return;
         }
 
