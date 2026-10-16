@@ -645,5 +645,20 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {404, resp_headers, "Not Found"} = response
       assert %{"set-cookie" => "__phoenix_reload_status__=;" <> _} = Map.new(resp_headers)
     end
+
+    test "4xx reload status cookie is cleared when the request does not render the LiveView",
+         %{conn: conn} do
+      assert {%{reason: "reload", token: token}, _} =
+               catch_exit(live(conn, "/thermo?raise_connected=404"))
+
+      # e.g. an auth plug in the pipeline redirects before reaching the LiveView
+      conn =
+        conn
+        |> put_req_cookie("__phoenix_reload_status__", token)
+        |> get("/not_found")
+
+      assert response(conn, 404) == "404"
+      assert %{max_age: 0} = conn.resp_cookies["__phoenix_reload_status__"]
+    end
   end
 end
