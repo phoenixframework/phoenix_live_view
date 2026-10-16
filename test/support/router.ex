@@ -36,6 +36,7 @@ defmodule Phoenix.LiveViewTest.Support.Router do
     live "/same-child", SameChildLive
     live "/root", RootLive
     live "/opts", OptsLive
+    live "/deps", DepsLive
     live "/shuffle", ShuffleLive
     live "/components", WithComponentLive
     live "/multi-targets", WithMultipleTargets
