@@ -4,6 +4,7 @@ defmodule Phoenix.LiveView.Router do
   """
 
   @cookie_key "__phoenix_flash__"
+  @reload_status_cookie_key "__phoenix_reload_status__"
 
   @doc ~S"""
   Defines a LiveView route.
@@ -345,6 +346,8 @@ defmodule Phoenix.LiveView.Router do
       end
   """
   def fetch_live_flash(%Plug.Conn{} = conn, _opts \\ []) do
+    conn = clear_reload_status(conn)
+
     case cookie_flash(conn) do
       {conn, nil} ->
         Phoenix.Controller.fetch_flash(conn, [])
@@ -487,4 +490,13 @@ defmodule Phoenix.LiveView.Router do
   end
 
   defp cookie_flash(%Plug.Conn{} = conn), do: {conn, nil}
+
+  # The client sets the reload status cookie before reloading the page after a
+  # connected mount failed with a 4xx status. It is meant for that one request,
+  # so we expire it here in case a plug halts before the LiveView consumes it.
+  defp clear_reload_status(%Plug.Conn{req_cookies: %{@reload_status_cookie_key => _}} = conn) do
+    Plug.Conn.delete_resp_cookie(conn, @reload_status_cookie_key)
+  end
+
+  defp clear_reload_status(%Plug.Conn{} = conn), do: conn
 end
