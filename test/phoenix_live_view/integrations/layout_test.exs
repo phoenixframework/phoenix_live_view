@@ -72,6 +72,20 @@ defmodule Phoenix.LiveView.LayoutTest do
              ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
   end
 
+  test "renders full document with root layout", %{conn: conn} do
+    {:ok, view, html} = live(conn, "/layout")
+    assert render(view, full_document: true) == html
+
+    render_click(view, :double)
+    document = render(view, full_document: true)
+    assert document =~ ~r|LAYOUT<div[^>]+>LIVELAYOUTSTART\-246\-The value is: 246\-LIVELAYOUTEND|
+    refute render(view) =~ "LAYOUT<div"
+
+    assert_raise ArgumentError, ~r/only supported for views/, fn ->
+      view |> element("div") |> render(full_document: true)
+    end
+  end
+
   test "uses root page title on first render", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/styled-elements")
     assert page_title(view) == "Styled"
