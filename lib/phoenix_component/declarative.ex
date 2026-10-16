@@ -156,6 +156,8 @@ defmodule Phoenix.Component.Declarative do
 
   @doc false
   defmacro def(expr, body) do
+    body = Phoenix.Component.ChangeTrackBody.maybe_rewrite(expr, body, __CALLER__)
+
     quote do
       Kernel.def(unquote(annotate_def(:def, expr)), unquote(body))
     end
@@ -163,6 +165,8 @@ defmodule Phoenix.Component.Declarative do
 
   @doc false
   defmacro defp(expr, body) do
+    body = Phoenix.Component.ChangeTrackBody.maybe_rewrite(expr, body, __CALLER__)
+
     quote do
       Kernel.defp(unquote(annotate_def(:defp, expr)), unquote(body))
     end
@@ -583,6 +587,34 @@ defmodule Phoenix.Component.Declarative do
   end
 
   @doc false
+  def __assign_globals__(assigns, name, globals, caller_globals) do
+    assigned = Phoenix.Component.assign(assigns, name, globals)
+
+    # Globals are built from the caller's attributes, so assigns never holds a
+    # previous value for assign/3 to compare against. Without this, the global
+    # attribute would be marked as changed on every render.
+    #
+    # So we check the attributes it was built from instead: if none of them
+    # changed, the map did not change either.
+    #
+    # A nil __changed__ means change tracking is off. The engine also sets it to
+    # nil when the caller uses a `{...}` spread that depends on assigns, which is
+    # the only case where the collected keys are not known at compile time. There
+    # is nothing to check then, so we leave the assign as is.
+    case assigns do
+      %{__changed__: changed} when is_map(changed) ->
+        if Enum.any?(caller_globals, fn {key, _value} -> Map.has_key?(changed, key) end) do
+          assigned
+        else
+          %{assigned | __changed__: changed}
+        end
+
+      %{} ->
+        assigned
+    end
+  end
+
+  @doc false
   def __on_definition__(env, kind, name, args, _guards, body) do
     check? = not String.starts_with?(to_string(name), "__")
 
@@ -683,15 +715,29 @@ defmodule Phoenix.Component.Declarative do
           if global_name do
             quote do
               {assigns, caller_globals} = Map.split(assigns, unquote(known_keys))
+              merged = Map.put(unquote(assigns_with_defaults), :__given__, assigns)
 
-              globals =
+              merged =
                 case assigns do
-                  %{unquote(global_name) => explicit_global_assign} -> explicit_global_assign
-                  %{} -> Map.merge(unquote(global_default), caller_globals)
+                  # given as a regular assign, so assign/3 compares it against
+                  # the value the caller passed and tracks it on its own
+                  %{unquote(global_name) => explicit_global_assign} ->
+                    Phoenix.Component.assign(
+                      merged,
+                      unquote(global_name),
+                      explicit_global_assign
+                    )
+
+                  %{} ->
+                    Phoenix.Component.Declarative.__assign_globals__(
+                      merged,
+                      unquote(global_name),
+                      Map.merge(unquote(global_default), caller_globals),
+                      caller_globals
+                    )
                 end
 
-              merged = Map.put(unquote(assigns_with_defaults), :__given__, assigns)
-              super(Phoenix.Component.assign(merged, unquote(global_name), globals))
+              super(merged)
             end
           else
             quote do

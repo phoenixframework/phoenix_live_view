@@ -593,6 +593,10 @@ defmodule Phoenix.LiveComponent do
       `Global Attributes` in `Phoenix.Component` for more information.
   """
   defmacro __using__(opts \\ []) do
+    # taken here rather than passed down to Phoenix.Component, because by then
+    # the options are no longer a literal this macro could read
+    opts = Phoenix.Component.ChangeTrackBody.take_option(__CALLER__, opts)
+
     quote do
       import Phoenix.LiveView
       @behaviour Phoenix.LiveComponent
