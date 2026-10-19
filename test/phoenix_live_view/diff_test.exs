@@ -574,6 +574,27 @@ defmodule Phoenix.LiveView.DiffTest do
     end
   end
 
+  defmodule GlobalAttrsComponent do
+    use Phoenix.Component
+
+    attr :size, :integer, default: 24
+    attr :rest, :global
+
+    def icon(assigns) do
+      ~H"""
+      <svg width={@size} {@rest}></svg>
+      """
+    end
+
+    attr :rest, :global, default: %{class: "default"}
+
+    def icon_with_default(assigns) do
+      ~H"""
+      <svg class={@rest[:class]}></svg>
+      """
+    end
+  end
+
   defmodule TreeComponent do
     use Phoenix.LiveComponent
 
@@ -1098,6 +1119,87 @@ defmodule Phoenix.LiveView.DiffTest do
                0 => %{k: %{0 => %{1 => "1"}, :kc => 1}},
                1 => %{k: %{0 => %{0 => %{0 => %{1 => "1"}}}, :kc => 1}}
              }
+    end
+  end
+
+  describe "global attributes" do
+    defp global_attrs_list(assigns) do
+      ~H"""
+      <GlobalAttrsComponent.icon
+        :for={item <- @items}
+        :key={item.id}
+        size={@size}
+        class={item.class}
+        aria-hidden="true"
+      />
+      """
+    end
+
+    defp global_attrs_if(assigns) do
+      ~H"""
+      <GlobalAttrsComponent.icon :if={@show} size={@size} class="icon" />
+      """
+    end
+
+    defp global_attrs_default(assigns) do
+      ~H"""
+      <GlobalAttrsComponent.icon_with_default class={@class} />
+      """
+    end
+
+    test "are only sent when they change" do
+      items = [%{id: 1, class: "a"}, %{id: 2, class: "b"}]
+      assigns = %{socket: %Socket{}, items: items, size: 24}
+      {_, fingerprints, components} = render(global_attrs_list(assigns))
+
+      assigns = %{socket: %Socket{}, items: items, size: 20, __changed__: %{size: true}}
+
+      {full_render, fingerprints, components} =
+        render(global_attrs_list(assigns), fingerprints, components)
+
+      assert full_render == %{
+               0 => %{
+                 k: %{
+                   0 => %{0 => %{0 => ~s( width="20")}},
+                   1 => %{0 => %{0 => ~s( width="20")}},
+                   :kc => 2
+                 }
+               }
+             }
+
+      items = [%{id: 1, class: "a"}, %{id: 2, class: "c"}]
+      assigns = %{socket: %Socket{}, items: items, size: 20, __changed__: %{items: true}}
+      {full_render, _, _} = render(global_attrs_list(assigns), fingerprints, components)
+
+      assert full_render == %{
+               0 => %{k: %{1 => %{0 => %{1 => ~s( class="c" aria-hidden="true")}}, :kc => 2}}
+             }
+    end
+
+    test "are sent in full when the component is first rendered" do
+      assigns = %{socket: %Socket{}, show: false, size: 24}
+      {_, fingerprints, components} = render(global_attrs_if(assigns))
+
+      assigns = %{socket: %Socket{}, show: true, size: 24, __changed__: %{show: true}}
+      {full_render, _, _} = render(global_attrs_if(assigns), fingerprints, components)
+
+      assert full_render == %{
+               0 => %{
+                 0 => %{0 => ~s( width="24"), 1 => ~s( class="icon"), :s => 0, :r => 1},
+                 :s => 1
+               },
+               :p => %{0 => ["<svg", "", "></svg>"], 1 => ["", ""]}
+             }
+    end
+
+    test "are sent when they change to the default value" do
+      assigns = %{socket: %Socket{}, class: "a"}
+      {_, fingerprints, components} = render(global_attrs_default(assigns))
+
+      assigns = %{socket: %Socket{}, class: "default", __changed__: %{class: true}}
+      {full_render, _, _} = render(global_attrs_default(assigns), fingerprints, components)
+
+      assert full_render == %{0 => %{0 => "default"}}
     end
   end
 
