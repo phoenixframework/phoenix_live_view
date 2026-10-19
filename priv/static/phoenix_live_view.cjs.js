@@ -3881,18 +3881,12 @@ var JS = {
     );
   },
   exec_focus(e, eventType, phxEvent, view, sourceEl, el) {
-    aria_default.attemptFocus(el);
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => aria_default.attemptFocus(el));
-    });
+    this.focusWithRetry(() => aria_default.attemptFocus(el));
   },
   exec_focus_first(e, eventType, phxEvent, view, sourceEl, el) {
-    aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el);
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(
-        () => aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el)
-      );
-    });
+    this.focusWithRetry(
+      () => aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el)
+    );
   },
   exec_push_focus(e, eventType, phxEvent, view, sourceEl, el) {
     if (view.isDestroyed()) {
@@ -3907,11 +3901,19 @@ var JS = {
     const focusEntry = focusStack.pop();
     if (focusEntry) {
       const { el } = focusEntry;
-      el.focus();
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => el.focus());
-      });
+      this.focusWithRetry(() => el.focus());
     }
+  },
+  focusWithRetry(callback) {
+    callback();
+    const activeElement = document.activeElement;
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (document.activeElement === activeElement) {
+          callback();
+        }
+      });
+    });
   },
   dropFocus(view) {
     let dropped = 0;
