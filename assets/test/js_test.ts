@@ -1433,6 +1433,80 @@ describe("JS", () => {
   });
 
   describe("focus", () => {
+    describe.each(["focus", "focus_first", "pop_focus"])("%s retry", (kind) => {
+      let view, target: HTMLInputElement, other: HTMLInputElement;
+      const exec = () => {
+        const to = kind === "focus_first" ? "#parent" : "#target";
+        const commands =
+          kind === "pop_focus"
+            ? [
+                ["push_focus", { to }],
+                ["pop_focus", {}],
+              ]
+            : [[kind, { to }]];
+        JS.exec(event, "click", commands, view, view.el);
+      };
+
+      beforeEach(() => {
+        view = setupView(`
+          <div id="parent">
+            <input id="target" />
+            <input id="other" />
+          </div>
+        `);
+        target = document.querySelector<HTMLInputElement>("#target")!;
+        other = document.querySelector<HTMLInputElement>("#other")!;
+      });
+
+      test.each([0, 1])(
+        "preserves focus moved after %i animation frames",
+        (frames) => {
+          exec();
+          expect(document.activeElement).toBe(target);
+          if (frames === 1) {
+            jest.advanceTimersToNextFrame();
+          }
+          other.focus();
+
+          jest.runAllTimers();
+          expect(document.activeElement).toBe(other);
+        },
+      );
+
+      test("preserves an explicit blur", () => {
+        exec();
+        expect(document.activeElement).toBe(target);
+        target.blur();
+
+        jest.runAllTimers();
+        expect(document.activeElement).toBe(document.body);
+      });
+
+      test("retries a failed initial focus if focus has not moved", () => {
+        other.focus();
+        target.disabled = true;
+        exec();
+        expect(document.activeElement).toBe(other);
+        target.disabled = false;
+
+        jest.runAllTimers();
+        expect(document.activeElement).toBe(target);
+      });
+
+      test("preserves focus moved after a failed initial attempt", () => {
+        target.disabled = true;
+        other.disabled = true;
+        exec();
+        expect(document.activeElement).toBe(document.body);
+        target.disabled = false;
+        other.disabled = false;
+        other.focus();
+
+        jest.runAllTimers();
+        expect(document.activeElement).toBe(other);
+      });
+    });
+
     test("works like a stack", () => {
       const view = setupView(`
       <div id="modal1" tabindex="0" class="modal">modal 1</div>
