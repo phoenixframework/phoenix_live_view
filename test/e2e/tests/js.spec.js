@@ -1,6 +1,45 @@
 import { test, expect } from "../test-fixtures";
 import { syncLV, attributeMutations } from "../utils";
 
+for (const kind of ["focus", "focus_first", "pop_focus"]) {
+  test(`${kind} retries focus after showing a hidden target`, async ({
+    page,
+  }) => {
+    await page.goto("/js");
+    await syncLV(page);
+
+    const initiallyFocused = await page.evaluate((kind) => {
+      const root = document.querySelector("[data-phx-main]");
+      root.insertAdjacentHTML(
+        "beforeend",
+        `<input id="other" />
+         <div id="parent" style="display: none">
+           <input id="target" />
+         </div>`,
+      );
+      document.getElementById("other").focus();
+      const to = kind === "focus_first" ? "#parent" : "#target";
+      const commands = [
+        [
+          "show",
+          { to: "#parent", transition: [["fade-in"], [], []], time: 50 },
+        ],
+        ...(kind === "pop_focus"
+          ? [
+              ["push_focus", { to }],
+              ["pop_focus", {}],
+            ]
+          : [[kind, { to }]]),
+      ];
+      window.liveSocket.execJS(root, JSON.stringify(commands));
+      return document.activeElement.id;
+    }, kind);
+
+    expect(initiallyFocused).toBe("other");
+    await expect(page.locator("#target")).toBeFocused();
+  });
+}
+
 test("toggle_attribute", async ({ page }) => {
   await page.goto("/js");
   await syncLV(page);
