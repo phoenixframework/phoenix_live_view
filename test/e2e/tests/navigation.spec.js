@@ -374,6 +374,69 @@ test("can prevent popstate navigation to an entry pushed by other scripts with b
   await expect(page).toHaveURL("/navigation/b/item-1");
 });
 
+test("can prevent popstate navigation across an iframe entry with before navigate", async ({
+  page,
+}) => {
+  await page.goto("/navigation/a");
+  await syncLV(page);
+
+  await page.getByRole("link", { name: "LiveView B" }).click();
+  await syncLV(page);
+  // the iframe lives outside the LiveView, so it survives live navigation
+  await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const iframe = document.createElement("iframe");
+        iframe.srcdoc = "<p>iframe</p>";
+        iframe.onload = () => {
+          iframe.contentWindow.history.pushState(null, "");
+          resolve();
+        };
+        document.body.appendChild(iframe);
+      }),
+  );
+  await page.getByRole("link", { name: "Item 1", exact: true }).click();
+  await syncLV(page);
+  await expect(page).toHaveURL("/navigation/b/item-1");
+
+  await page.evaluate(() => history.go(-3));
+  await expect(page).toHaveURL("/navigation/a");
+  await syncLV(page);
+
+  await page.evaluate(() => {
+    window.beforeNavigateEvents = [];
+    window.preventNavigation = true;
+    window.addEventListener("phx:before-navigate", (event) => {
+      window.beforeNavigateEvents.push(event.detail);
+      if (window.preventNavigation) {
+        event.preventDefault();
+      }
+    });
+  });
+
+  await page.evaluate(() => history.go(3));
+
+  await expect
+    .poll(() => page.evaluate(() => window.beforeNavigateEvents))
+    .not.toEqual([]);
+  await expect(page).toHaveURL("/navigation/a");
+  expect(await page.evaluate(() => window.beforeNavigateEvents)).toEqual([
+    {
+      href: "http://localhost:4004/navigation/b/item-1",
+      patch: true,
+      pop: true,
+      direction: "forward",
+    },
+  ]);
+
+  // the revert returned to the original entry
+  await page.evaluate(() => {
+    window.preventNavigation = false;
+  });
+  await page.evaluate(() => history.go(3));
+  await expect(page).toHaveURL("/navigation/b/item-1");
+});
+
 test("before navigate does not prevent server-side navigation", async ({
   page,
 }) => {

@@ -1504,31 +1504,29 @@ export default class LiveSocket {
         );
       }, 100);
     });
-    // Navigation API indexes count every history entry, even those without
-    // a position. currententrychange fires right before popstate.
-    let traversalDelta: number | null = null;
+    // The Navigation API also tracks entries without a position, such as
+    // fragments. currententrychange fires right before popstate.
+    let traversedFrom: NavigationHistoryEntry | null = null;
     if (window.navigation) {
       window.navigation.addEventListener("currententrychange", (event) => {
-        traversalDelta =
-          event.navigationType === "traverse"
-            ? window.navigation.currentEntry!.index - event.from.index
-            : null;
+        traversedFrom = event.navigationType === "traverse" ? event.from : null;
       });
     }
     window.addEventListener(
       "popstate",
       (event) => {
-        const { type, backType, id, scroll, position } = event.state || {};
-        // Without the Navigation API, compare positions to determine direction
-        const delta =
-          traversalDelta ?? (position > this.currentHistoryPosition ? 1 : -1);
-        traversalDelta = null;
+        const from = traversedFrom;
+        traversedFrom = null;
         if (!this.isNewLocation(window.location)) {
           return;
         }
+        const { type, backType, id, scroll, position } = event.state || {};
         const href = window.location.href;
 
-        const isForward = delta > 0;
+        // Prefer Navigation API indexes over positions to determine direction
+        const isForward = from
+          ? window.navigation.currentEntry!.index > from.index
+          : position > this.currentHistoryPosition;
         const navType = isForward ? type : backType || type;
         const direction = isForward ? "forward" : "backward";
         const detail = {
@@ -1541,7 +1539,13 @@ export default class LiveSocket {
         if (!this.dispatchBeforeNavigate(detail)) {
           // Because we only register the new location afterwards,
           // the back / forward popstate event exits early in the isNewLocation check.
-          history.go(-delta);
+          if (from) {
+            window.navigation.traverseTo(from.key);
+          } else if (isForward) {
+            history.back();
+          } else {
+            history.forward();
+          }
           return;
         }
 
