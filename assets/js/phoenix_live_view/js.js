@@ -178,23 +178,13 @@ const JS = {
   },
 
   exec_focus(e, eventType, phxEvent, view, sourceEl, el) {
-    ARIA.attemptFocus(el);
-    // in case the JS.focus command is in a JS.show/hide/toggle chain, for show we need
-    // to wait for JS.show to have updated the element's display property (see exec_toggle)
-    // but that run in nested animation frames, therefore we need to use them here as well
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => ARIA.attemptFocus(el));
-    });
+    this.focusWithRetry(() => ARIA.attemptFocus(el));
   },
 
   exec_focus_first(e, eventType, phxEvent, view, sourceEl, el) {
-    ARIA.focusFirstInteractive(el) || ARIA.focusFirst(el);
-    // if you wonder about the nested animation frames, see exec_focus
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(
-        () => ARIA.focusFirstInteractive(el) || ARIA.focusFirst(el),
-      );
-    });
+    this.focusWithRetry(
+      () => ARIA.focusFirstInteractive(el) || ARIA.focusFirst(el),
+    );
   },
 
   exec_push_focus(e, eventType, phxEvent, view, sourceEl, el) {
@@ -211,12 +201,22 @@ const JS = {
     const focusEntry = focusStack.pop();
     if (focusEntry) {
       const { el } = focusEntry;
-      el.focus();
-      // if you wonder about the nested animation frames, see exec_focus
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => el.focus());
-      });
+      this.focusWithRetry(() => el.focus());
     }
+  },
+
+  focusWithRetry(callback) {
+    callback();
+    const activeElement = document.activeElement;
+    // JS.show/hide/toggle may update display in nested animation frames (see exec_toggle).
+    // Retry after those updates, unless focus has moved since the initial attempt.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (document.activeElement === activeElement) {
+          callback();
+        }
+      });
+    });
   },
 
   dropFocus(view) {
