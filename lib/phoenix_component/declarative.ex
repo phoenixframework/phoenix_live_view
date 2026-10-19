@@ -152,6 +152,27 @@ defmodule Phoenix.Component.Declarative do
 
   def __global__?(_), do: false
 
+  @doc false
+  def __assign_globals__(assigns, name, globals, caller_globals) do
+    case assigns do
+      # Without an explicit global attribute, its value is the caller's global
+      # attributes merged into a default fixed at compile time, so in a change
+      # tracked call it only changes when one of those attributes changes. The
+      # previous value is not available here, so it is marked with true.
+      %{__changed__: changed, __given__: given}
+      when is_map(changed) and not is_map_key(given, name) ->
+        changed =
+          if Enum.any?(caller_globals, fn {key, _} -> is_map_key(changed, key) end),
+            do: Map.put(changed, name, true),
+            else: changed
+
+        Map.merge(assigns, %{name => globals, :__changed__ => changed})
+
+      %{} ->
+        Phoenix.Component.assign(assigns, name, globals)
+    end
+  end
+
   ## Def overrides
 
   @doc false
@@ -691,7 +712,15 @@ defmodule Phoenix.Component.Declarative do
                 end
 
               merged = Map.put(unquote(assigns_with_defaults), :__given__, assigns)
-              super(Phoenix.Component.assign(merged, unquote(global_name), globals))
+
+              super(
+                Phoenix.Component.Declarative.__assign_globals__(
+                  merged,
+                  unquote(global_name),
+                  globals,
+                  caller_globals
+                )
+              )
             end
           else
             quote do

@@ -217,6 +217,45 @@ defmodule Phoenix.ComponentRenderingTest do
                [["nil"]]
     end
 
+    attr :foo, :any, default: nil
+    attr :rest, :global
+
+    def changed_with_global(assigns) do
+      ~H"""
+      {inspect(Map.get(assigns, :__changed__), custom_options: [sort_maps: true])}
+      """
+    end
+
+    attr :rest, :global, default: %{class: "default"}
+
+    def changed_with_global_default(assigns) do
+      ~H"""
+      {inspect(Map.get(assigns, :__changed__), custom_options: [sort_maps: true])}
+      """
+    end
+
+    test "with global attributes" do
+      assigns = %{foo: 1, class: "a", __changed__: %{foo: true}}
+      assert eval(~H"<.changed_with_global foo={@foo} class={@class} />") == [["%{foo: true}"]]
+
+      assigns = %{foo: 1, class: "a", __changed__: %{class: true}}
+
+      assert eval(~H"<.changed_with_global foo={@foo} class={@class} />") ==
+               [["%{class: true, rest: true}"]]
+
+      assigns = %{class: "a", __changed__: %{class: true}}
+
+      assert eval(~H"<.changed_with_global_default class={@class} />") ==
+               [["%{class: true, rest: true}"]]
+
+      # Explicit and dynamic globals keep the previous behaviour
+      assert eval(changed_with_global(%{rest: %{class: "a"}, __changed__: %{foo: true}})) ==
+               ["%{foo: true}"]
+
+      assigns = %{foo: 1, attrs: %{class: "a"}, __changed__: %{foo: true}}
+      assert eval(~H"<.changed_with_global foo={@foo} {@attrs} />") == [["nil"]]
+    end
+
     defp wrapper(assigns) do
       ~H"""
       <div>{render_slot(@inner_block)}</div>
