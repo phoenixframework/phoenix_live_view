@@ -115,6 +115,30 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.13 (2026-10-20)
+
+### Bug fixes
+
+* Handle file reader upload error ([#4449](https://github.com/phoenixframework/phoenix_live_view/pull/4449))
+* Fix updates inside a hooked `<svg>` element ([#4456](https://github.com/phoenixframework/phoenix_live_view/issues/4456))
+* Fix unload for submitter `formtarget` ([#4453](https://github.com/phoenixframework/phoenix_live_view/pull/4453))
+* Wait for all ancestor looks before auto upload ([#4454](https://github.com/phoenixframework/phoenix_live_view/pull/4454))
+* Fix form recovery completion ordering ([#4451](https://github.com/phoenixframework/phoenix_live_view/pull/4451))
+* Handle chunk push timeouts in uploads ([#4452](https://github.com/phoenixframework/phoenix_live_view/pull/4452))
+* Respect live link target and download attributes on child clicks ([#4466](https://github.com/phoenixframework/phoenix_live_view/pull/4466))
+* Complete errored uploads and release form loading refs ([#4468](https://github.com/phoenixframework/phoenix_live_view/pull/4468))
+* Clear pending disconnected timer before scheduling another ([#4464](https://github.com/phoenixframework/phoenix_live_view/pull/4464))
+* Clear reload status cookie on next request ([#4475](https://github.com/phoenixframework/phoenix_live_view/pull/4475))
+* Only retry focus if it did not move ([#4480](https://github.com/phoenixframework/phoenix_live_view/pull/4480))
+
+### Enhancements
+
+* Handle outdated or dangling symlinks for colocated assets ([#4450](https://github.com/phoenixframework/phoenix_live_view/pull/4450))
+* Forward LiveView socket options to use Phoenix.Socket ([#4470](https://github.com/phoenixframework/phoenix_live_view/pull/4470))
+* Add diagnostic for blocked upload submits ([#4472](https://github.com/phoenixframework/phoenix_live_view/pull/4472))
+* Document that onDocumentPatch must call start in order ([#4462](https://github.com/phoenixframework/phoenix_live_view/pull/4462))
+* Only mark global attributes as changed when they change ([#4478](https://github.com/phoenixframework/phoenix_live_view/pull/4478))
+
 ## v1.2.12 (2026-09-16)
 
 ### Bug fixes
