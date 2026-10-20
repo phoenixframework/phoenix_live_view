@@ -7733,15 +7733,23 @@ var LiveSocket = class {
         );
       }, 100);
     });
+    let traversedFrom = null;
+    if (window.navigation) {
+      window.navigation.addEventListener("currententrychange", (event) => {
+        traversedFrom = event.navigationType === "traverse" ? event.from : null;
+      });
+    }
     window.addEventListener(
       "popstate",
       (event) => {
+        const from = traversedFrom;
+        traversedFrom = null;
         if (!this.isNewLocation(window.location)) {
           return;
         }
         const { type, backType, id, scroll, position } = event.state || {};
         const href = window.location.href;
-        const isForward = position > this.currentHistoryPosition;
+        const isForward = from ? window.navigation.currentEntry.index > from.index : position > this.currentHistoryPosition;
         const navType = isForward ? type : backType || type;
         const direction = isForward ? "forward" : "backward";
         const detail = {
@@ -7751,7 +7759,9 @@ var LiveSocket = class {
           direction
         };
         if (!this.dispatchBeforeNavigate(detail)) {
-          if (isForward) {
+          if (from) {
+            window.navigation.traverseTo(from.key);
+          } else if (isForward) {
             history.back();
           } else {
             history.forward();
