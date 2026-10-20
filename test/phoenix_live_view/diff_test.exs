@@ -1130,7 +1130,6 @@ defmodule Phoenix.LiveView.DiffTest do
         :key={item.id}
         size={@size}
         class={item.class}
-        aria-hidden="true"
       />
       """
     end
@@ -1171,9 +1170,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assigns = %{socket: %Socket{}, items: items, size: 20, __changed__: %{items: true}}
       {full_render, _, _} = render(global_attrs_list(assigns), fingerprints, components)
 
-      assert full_render == %{
-               0 => %{k: %{1 => %{0 => %{1 => ~s( class="c" aria-hidden="true")}}, :kc => 2}}
-             }
+      assert full_render == %{0 => %{k: %{1 => %{0 => %{1 => ~s( class="c")}}, :kc => 2}}}
     end
 
     test "are sent in full when the component is first rendered" do
