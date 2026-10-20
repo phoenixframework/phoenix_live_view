@@ -143,11 +143,15 @@ var EntryUploader = class {
     if (this.errored) {
       return;
     }
-    this.entry.view.cancelSubmit(this.entry.fileEl.form);
+    this.entry.view.cancelSubmit(this.entry.fileEl.form, {
+      reason: "upload-failed",
+      inputs: [this.entry.fileEl]
+    });
     this.uploadChannel.leave();
     this.errored = true;
     this.chunkTimer != null && clearTimeout(this.chunkTimer);
     if (reason === "writer_error") {
+      this.entry.fail(reason, false);
       return;
     }
     this.entry.error(reason);
@@ -165,21 +169,23 @@ var EntryUploader = class {
       this.offset,
       this.chunkSize + this.offset
     );
+    const onError = () => {
+      this.entry.view.logError(
+        "upload.read-failed",
+        "Read error: " + (reader.error || "aborted"),
+        { entry: this.entry, offset: this.offset }
+      );
+      this.error("failed");
+    };
+    reader.onerror = onError;
+    reader.onabort = onError;
     reader.onload = (e) => {
-      if (e.target?.error === null) {
-        this.offset += /** @type {ArrayBuffer} */
-        e.target.result.byteLength;
-        this.pushChunk(
-          /** @type {ArrayBuffer} */
-          e.target.result
-        );
-      } else {
-        return this.entry.view.logError(
-          "upload.read-failed",
-          "Read error: " + e.target?.error,
-          { entry: this.entry, offset: this.offset }
-        );
-      }
+      this.offset += /** @type {ArrayBuffer} */
+      e.target.result.byteLength;
+      this.pushChunk(
+        /** @type {ArrayBuffer} */
+        e.target.result
+      );
     };
     reader.readAsArrayBuffer(blob);
   }
@@ -195,7 +201,7 @@ var EntryUploader = class {
           this.liveSocket.getLatencySim() || 0
         );
       }
-    }).receive("error", ({ reason }) => this.error(reason));
+    }).receive("error", ({ reason }) => this.error(reason)).receive("timeout", () => this.error("timeout"));
   }
 };
 
@@ -388,12 +394,6 @@ var Browser = {
     const expires = typeof maxAgeSeconds === "number" ? ` max-age=${maxAgeSeconds};` : "";
     document.cookie = `${name}=${value};${expires} path=/`;
   },
-  getCookie(name) {
-    return document.cookie.replace(
-      new RegExp(`(?:(?:^|.*;s*)${name}s*=s*([^;]*).*$)|^.*$`),
-      "$1"
-    );
-  },
   deleteCookie(name) {
     document.cookie = `${name}=; max-age=-1; path=/`;
   },
@@ -487,11 +487,12 @@ var DOM = {
   isPhxDestroyed(node) {
     return node.id && DOM.private(node, "destroyed") ? true : false;
   },
-  wantsNewTab(e) {
+  wantsNewTab(e, el = e.target) {
     const wantsNewTab = e.ctrlKey || e.shiftKey || e.metaKey || e.button && e.button === 1;
-    const isDownload = e.target instanceof HTMLAnchorElement && e.target.hasAttribute("download");
-    const isTargetBlank = e.target.hasAttribute("target") && e.target.getAttribute("target").toLowerCase() === "_blank";
-    const isTargetNamedTab = e.target.hasAttribute("target") && !e.target.getAttribute("target").startsWith("_");
+    const isDownload = el instanceof HTMLAnchorElement && el.hasAttribute("download");
+    const target = e.submitter && e.submitter.hasAttribute("formtarget") ? e.submitter.getAttribute("formtarget") : el.getAttribute("target");
+    const isTargetBlank = target !== null && target.toLowerCase() === "_blank";
+    const isTargetNamedTab = target !== null && target !== "" && !target.startsWith("_");
     return wantsNewTab || isTargetBlank || isDownload || isTargetNamedTab;
   },
   isUnloadableFormSubmit(e) {
@@ -1039,6 +1040,7 @@ var UploadEntry = class {
     this.meta = null;
     this._isCancelled = false;
     this._isDone = false;
+    this._isErrored = false;
     this._progress = 0;
     this._lastProgressSent = -1;
     this._onCancel = function() {
@@ -1086,11 +1088,10 @@ var UploadEntry = class {
     return this._isDone;
   }
   error(reason = "failed") {
-    this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
-    this.view.pushFileProgress(this.fileEl, this.ref, { error: reason });
-    if (!this.isAutoUpload()) {
-      LiveUploader.clearFiles(this.fileEl);
-    }
+    this.fail(reason, true);
+  }
+  isErrored() {
+    return this._isErrored;
   }
   isAutoUpload() {
     return this.autoUpload;
@@ -1103,8 +1104,30 @@ var UploadEntry = class {
     }
   }
   //private
+  // notifyServer is false when the server already recorded the failure,
+  // for example for upload writer errors
+  fail(reason, notifyServer) {
+    if (this._isErrored) {
+      return;
+    }
+    this._isErrored = true;
+    this._isDone = true;
+    this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
+    try {
+      if (notifyServer) {
+        this.view.pushFileProgress(this.fileEl, this.ref, { error: reason });
+      }
+      if (!this.isAutoUpload()) {
+        LiveUploader.clearFiles(this.fileEl);
+      }
+    } finally {
+      this._onDone();
+    }
+  }
   onDone(callback) {
     this._onDone = () => {
+      this._onDone = function() {
+      };
       this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
       callback();
     };
@@ -1185,8 +1208,8 @@ var LiveUploader = class _LiveUploader {
     });
     return active > 0;
   }
-  static hasUploadErrors(formEl) {
-    return dom_default.findUploadInputs(formEl).some(
+  static inputsWithUploadErrors(formEl) {
+    return dom_default.findUploadInputs(formEl).filter(
       (input) => (input.getAttribute(PHX_ERROR_REFS) || "") !== ""
     );
   }
@@ -1601,13 +1624,19 @@ var LiveFileUpload = {
     if (this.errorRefsWas !== newErrorRefs) {
       this.errorRefsWas = newErrorRefs;
       if (newErrorRefs !== "") {
-        this.__view().cancelSubmit(this.el.form);
+        this.__view().cancelSubmit(this.el.form, {
+          reason: "entry-errors",
+          inputs: [this.el]
+        });
       }
     }
     if (this.preflightedWas !== newPreflights) {
       this.preflightedWas = newPreflights;
       if (newPreflights === "") {
-        this.__view().cancelSubmit(this.el.form);
+        this.__view().cancelSubmit(this.el.form, {
+          reason: "entries-removed",
+          inputs: [this.el]
+        });
       }
     }
     if (this.activeRefs() === "") {
@@ -1666,20 +1695,21 @@ var Hooks = {
 var hooks_default = Hooks;
 
 // js/phoenix_live_view/element_ref.ts
-var ElementRef = class {
+var ElementRef = class _ElementRef {
   static onUnlock(el, callback) {
     const closestLock = el.closest(`[${PHX_REF_LOCK}]`);
     if (!closestLock) {
       return callback();
     }
     const ref = closestLock.getAttribute(PHX_REF_LOCK);
-    closestLock.addEventListener(
-      `phx:undo-lock:${ref}`,
-      () => {
-        callback();
-      },
-      { once: true }
-    );
+    const event = `phx:undo-lock:${ref}`;
+    const onUnlock = (e) => {
+      if (e.target !== closestLock)
+        return;
+      closestLock.removeEventListener(event, onUnlock);
+      _ElementRef.onUnlock(el, callback);
+    };
+    closestLock.addEventListener(event, onUnlock);
   }
   constructor(el) {
     this.el = el;
@@ -2222,7 +2252,7 @@ function morphdomFactory(morphAttrs2) {
         var beforeUpdateResult = onBeforeElUpdated(fromEl, toEl);
         if (beforeUpdateResult === false) {
           return;
-        } else if (beforeUpdateResult instanceof HTMLElement) {
+        } else if (beforeUpdateResult instanceof Element) {
           fromEl = beforeUpdateResult;
           indexTree(fromEl);
         }
@@ -3820,18 +3850,12 @@ var JS = {
     );
   },
   exec_focus(e, eventType, phxEvent, view, sourceEl, el) {
-    aria_default.attemptFocus(el);
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => aria_default.attemptFocus(el));
-    });
+    this.focusWithRetry(() => aria_default.attemptFocus(el));
   },
   exec_focus_first(e, eventType, phxEvent, view, sourceEl, el) {
-    aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el);
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(
-        () => aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el)
-      );
-    });
+    this.focusWithRetry(
+      () => aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el)
+    );
   },
   exec_push_focus(e, eventType, phxEvent, view, sourceEl, el) {
     if (view.isDestroyed()) {
@@ -3846,11 +3870,19 @@ var JS = {
     const focusEntry = focusStack.pop();
     if (focusEntry) {
       const { el } = focusEntry;
-      el.focus();
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => el.focus());
-      });
+      this.focusWithRetry(() => el.focus());
     }
+  },
+  focusWithRetry(callback) {
+    callback();
+    const activeElement = document.activeElement;
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (document.activeElement === activeElement) {
+          callback();
+        }
+      });
+    });
   },
   dropFocus(view) {
     let dropped = 0;
@@ -4731,6 +4763,7 @@ var View = class _View {
   hideLoader() {
     this.loaderTimer != null && clearTimeout(this.loaderTimer);
     this.disconnectedTimer != null && clearTimeout(this.disconnectedTimer);
+    this.disconnectedTimer = null;
     this.setContainerClasses(PHX_CONNECTED_CLASS);
     this.execAll(this.binding("connected"));
   }
@@ -5139,7 +5172,8 @@ var View = class _View {
     if (formsToRecover.length === 0) {
       return callback();
     }
-    formsToRecover.forEach(([oldForm, newForm], i) => {
+    let formsRecovered = 0;
+    formsToRecover.forEach(([oldForm, newForm]) => {
       this.pendingForms.add(newForm.id);
       this.pushFormRecovery(
         oldForm,
@@ -5147,7 +5181,8 @@ var View = class _View {
         template.content.firstElementChild,
         () => {
           this.pendingForms.delete(newForm.id);
-          if (i === formsToRecover.length - 1) {
+          formsRecovered++;
+          if (formsRecovered === formsToRecover.length) {
             callback();
           }
         }
@@ -5610,7 +5645,11 @@ var View = class _View {
     this.delayedDisconnected();
   }
   delayedDisconnected() {
+    if (this.disconnectedTimer != null) {
+      return;
+    }
     this.disconnectedTimer = setTimeout(() => {
+      this.disconnectedTimer = null;
       this.execAll(this.binding("disconnected"));
     }, this.liveSocket.disconnectedTimeout);
   }
@@ -6165,13 +6204,14 @@ var View = class _View {
                 inputEl.form,
                 phxEvent,
                 targetCtx,
-                ref,
-                cid,
                 (_uploads) => {
                   callback && callback(result.resp);
-                  this.triggerAwaitingSubmit(inputEl.form, phxEvent);
+                  this.triggerAwaitingSubmit(inputEl.form);
                   this.undoRefs(ref, phxEvent);
-                }
+                },
+                // the change event itself was delivered, so there is no
+                // submit to report; only release the form
+                () => this.undoRefs(ref, phxEvent)
               );
             }
           });
@@ -6192,11 +6232,11 @@ var View = class _View {
       }
     });
   }
-  triggerAwaitingSubmit(formEl, phxEvent) {
+  triggerAwaitingSubmit(formEl) {
     const awaitingSubmit = this.getScheduledSubmit(formEl);
     if (awaitingSubmit) {
       const [_el, _ref, _opts, callback] = awaitingSubmit;
-      this.cancelSubmit(formEl, phxEvent);
+      this.cancelSubmit(formEl);
       callback();
     }
   }
@@ -6205,16 +6245,53 @@ var View = class _View {
       ([el, _ref, _opts, _callback]) => el.isSameNode(formEl)
     );
   }
-  scheduleSubmit(formEl, ref, opts, callback) {
+  scheduleSubmit(formEl, ref, opts, callback, phxEvent) {
     if (this.getScheduledSubmit(formEl)) {
       return true;
     }
-    this.formSubmits.push([formEl, ref, opts, callback]);
+    this.formSubmits.push([formEl, ref, opts, callback, phxEvent]);
   }
-  cancelSubmit(formEl, phxEvent) {
+  // a submit is intentionally dropped when its uploads cannot complete, but
+  // without a signal the click looks like a no-op to the developer, so we
+  // emit a debug diagnostic naming the uploads and why the submit was not sent
+  logBlockedSubmit(formEl, phxEvent, reason, inputs, scheduled = false) {
+    const uploads = inputs.map((input) => input.name);
+    const what = scheduled ? `scheduled ${phxEvent}` : phxEvent;
+    this.log(
+      "upload",
+      () => [
+        `${what} not sent (${reason}): ${uploads.join(", ")}`,
+        { reason, uploads }
+      ],
+      {
+        code: "upload.submit-blocked",
+        metadata: () => ({
+          event: phxEvent,
+          reason,
+          uploads,
+          scheduled,
+          formEl
+        })
+      }
+    );
+  }
+  // cancels the submit scheduled while uploads were in progress, if any, and
+  // undoes its refs. `blocked` says why the submit is dropped for good; it is
+  // omitted when the scheduled submit is dequeued to be sent (see
+  // triggerAwaitingSubmit)
+  cancelSubmit(formEl, blocked) {
     this.formSubmits = this.formSubmits.filter(
-      ([el, ref, _opts, _callback]) => {
+      ([el, ref, _opts, _callback, phxEvent]) => {
         if (el.isSameNode(formEl)) {
+          if (blocked) {
+            this.logBlockedSubmit(
+              formEl,
+              phxEvent,
+              blocked.reason,
+              blocked.inputs,
+              true
+            );
+          }
           this.undoRefs(ref, phxEvent);
           return false;
         } else {
@@ -6271,8 +6348,10 @@ var View = class _View {
     });
     dom_default.putPrivate(formEl, "submitter", submitter);
     const cid = this.targetComponentID(formEl, targetCtx);
-    if (LiveUploader.hasUploadErrors(formEl)) {
-      return this.cancelSubmit(formEl, phxEvent);
+    const inputsWithErrors = LiveUploader.inputsWithUploadErrors(formEl);
+    if (inputsWithErrors.length > 0) {
+      this.logBlockedSubmit(formEl, phxEvent, "entry-errors", inputsWithErrors);
+      return this.cancelSubmit(formEl);
     } else if (LiveUploader.hasUploadsInProgress(formEl)) {
       const [ref, _els] = refGenerator();
       const push = () => this.pushFormSubmit(
@@ -6283,39 +6362,50 @@ var View = class _View {
         opts,
         onReply
       );
-      return this.scheduleSubmit(formEl, ref, opts, push);
+      return this.scheduleSubmit(formEl, ref, opts, push, phxEvent);
     } else if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
       const [ref, els] = refGenerator();
       const proxyRefGen = () => [ref, els, opts];
-      this.uploadFiles(formEl, phxEvent, targetCtx, ref, cid, (_uploads) => {
-        if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
-          return this.undoRefs(ref, phxEvent);
-        }
-        const meta = this.extractMeta(formEl, {}, opts.value);
-        const formData = this.serializeForm(formEl, { submitter });
-        this.pushWithReply(proxyRefGen, "event", {
-          type: "form",
-          event: phxEvent,
-          value: formData,
-          meta,
-          cid
-        }).then((result) => {
-          if (result.type === "ok") {
-            onReply(result.resp);
-          } else {
-            this.logError(
-              "event.submit-push-failed",
-              "Failed to push form submit",
-              {
-                error: result.error,
-                phxEvent,
-                formEl
-              },
-              result.context
-            );
+      const onBlocked = (reason, inputs) => {
+        this.logBlockedSubmit(formEl, phxEvent, reason, inputs);
+        this.undoRefs(ref, phxEvent);
+      };
+      this.uploadFiles(
+        formEl,
+        phxEvent,
+        targetCtx,
+        (_uploads) => {
+          const awaitingPreflight = LiveUploader.inputsAwaitingPreflight(formEl);
+          if (awaitingPreflight.length > 0) {
+            return onBlocked("awaiting-preflight", awaitingPreflight);
           }
-        });
-      });
+          const meta = this.extractMeta(formEl, {}, opts.value);
+          const formData = this.serializeForm(formEl, { submitter });
+          this.pushWithReply(proxyRefGen, "event", {
+            type: "form",
+            event: phxEvent,
+            value: formData,
+            meta,
+            cid
+          }).then((result) => {
+            if (result.type === "ok") {
+              onReply(result.resp);
+            } else {
+              this.logError(
+                "event.submit-push-failed",
+                "Failed to push form submit",
+                {
+                  error: result.error,
+                  phxEvent,
+                  formEl
+                },
+                result.context
+              );
+            }
+          });
+        },
+        onBlocked
+      );
     } else if (!(formEl.hasAttribute(PHX_REF_SRC) && formEl.classList.contains("phx-submit-loading"))) {
       const meta = this.extractMeta(formEl, {}, opts.value);
       const formData = this.serializeForm(formEl, { submitter });
@@ -6343,23 +6433,50 @@ var View = class _View {
       });
     }
   }
-  uploadFiles(formEl, phxEvent, targetCtx, ref, cid, onComplete) {
+  // onComplete is called once the uploads of every input are done; onBlocked
+  // is called instead when a preflight was rejected or failed, or an upload
+  // failed, with the reason and the inputs involved. The caller is responsible
+  // for releasing the form. When inputs are blocked for different reasons, the
+  // first reason seen is reported with its inputs; the others have their own
+  // logs.
+  uploadFiles(formEl, phxEvent, targetCtx, onComplete, onBlocked) {
     const joinCountAtUpload = this.joinCount;
     const inputEls = LiveUploader.activeFileInputs(formEl);
     let numFileInputsInProgress = inputEls.length;
+    const blocked = [];
+    const inputBlocked = (reason, inputEl) => {
+      const group = blocked.find((b) => b.reason === reason);
+      if (group) {
+        group.inputs.push(inputEl);
+      } else {
+        blocked.push({ reason, inputs: [inputEl] });
+      }
+    };
+    const inputDone = () => {
+      numFileInputsInProgress--;
+      if (numFileInputsInProgress > 0) {
+        return;
+      }
+      if (blocked.length > 0) {
+        this.cancelSubmit(formEl, blocked[0]);
+        onBlocked(blocked[0].reason, blocked[0].inputs);
+      } else {
+        onComplete();
+      }
+    };
     inputEls.forEach((inputEl) => {
       const uploader = new LiveUploader(inputEl, this, () => {
         this.activeUploaders.delete(uploader);
-        numFileInputsInProgress--;
-        if (numFileInputsInProgress === 0) {
-          onComplete();
+        if (uploader.entries().some((entry) => entry.isErrored())) {
+          inputBlocked("upload-failed", inputEl);
         }
+        inputDone();
       });
       this.activeUploaders.add(uploader);
       const entries = uploader.entries().map((entry) => entry.toPreflightPayload());
       if (entries.length === 0) {
         this.activeUploaders.delete(uploader);
-        numFileInputsInProgress--;
+        inputDone();
         return;
       }
       const payload = {
@@ -6387,12 +6504,13 @@ var View = class _View {
             }
           });
           if (result.resp.error || Object.keys(result.resp.entries).length === 0) {
-            this.undoRefs(ref, phxEvent);
             const errors = result.resp.error || [];
             errors.map(([entry_ref, reason]) => {
               this.handleFailedEntryPreflight(entry_ref, reason, uploader);
             });
             this.activeUploaders.delete(uploader);
+            inputBlocked("preflight-rejected", inputEl);
+            inputDone();
           } else {
             const onError = (callback) => {
               this.channel.onError(() => {
@@ -6404,6 +6522,7 @@ var View = class _View {
             uploader.initAdapterUpload(result.resp, onError, this.liveSocket);
           }
         } else {
+          uploader.cancel();
           this.activeUploaders.delete(uploader);
           this.logError(
             "upload.push-failed",
@@ -6415,6 +6534,8 @@ var View = class _View {
             },
             result.context
           );
+          inputBlocked("preflight-failed", inputEl);
+          inputDone();
         }
       });
     });
@@ -7669,7 +7790,7 @@ var LiveSocket = class {
           PHX_LIVE_LINK
         );
         const type = target && target.getAttribute(PHX_LIVE_LINK);
-        if (!type || !this.isConnected() || !this.main || dom_default.wantsNewTab(e)) {
+        if (!type || !this.isConnected() || !this.main || dom_default.wantsNewTab(e, target)) {
           return;
         }
         const href = target.href instanceof SVGAnimatedString ? target.href.baseVal : target.href;
