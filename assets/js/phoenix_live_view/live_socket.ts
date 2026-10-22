@@ -109,6 +109,12 @@ export interface LiveSocketOptions {
   loaderTimeout?: number;
   /** Delay in milliseconds before executing phx-disconnected commands. */
   disconnectedTimeout?: number;
+  /**
+   * Whether LiveViews that opt in with `use Phoenix.LiveView, resumable: true` are
+   * resumed after the connection was lost, instead of being mounted again.
+   * Requires a phoenix.js version that supports resumable channels.
+   */
+  resumable?: boolean;
   /** Maximum reloads before entering failsafe mode. */
   maxReloads?: number;
   /** Minimum time between normal reload attempts. */

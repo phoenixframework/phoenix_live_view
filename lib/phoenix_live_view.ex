@@ -421,6 +421,16 @@ defmodule Phoenix.LiveView do
     * `:log` - configures the log level for the LiveView, either `false`
       or a log level
 
+    * `:resumable` - when `true`, the LiveView survives a lost connection for a
+      while and the client resumes it when it reconnects, instead of mounting it
+      again. Requires `resume: true` in the websocket options of the
+      `Phoenix.LiveView.Socket` and `resumable: true` in the `LiveSocket`
+      options. Only affects WebSocket connections: with long polling, every
+      LiveView survives a lost connection as long as the long poll session
+      does. The diffs sent within the resume timeout are kept for the client,
+      so LiveViews that send a lot of data should either not be resumable or
+      use a socket with a lower timeout. Defaults to `false`
+
   """
 
   defmacro __using__(opts) do
@@ -508,7 +518,8 @@ defmodule Phoenix.LiveView do
       kind: :view,
       layout: layout,
       lifecycle: Phoenix.LiveView.Lifecycle.build(on_mount),
-      log: log
+      log: log,
+      resumable: Keyword.get(opts, :resumable, false)
     }
   end
 

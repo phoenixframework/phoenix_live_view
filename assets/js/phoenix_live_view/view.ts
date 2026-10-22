@@ -1221,6 +1221,12 @@ export default class View {
     this.onChannel("live_redirect", (redir) => this.onLiveRedirect(redir));
     this.channel.onError((reason) => this.onError(reason));
     this.channel.onClose((reason) => this.onClose(reason));
+    // resumable channels require a phoenix.js version that supports them
+    const channel = this.channel as any;
+    if (typeof channel.onSuspend === "function") {
+      channel.onSuspend((reason) => this.onSuspend(reason));
+      channel.onResume(() => this.onResume());
+    }
   }
 
   destroyAllChildren() {
@@ -1441,6 +1447,31 @@ export default class View {
         );
       }
     }
+  }
+
+  // The connection was lost, but the server keeps the LiveView for a while and we
+  // resume it when we reconnect, so unlike onError we keep children and hooks.
+  onSuspend(reason) {
+    if (this.isDestroyed()) {
+      return;
+    }
+    this.displayError(
+      [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_CLIENT_ERROR_CLASS],
+      { unstructuredError: reason, errorKind: "client" },
+    );
+  }
+
+  onResume() {
+    if (this.isDestroyed()) {
+      return;
+    }
+    if (this.isMain()) {
+      DOM.dispatchEvent(window, "phx:page-loading-stop", {
+        detail: { to: this.href, kind: "error" },
+      });
+    }
+    this.hideLoader();
+    this.triggerReconnected();
   }
 
   displayError(classes, details = {}) {

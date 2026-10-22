@@ -115,6 +115,24 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, {:shutdown, :closed}, state}
   end
 
+  # See Phoenix.Socket.ResumeSession in Phoenix. The session becomes our transport,
+  # or the connection it releases us to.
+  def handle_info({:socket_handover, session, serializer}, %{socket: socket} = state) do
+    %{transport_pid: old_transport} = socket
+    Process.demonitor(Process.get(:"$phx_transport_ref"), [:flush])
+    send(old_transport, {:socket_handed_over, self()})
+    Process.put(:"$phx_transport_ref", Process.monitor(session))
+    Process.put(:"$phx_transport_pid", session)
+    # a released channel keeps dropping the messages it has seen
+    Process.put(:"$phx_last_ref", Process.get(:"$phx_last_ref") || 0)
+
+    if Process.get(:"$callers") == [old_transport] do
+      Process.put(:"$callers", [session])
+    end
+
+    {:noreply, %{state | socket: %{socket | transport_pid: session}, serializer: serializer}}
+  end
+
   def handle_info({:DOWN, _, _, parent, reason}, %{socket: %{parent_pid: parent}} = state) do
     send(state.socket.transport_pid, {:socket_close, self(), reason})
     {:stop, {:shutdown, :parent_exited}, state}
@@ -125,7 +143,9 @@ defmodule Phoenix.LiveView.Channel do
       {:ok, {ref, entry_ref, cid}} ->
         # :shutdown is what Phoenix.Channel.Server exits with when join/3 replies
         # with an error, which the upload channel does on a writer init/1 failure
-        if reason in [:normal, :shutdown, {:shutdown, :closed}] do
+        # an upload channel stops with the reason of its transport, which can be any
+        # {:shutdown, _}, and it must not stop a resumable LiveView when the connection drops
+        if reason in [:normal, :shutdown] or match?({:shutdown, _}, reason) do
           new_state =
             state
             |> drop_upload_pid(pid)
@@ -148,116 +168,8 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, {:shutdown, :draining}, state}
   end
 
-  def handle_info(%Message{topic: topic, event: "phx_leave"} = msg, %{topic: topic} = state) do
-    send(state.socket.transport_pid, {:socket_close, self(), {:shutdown, :left}})
-    reply(state, msg.ref, :ok, %{})
-    {:stop, {:shutdown, :left}, state}
-  end
-
-  def handle_info(%Message{topic: topic, event: "live_patch"} = msg, %{topic: topic} = state) do
-    %{socket: socket} = state
-    %{view: view} = socket
-    %{"url" => url} = msg.payload
-
-    case Route.live_link_info!(socket, view, url) do
-      {:internal, %Route{params: params, action: action}} ->
-        socket = socket |> assign_action(action) |> Utils.clear_flash()
-
-        socket
-        |> Utils.call_handle_params!(view, params, url)
-        |> handle_result({:handle_params, 3, msg.ref}, state)
-
-      {:external, _uri} ->
-        {:noreply, reply(state, msg.ref, :ok, %{link_redirect: true})}
-    end
-  end
-
-  def handle_info(
-        %Message{topic: topic, event: "cids_will_destroy"} = msg,
-        %{topic: topic} = state
-      ) do
-    %{"cids" => cids} = msg.payload
-
-    new_components =
-      Enum.reduce(cids, state.components, fn cid, acc ->
-        Diff.mark_for_deletion_component(cid, acc)
-      end)
-
-    {:noreply, reply(%{state | components: new_components}, msg.ref, :ok, %{})}
-  end
-
-  def handle_info(%Message{topic: topic, event: "progress"} = msg, %{topic: topic} = state) do
-    cid = msg.payload["cid"]
-
-    new_state =
-      write_socket(state, cid, msg.ref, fn socket, _ ->
-        %{"ref" => ref, "entry_ref" => entry_ref, "progress" => progress} = msg.payload
-        new_socket = Upload.update_progress(socket, ref, entry_ref, progress)
-        upload_conf = Upload.get_upload_by_ref!(new_socket, ref)
-        entry = UploadConfig.get_entry_by_ref(upload_conf, entry_ref)
-
-        new_socket = run_progress_event(upload_conf, entry, new_socket)
-
-        {new_socket, {:ok, {msg.ref, %{}}, state}}
-      end)
-
-    {:noreply, new_state}
-  end
-
-  def handle_info(%Message{topic: topic, event: "allow_upload"} = msg, %{topic: topic} = state) do
-    %{"ref" => upload_ref, "entries" => entries} = payload = msg.payload
-    cid = payload["cid"]
-
-    new_state =
-      write_socket(state, cid, msg.ref, fn socket, _ ->
-        socket = Upload.register_cid(socket, upload_ref, cid)
-        conf = Upload.get_upload_by_ref!(socket, upload_ref)
-        ensure_unique_upload_name!(state, conf)
-
-        {ok_or_error, reply, %Socket{} = new_socket} =
-          with {:ok, new_socket} <- Upload.put_entries(socket, conf, entries, cid) do
-            refs = Enum.map(entries, fn %{"ref" => ref} -> ref end)
-            Upload.generate_preflight_response(new_socket, conf.name, cid, refs)
-          end
-
-        new_upload_names =
-          case ok_or_error do
-            :ok -> Map.put(state.upload_names, conf.name, {upload_ref, cid})
-            _ -> state.upload_names
-          end
-
-        {new_socket, {:ok, {msg.ref, reply}, %{state | upload_names: new_upload_names}}}
-      end)
-
-    {:noreply, new_state}
-  end
-
-  def handle_info(
-        %Message{topic: topic, event: "cids_destroyed"} = msg,
-        %{topic: topic} = state
-      ) do
-    %{"cids" => cids} = msg.payload
-    {deleted_cids, new_state} = delete_components(state, cids)
-    {:noreply, reply(new_state, msg.ref, :ok, %{cids: deleted_cids})}
-  end
-
-  def handle_info(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do
-    %{"value" => raw_val, "event" => event, "type" => type} = payload = msg.payload
-    val = decode_event_type(type, raw_val, msg.payload)
-
-    if cid = msg.payload["cid"] do
-      component_handle(state, cid, msg.ref, fn component_socket, component ->
-        component_socket
-        |> maybe_update_uploads(payload)
-        |> inner_component_handle_event(component, event, val)
-      end)
-    else
-      new_state = %{state | socket: maybe_update_uploads(state.socket, msg.payload)}
-
-      new_state.socket
-      |> view_handle_event(event, val)
-      |> handle_result({:handle_event, 3, msg.ref}, new_state)
-    end
+  def handle_info(%Message{topic: topic, ref: ref} = msg, %{topic: topic} = state) do
+    if duplicate_ref?(ref), do: {:noreply, state}, else: handle_message(msg, state)
   end
 
   def handle_info({@prefix, :async_result, {kind, info}}, state) do
@@ -396,6 +308,144 @@ defmodule Phoenix.LiveView.Channel do
     msg
     |> view_handle_info(socket)
     |> handle_result({:handle_info, 2, nil}, state)
+  end
+
+  defp handle_message(%Message{topic: topic, event: "phx_leave"} = msg, %{topic: topic} = state) do
+    send(state.socket.transport_pid, {:socket_close, self(), {:shutdown, :left}})
+    reply(state, msg.ref, :ok, %{})
+    {:stop, {:shutdown, :left}, state}
+  end
+
+  defp handle_message(%Message{topic: topic, event: "live_patch"} = msg, %{topic: topic} = state) do
+    %{socket: socket} = state
+    %{view: view} = socket
+    %{"url" => url} = msg.payload
+
+    case Route.live_link_info!(socket, view, url) do
+      {:internal, %Route{params: params, action: action}} ->
+        socket = socket |> assign_action(action) |> Utils.clear_flash()
+
+        socket
+        |> Utils.call_handle_params!(view, params, url)
+        |> handle_result({:handle_params, 3, msg.ref}, state)
+
+      {:external, _uri} ->
+        {:noreply, reply(state, msg.ref, :ok, %{link_redirect: true})}
+    end
+  end
+
+  defp handle_message(
+         %Message{topic: topic, event: "cids_will_destroy"} = msg,
+         %{topic: topic} = state
+       ) do
+    %{"cids" => cids} = msg.payload
+
+    new_components =
+      Enum.reduce(cids, state.components, fn cid, acc ->
+        Diff.mark_for_deletion_component(cid, acc)
+      end)
+
+    {:noreply, reply(%{state | components: new_components}, msg.ref, :ok, %{})}
+  end
+
+  defp handle_message(%Message{topic: topic, event: "progress"} = msg, %{topic: topic} = state) do
+    cid = msg.payload["cid"]
+
+    new_state =
+      write_socket(state, cid, msg.ref, fn socket, _ ->
+        %{"ref" => ref, "entry_ref" => entry_ref, "progress" => progress} = msg.payload
+        new_socket = Upload.update_progress(socket, ref, entry_ref, progress)
+        upload_conf = Upload.get_upload_by_ref!(new_socket, ref)
+        entry = UploadConfig.get_entry_by_ref(upload_conf, entry_ref)
+
+        new_socket = run_progress_event(upload_conf, entry, new_socket)
+
+        {new_socket, {:ok, {msg.ref, %{}}, state}}
+      end)
+
+    {:noreply, new_state}
+  end
+
+  defp handle_message(
+         %Message{topic: topic, event: "allow_upload"} = msg,
+         %{topic: topic} = state
+       ) do
+    %{"ref" => upload_ref, "entries" => entries} = payload = msg.payload
+    cid = payload["cid"]
+
+    new_state =
+      write_socket(state, cid, msg.ref, fn socket, _ ->
+        socket = Upload.register_cid(socket, upload_ref, cid)
+        conf = Upload.get_upload_by_ref!(socket, upload_ref)
+        ensure_unique_upload_name!(state, conf)
+
+        {ok_or_error, reply, %Socket{} = new_socket} =
+          with {:ok, new_socket} <- Upload.put_entries(socket, conf, entries, cid) do
+            refs = Enum.map(entries, fn %{"ref" => ref} -> ref end)
+            Upload.generate_preflight_response(new_socket, conf.name, cid, refs)
+          end
+
+        new_upload_names =
+          case ok_or_error do
+            :ok -> Map.put(state.upload_names, conf.name, {upload_ref, cid})
+            _ -> state.upload_names
+          end
+
+        {new_socket, {:ok, {msg.ref, reply}, %{state | upload_names: new_upload_names}}}
+      end)
+
+    {:noreply, new_state}
+  end
+
+  defp handle_message(
+         %Message{topic: topic, event: "cids_destroyed"} = msg,
+         %{topic: topic} = state
+       ) do
+    %{"cids" => cids} = msg.payload
+    {deleted_cids, new_state} = delete_components(state, cids)
+    {:noreply, reply(new_state, msg.ref, :ok, %{cids: deleted_cids})}
+  end
+
+  defp handle_message(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do
+    %{"value" => raw_val, "event" => event, "type" => type} = payload = msg.payload
+    val = decode_event_type(type, raw_val, msg.payload)
+
+    if cid = msg.payload["cid"] do
+      component_handle(state, cid, msg.ref, fn component_socket, component ->
+        component_socket
+        |> maybe_update_uploads(payload)
+        |> inner_component_handle_event(component, event, val)
+      end)
+    else
+      new_state = %{state | socket: maybe_update_uploads(state.socket, msg.payload)}
+
+      new_state.socket
+      |> view_handle_event(event, val)
+      |> handle_result({:handle_event, 3, msg.ref}, new_state)
+    end
+  end
+
+  defp handle_message(msg, %{socket: socket} = state) do
+    msg
+    |> view_handle_info(socket)
+    |> handle_result({:handle_info, 2, nil}, state)
+  end
+
+  # Once resumable, the client resends messages it did not get a reply for after resuming.
+  # Refs only grow on the client, so we drop the ones we have seen already.
+  defp duplicate_ref?(ref) do
+    with last when is_integer(last) <- Process.get(:"$phx_last_ref"),
+         true <- is_binary(ref),
+         {ref, ""} <- Integer.parse(ref) do
+      if ref <= last do
+        true
+      else
+        Process.put(:"$phx_last_ref", ref)
+        false
+      end
+    else
+      _ -> false
+    end
   end
 
   defp handle_noop({%Phoenix.LiveComponent.CID{cid: cid}, _}) do
@@ -1320,7 +1370,7 @@ defmodule Phoenix.LiveView.Channel do
     # connect_info is either a Plug.Conn during tests or a Phoenix.Socket map
     socket_session = Map.get(connect_info, :session, %{})
 
-    Process.monitor(transport_pid)
+    Process.put(:"$phx_transport_ref", Process.monitor(transport_pid))
     load_csrf_token(endpoint, socket_session)
 
     socket = %Socket{
@@ -1354,7 +1404,7 @@ defmodule Phoenix.LiveView.Channel do
           socket
           |> load_layout(route)
           |> Utils.maybe_call_live_view_mount!(view, params, merged_session, url)
-          |> build_state(phx_socket)
+          |> build_state(phx_socket, resumable?(config, phx_socket))
           |> maybe_call_mount_handle_params(router, url, params)
           |> reply_mount(from, verified, route)
           |> maybe_subscribe_to_live_reload()
@@ -1532,6 +1582,7 @@ defmodule Phoenix.LiveView.Channel do
         diff = maybe_put_debug_pid(%{rendered: diff, liveview_version: lv_vsn})
         reply = put_container(session, route, diff)
         GenServer.reply(from, {:ok, reply})
+        request_resumable(new_state)
         {:noreply, post_verified_mount(new_state)}
 
       {:ok, diff, {:live_patch, opts}, new_state} ->
@@ -1543,6 +1594,7 @@ defmodule Phoenix.LiveView.Channel do
           })
 
         GenServer.reply(from, {:ok, reply})
+        request_resumable(new_state)
         {:noreply, post_verified_mount(new_state)}
 
       {:live_redirect, opts, new_state} ->
@@ -1571,8 +1623,20 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket) do
+  # The connection supports resuming (see Phoenix.Channel.resumable/1) and the LiveView opted in
+  defp resumable?(config, %Phoenix.Socket{private: private}) do
+    Map.get(config, :resumable, false) and Map.get(private, :phoenix_resume, false)
+  end
+
+  defp request_resumable(%{resumable: true, socket: socket}) do
+    send(socket.transport_pid, {:socket_resumable, self()})
+  end
+
+  defp request_resumable(_state), do: :ok
+
+  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, resumable?) do
     %{
+      resumable: resumable?,
       join_ref: phx_socket.join_ref,
       serializer: phx_socket.serializer,
       socket: lv_socket,

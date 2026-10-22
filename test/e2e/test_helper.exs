@@ -75,8 +75,18 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
       let csrfToken = document
         .querySelector("meta[name='csrf-token']")
         .getAttribute("content");
+      // see resume.spec.js
+      const resumeParams = new URLSearchParams(window.location.search);
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
         params: { _csrf_token: csrfToken },
+        resumable: resumeParams.has("resumable"),
+        ...(resumeParams.has("longpoll")
+          ? { transport: window.Phoenix.LongPoll }
+          : {}),
+        ...(resumeParams.has("fallback") ? { longPollFallbackMs: 1000 } : {}),
+        ...(resumeParams.has("heartbeat")
+          ? { heartbeatIntervalMs: Number(resumeParams.get("heartbeat")) }
+          : {}),
         hooks: { ...Hooks, ...window.hooks, ...colocatedHooks },
         uploaders: { ...Uploaders, ...window.uploaders },
         cascadePhxRemoveOnNavigation:
@@ -183,6 +193,9 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/select", E2E.SelectLive
       live "/components", E2E.ComponentsLive
       live "/keyed-comprehension", E2E.KeyedComprehensionLive
+      live "/resume", E2E.ResumeLive
+      live "/resume/plain", E2E.ResumeLive.Plain
+      live "/resume/other", E2E.ResumeLive.Other
     end
 
     scope "/portal", Phoenix.LiveViewTest do
@@ -318,7 +331,14 @@ defmodule Phoenix.LiveViewTest.E2E.Endpoint do
     same_site: "Lax"
   ]
 
-  socket "/live", Phoenix.LiveView.Socket, websocket: [connect_info: [session: @session_options]]
+  # Phoenix versions without resumable channels don't accept the :resume option
+  @resume if Code.ensure_loaded?(Phoenix.Socket.ResumeSession),
+            do: [resume: [timeout: 5_000]],
+            else: []
+
+  socket "/live", Phoenix.LiveView.Socket,
+    websocket: [connect_info: [session: @session_options]] ++ @resume,
+    longpoll: [connect_info: [session: @session_options]]
 
   plug Plug.Static, from: {:phoenix, "priv/static"}, at: "/assets/phoenix"
   plug Plug.Static, from: {:phoenix_live_view, "priv/static"}, at: "/assets/phoenix_live_view"
