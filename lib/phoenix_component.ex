@@ -3298,6 +3298,10 @@ defmodule Phoenix.Component do
   @doc """
   Builds a file input tag for a LiveView upload.
 
+  The input stays disabled until the client upload hook mounts, unless you pass
+  `disabled` yourself. A file chosen in that window would otherwise sit in the
+  input and never become an upload entry.
+
   [INSERT LVATTRDOCS]
 
   ## Customizing the Label
@@ -3356,6 +3360,13 @@ defmodule Phoenix.Component do
   def live_file_input(%{upload: upload} = assigns) do
     assigns = assign_new(assigns, :accept, fn -> upload.accept != :any && upload.accept end)
 
+    rest =
+      assigns.rest
+      |> maybe_put_multiple(upload.max_entries)
+      |> lock_file_input_until_mounted()
+
+    assigns = assign(assigns, :rest, rest)
+
     ~H"""
     <input
       id={@upload.ref}
@@ -3373,9 +3384,34 @@ defmodule Phoenix.Component do
         @upload.errors != [] && join_refs(for {ref, _reason} <- @upload.errors, uniq: true, do: ref)
       }
       data-phx-auto-upload={@upload.auto_upload?}
-      {if @upload.max_entries > 1, do: Map.put(@rest, :multiple, true), else: @rest}
+      {@rest}
     />
     """
+  end
+
+  defp maybe_put_multiple(rest, max_entries) when max_entries > 1 do
+    Map.put(rest, :multiple, true)
+  end
+
+  defp maybe_put_multiple(rest, _max_entries), do: rest
+
+  # A selection made before the hook mounts is never tracked (#4369). Disable the
+  # input until Phoenix.LiveFileUpload removes it. An explicit `disabled` wins.
+  defp lock_file_input_until_mounted(rest) do
+    if file_input_disabled?(rest) do
+      rest
+    else
+      rest
+      |> Map.put(:disabled, true)
+      |> Map.put(:"data-phx-upload-unlock", "true")
+    end
+  end
+
+  defp file_input_disabled?(rest) do
+    case Map.get(rest, :disabled) do
+      value when value in [nil, false, "false"] -> false
+      _other -> true
+    end
   end
 
   defp join_refs(entries), do: Enum.join(entries, ",")

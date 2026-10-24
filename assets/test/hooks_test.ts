@@ -155,6 +155,74 @@ describe("LiveFileUpload", () => {
       "upload-ref": [{ name: "first.txt" }],
     });
   });
+
+  // https://github.com/phoenixframework/phoenix_live_view/issues/4369
+  test("enables a file input that was locked until the hook mounted", () => {
+    document.body.innerHTML = `
+      <input
+        type="file"
+        disabled
+        data-phx-upload-unlock="true"
+        data-phx-active-refs=""
+        data-phx-preflighted-refs=""
+      >
+    `;
+
+    const input = document.querySelector("input")!;
+    const ctx = {
+      ...Hooks.LiveFileUpload,
+      el: input,
+      js: () => ({ ignoreAttributes: jest.fn() }),
+    };
+
+    expect(input.disabled).toBe(true);
+    Hooks.LiveFileUpload.mounted!.call(ctx as any);
+    expect(input.disabled).toBe(false);
+  });
+
+  test("leaves a caller-disabled file input disabled", () => {
+    document.body.innerHTML = `
+      <input type="file" disabled data-phx-active-refs="" data-phx-preflighted-refs="">
+    `;
+
+    const input = document.querySelector("input")!;
+    const ctx = {
+      ...Hooks.LiveFileUpload,
+      el: input,
+      js: () => ({ ignoreAttributes: jest.fn() }),
+    };
+
+    Hooks.LiveFileUpload.mounted!.call(ctx as any);
+    Hooks.LiveFileUpload.updated!.call(ctx as any);
+
+    expect(input.disabled).toBe(true);
+  });
+
+  test("re-enables the input when a patch restores the mount lock", () => {
+    document.body.innerHTML = `
+      <input
+        type="file"
+        disabled
+        data-phx-upload-unlock="true"
+        data-phx-active-refs=""
+        data-phx-preflighted-refs=""
+      >
+    `;
+
+    const input = document.querySelector("input")!;
+    const ctx = {
+      ...Hooks.LiveFileUpload,
+      el: input,
+      js: () => ({ ignoreAttributes: jest.fn() }),
+    };
+
+    Hooks.LiveFileUpload.mounted!.call(ctx as any);
+    expect(input.disabled).toBe(false);
+
+    input.disabled = true;
+    Hooks.LiveFileUpload.updated!.call(ctx as any);
+    expect(input.disabled).toBe(false);
+  });
 });
 
 describe("InfiniteScroll", () => {
