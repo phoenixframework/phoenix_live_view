@@ -1672,12 +1672,20 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         this.el.removeAttribute("required");
       }
     },
+    // The server renders the input disabled so a file cannot be chosen before
+    // this hook exists. Patches put the attribute back, so both callbacks clear it.
+    unlockFileInput() {
+      if (this.el.hasAttribute("data-phx-upload-unlock")) {
+        this.el.disabled = false;
+      }
+    },
     mounted() {
       this.js().ignoreAttributes(this.el, ["value"]);
       this.preflightedWas = this.preflightedRefs();
       this.errorRefsWas = this.errorRefs();
       this.el.addEventListener("input", () => this.maybeRemoveRequired());
       this.maybeRemoveRequired();
+      this.unlockFileInput();
     },
     updated() {
       const newPreflights = this.preflightedRefs();
@@ -1704,6 +1712,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         this.el.value = "";
       }
       this.maybeRemoveRequired();
+      this.unlockFileInput();
       this.el.dispatchEvent(new CustomEvent(PHX_LIVE_FILE_UPDATED));
     }
   };

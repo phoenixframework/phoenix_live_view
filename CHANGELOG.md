@@ -1,6 +1,6 @@
 # Changelog for v1.3
 
-Empty so far.
+* Disable `live_file_input` until the upload hook mounts, so a file chosen before the LiveView joins is not silently dropped
 
 ## v1.2
 
