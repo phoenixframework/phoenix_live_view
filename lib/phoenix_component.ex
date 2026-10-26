@@ -3356,10 +3356,13 @@ defmodule Phoenix.Component do
   def live_file_input(%{upload: upload} = assigns) do
     assigns = assign_new(assigns, :accept, fn -> upload.accept != :any && upload.accept end)
 
+    # autocomplete="off" prevents Firefox from restoring an enabled input before the hook mounts.
+    # https://bugzilla.mozilla.org/show_bug.cgi?id=654072#c71
     ~H"""
     <input
       id={@upload.ref}
       type="file"
+      autocomplete="off"
       name={@upload.name}
       accept={@accept}
       data-phx-hook="Phoenix.LiveFileUpload"
@@ -3373,9 +3376,15 @@ defmodule Phoenix.Component do
         @upload.errors != [] && join_refs(for {ref, _reason} <- @upload.errors, uniq: true, do: ref)
       }
       data-phx-auto-upload={@upload.auto_upload?}
-      {if @upload.max_entries > 1, do: Map.put(@rest, :multiple, true), else: @rest}
+      {live_file_input_attrs(@rest, @upload.max_entries)}
     />
     """
+  end
+
+  defp live_file_input_attrs(rest, max_entries) do
+    rest = if max_entries > 1, do: Map.put(rest, :multiple, true), else: rest
+    rest = if rest[:disabled], do: Map.put(rest, :"data-phx-user-disabled", true), else: rest
+    Map.put(rest, :disabled, true)
   end
 
   defp join_refs(entries), do: Enum.join(entries, ",")

@@ -6,6 +6,52 @@ describe("LiveFileUpload", () => {
     document.body.innerHTML = "";
   });
 
+  test.each(["", "0"])(
+    "clears only untracked files on mount (active refs: %s)",
+    (activeRefs) => {
+      document.body.innerHTML = `<input type="file" disabled data-phx-active-refs="${activeRefs}" data-phx-preflighted-refs="">`;
+      const input = document.querySelector("input")!;
+      Object.defineProperty(input, "value", {
+        configurable: true,
+        writable: true,
+        value: "restored.txt",
+      });
+      const ctx = {
+        ...Hooks.LiveFileUpload,
+        el: input,
+        js: () => ({ ignoreAttributes: jest.fn() }),
+      };
+
+      Hooks.LiveFileUpload.mounted!.call(ctx as any);
+
+      expect(input.value).toBe(activeRefs === "" ? "" : "restored.txt");
+      expect(input.disabled).toBe(false);
+    },
+  );
+
+  test.each([false, true])(
+    "restores caller-disabled state after reconnect (disabled: %s)",
+    (disabled) => {
+      document.body.innerHTML = `<input type="file" disabled data-phx-active-refs="" data-phx-preflighted-refs="">`;
+      const input = document.querySelector("input")!;
+      input.toggleAttribute("data-phx-user-disabled", disabled);
+      const ctx = {
+        ...Hooks.LiveFileUpload,
+        el: input,
+        js: () => ({ ignoreAttributes: jest.fn() }),
+      };
+
+      Hooks.LiveFileUpload.mounted!.call(ctx as any);
+      expect(input.disabled).toBe(disabled);
+
+      Hooks.LiveFileUpload.disconnected!.call(ctx as any);
+      expect(input.disabled).toBe(true);
+
+      Hooks.LiveFileUpload.reconnected!.call(ctx as any);
+      expect(input.disabled).toBe(disabled);
+    },
+  );
+
   test("cancels a scheduled submit when the upload becomes errored", () => {
     document.body.innerHTML = `
       <form>
