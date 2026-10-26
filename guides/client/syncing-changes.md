@@ -227,6 +227,12 @@ A lower level `phx:navigate` event is also triggered any time the browser's URL 
 For navigation-aware logic, prefer `phx:navigate` over hook callbacks like `updated()`,
 as hooks may fire before `window.location` is updated.
 
+When a `<.link navigate={...}>` or `<.link patch={...}>` is clicked, LiveView adds the
+new history entry right away, so the URL bar changes before the navigation completes.
+The `phx:navigate` event is triggered once the navigation completes. If it does not
+complete, for example because the user goes back in the meantime, no `phx:navigate`
+event is triggered for it.
+
 A cancelable `phx:before-navigate` event is also triggered before LiveView
 performs client-side live navigation from `<.link navigate={...}>`,
 `<.link patch={...}>`, or browser forward/back navigation. It receives the same

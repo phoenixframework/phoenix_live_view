@@ -117,6 +117,9 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.ALive do
     <.styled_link patch={"/navigation/a?param=#{@param_next}"}>Patch this LiveView</.styled_link>
     <.styled_link patch={"/navigation/a?param=#{@param_next}"} replace>Patch (Replace)</.styled_link>
     <.styled_link navigate="/navigation/b#items-item-42">Navigate to 42</.styled_link>
+    <.styled_link navigate="/navigation/slow?sleep=1000">Slow</.styled_link>
+    <.styled_link navigate="/navigation/slow?redirect=live">Slow (live redirect)</.styled_link>
+    <.styled_link navigate="/navigation/slow?redirect=http">Slow (redirect)</.styled_link>
     <button
       type="button"
       phx-click="server_navigate"
@@ -203,6 +206,28 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.BLive do
     <div :if={@live_action == :show}>
       <p>Item {@id}</p>
     </div>
+    """
+  end
+end
+
+defmodule Phoenix.LiveViewTest.E2E.Navigation.SlowLive do
+  use Phoenix.LiveView
+
+  @impl Phoenix.LiveView
+  def mount(params, _session, socket) do
+    if connected?(socket), do: Process.sleep(String.to_integer(params["sleep"] || "0"))
+
+    case {connected?(socket), params["redirect"]} do
+      {true, "live"} -> {:ok, push_navigate(socket, to: "/navigation/b")}
+      {true, "http"} -> {:ok, redirect(socket, to: "/navigation/dead")}
+      _ -> {:ok, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def render(assigns) do
+    ~H"""
+    <h1>This is the slow page</h1>
     """
   end
 end
