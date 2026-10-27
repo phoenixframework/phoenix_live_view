@@ -447,14 +447,25 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
-  Calls the `handle_params/3` callback, and returns the result.
+  Calls the `handle_params/3` lifecycle hooks and callback, and returns the result.
 
-  This function expects the calling code has checked to see if this function has
-  been exported, otherwise it assumes the function has been exported.
+  The callback is only called if `exported?`. When it isn't given, it is checked here,
+  and raises if the view has neither the callback nor any `:handle_params` hooks.
 
   Raises an `ArgumentError` on unexpected return types.
   """
-  def call_handle_params!(%Socket{} = socket, view, exported? \\ true, params, uri)
+  def call_handle_params!(%Socket{} = socket, view, params, uri) do
+    case Lifecycle.stage_info(socket, view, :handle_params, 3) do
+      %{any?: false} ->
+        raise "cannot invoke handle_params/3 for #{inspect(view)} because it does not define" <>
+                " handle_params/3 and has no :handle_params lifecycle hooks"
+
+      %{exported?: exported?} ->
+        call_handle_params!(socket, view, exported?, params, uri)
+    end
+  end
+
+  def call_handle_params!(%Socket{} = socket, view, exported?, params, uri)
       when is_boolean(exported?) do
     :telemetry.span(
       [:phoenix, :live_view, :handle_params],
