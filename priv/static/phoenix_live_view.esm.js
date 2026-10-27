@@ -1611,12 +1611,21 @@ var LiveFileUpload = {
       this.el.removeAttribute("required");
     }
   },
+  maybeRemoveDisabled() {
+    if (!this.el.hasAttribute("data-phx-user-disabled")) {
+      this.el.disabled = false;
+    }
+  },
   mounted() {
     this.js().ignoreAttributes(this.el, ["value"]);
     this.preflightedWas = this.preflightedRefs();
     this.errorRefsWas = this.errorRefs();
     this.el.addEventListener("input", () => this.maybeRemoveRequired());
+    if (this.activeRefs() === "") {
+      this.el.value = "";
+    }
     this.maybeRemoveRequired();
+    this.maybeRemoveDisabled();
   },
   updated() {
     const newPreflights = this.preflightedRefs();
@@ -1643,7 +1652,14 @@ var LiveFileUpload = {
       this.el.value = "";
     }
     this.maybeRemoveRequired();
+    this.maybeRemoveDisabled();
     this.el.dispatchEvent(new CustomEvent(PHX_LIVE_FILE_UPDATED));
+  },
+  disconnected() {
+    this.el.disabled = true;
+  },
+  reconnected() {
+    this.maybeRemoveDisabled();
   }
 };
 var LiveImgPreview = {
