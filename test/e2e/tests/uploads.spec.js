@@ -16,6 +16,49 @@ const readStream = (stream) =>
     });
   });
 
+// https://github.com/phoenixframework/phoenix_live_view/issues/4369
+test("file inputs stay disabled until connected and across reloads", async ({
+  page,
+}) => {
+  let releaseJoin;
+  let joinReleased = new Promise((resolve) => (releaseJoin = resolve));
+
+  await page.routeWebSocket(/\/live\/websocket/, (ws) => {
+    const server = ws.connectToServer();
+    ws.onMessage(async (message) => {
+      if (typeof message === "string" && message.includes('"phx_join"')) {
+        await joinReleased;
+      }
+      server.send(message);
+    });
+  });
+
+  await page.goto("/upload");
+  const input = page.locator("#upload-form input[type=file]");
+  await expect(input).toBeDisabled();
+  await expect(input).not.toHaveAttribute("data-phx-user-disabled");
+
+  releaseJoin();
+  await syncLV(page);
+  await expect(input).toBeEnabled();
+
+  // Firefox must not restore the enabled state before the hook mounts again.
+  joinReleased = new Promise((resolve) => (releaseJoin = resolve));
+  await page.reload();
+  await expect(input).toBeDisabled();
+  releaseJoin();
+  await syncLV(page);
+  await expect(input).toBeEnabled();
+
+  await page.evaluate(
+    () => new Promise((resolve) => window.liveSocket.disconnect(resolve)),
+  );
+  await expect(input).toBeDisabled();
+  await page.evaluate(() => window.liveSocket.connect());
+  await syncLV(page);
+  await expect(input).toBeEnabled();
+});
+
 test("can upload a file", async ({ page }) => {
   await page.goto("/upload");
   await syncLV(page);

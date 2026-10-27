@@ -14,6 +14,7 @@ test("live_file_input respects disabled attribute changes", async ({
 
   // Initially disabled
   await expect(input).toBeDisabled();
+  await expect(input).toHaveAttribute("data-phx-user-disabled");
 
   // Click to enable
   await page.locator("#toggle-disabled").click();
@@ -21,6 +22,12 @@ test("live_file_input respects disabled attribute changes", async ({
 
   // Should now be enabled
   await expect(input).not.toBeDisabled();
+  await expect(input).not.toHaveAttribute("data-phx-user-disabled");
+
+  // A later patch must not restore the server-rendered disabled attribute.
+  await page.locator("#toggle-class").click();
+  await syncLV(page);
+  await expect(input).toBeEnabled();
 
   // Click to disable again
   await page.locator("#toggle-disabled").click();
@@ -28,6 +35,7 @@ test("live_file_input respects disabled attribute changes", async ({
 
   // Should be disabled again
   await expect(input).toBeDisabled();
+  await expect(input).toHaveAttribute("data-phx-user-disabled");
 });
 
 test("live_file_input respects class attribute changes", async ({ page }) => {

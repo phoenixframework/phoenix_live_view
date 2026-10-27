@@ -1325,7 +1325,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp maybe_enabled(type, node, element) do
-    if TreeDOM.attribute(node, "disabled") do
+    # Upload hooks remove the initial disabled attribute in the browser.
+    disabled_attr =
+      if type in [:allow_upload, :upload_progress] and
+           TreeDOM.attribute(node, @data_phx_upload_ref),
+         do: "data-phx-user-disabled",
+         else: "disabled"
+
+    if TreeDOM.attribute(node, disabled_attr) do
       {:error, :invalid,
        "cannot #{type} element #{inspect(element.selector)} because it is disabled"}
     else

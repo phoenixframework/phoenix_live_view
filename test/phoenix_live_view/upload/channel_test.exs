@@ -299,6 +299,21 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     assert render(lv) =~ "loading..."
   end
 
+  test "file input helper rejects uploads disabled by the caller" do
+    {:ok, lv} =
+      mount_lv(fn socket ->
+        socket
+        |> Phoenix.Component.assign(:upload_disabled, true)
+        |> Phoenix.LiveView.allow_upload(:avatar, accept: :any)
+      end)
+
+    avatar = file_input(lv, "form", :avatar, build_entries(1))
+
+    assert_raise ArgumentError, ~r/cannot allow_upload .* because it is disabled/, fn ->
+      render_upload(avatar, "myfile1.jpeg")
+    end
+  end
+
   defp send_form_event_with_uploads(lv, config_ref) do
     %{proxy: {_ref, topic, _pid}} = lv
 

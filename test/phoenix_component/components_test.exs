@@ -694,6 +694,32 @@ defmodule Phoenix.LiveView.ComponentsTest do
   end
 
   describe "live_file_input/1" do
+    test "marks inputs disabled by the caller" do
+      for disabled <- [true, false, nil, "false"] do
+        assigns = %{conf: %Phoenix.LiveView.UploadConfig{}, disabled: disabled}
+
+        html =
+          Phoenix.LiveViewTest.rendered_to_string(
+            ~H|<.live_file_input upload={@conf} disabled={@disabled} />|
+          )
+
+        assert html =~ " disabled"
+        assert html =~ "data-phx-user-disabled" == !!disabled
+      end
+    end
+
+    test "does not send unchanged attributes" do
+      rendered =
+        Phoenix.Component.live_file_input(%{
+          __changed__: %{},
+          upload: %Phoenix.LiveView.UploadConfig{},
+          accept: false,
+          rest: %{}
+        })
+
+      assert Enum.all?(rendered.dynamic.(true), &is_nil/1)
+    end
+
     test "renders attributes" do
       assigns = %{
         conf: %Phoenix.LiveView.UploadConfig{
@@ -705,7 +731,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assert t2h(
                ~H|<.live_file_input upload={@conf} class="<script>alert('nice try');</script>" />|
              ) ==
-               ~X|<input type="file" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="" data-phx-auto-upload class="&lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;">|
+               ~X|<input type="file" autocomplete="off" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="" data-phx-auto-upload class="&lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;" disabled>|
     end
 
     test "renders upload error refs" do
@@ -717,7 +743,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       }
 
       assert t2h(~H|<.live_file_input upload={@conf} />|) ==
-               ~X|<input type="file" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="foo" data-phx-error-refs="foo">|
+               ~X|<input type="file" autocomplete="off" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="foo" data-phx-error-refs="foo" disabled>|
     end
 
     test "renders optional webkitdirectory attribute" do
@@ -728,7 +754,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       }
 
       assert t2h(~H|<.live_file_input upload={@conf} webkitdirectory />|) ==
-               ~X|<input type="file" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="" webkitdirectory>|
+               ~X|<input type="file" autocomplete="off" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="" webkitdirectory disabled>|
     end
 
     test "renders optional capture attribute" do
@@ -739,7 +765,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       }
 
       assert t2h(~H|<.live_file_input upload={@conf} capture="user" />|) ==
-               ~X|<input type="file" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="" capture="user">|
+               ~X|<input type="file" autocomplete="off" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="" capture="user" disabled>|
     end
 
     test "sets accept from config" do
@@ -751,7 +777,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       }
 
       assert t2h(~H|<.live_file_input upload={@conf} />|) ==
-               ~X|<input type="file" accept=".png" data-phx-hook="Phoenix.LiveFileUpload" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="">|
+               ~X|<input type="file" autocomplete="off" accept=".png" data-phx-hook="Phoenix.LiveFileUpload" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="" disabled>|
     end
 
     test "renders accept override" do
@@ -763,7 +789,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       }
 
       assert t2h(~H|<.live_file_input upload={@conf} accept=".jpeg" />|) ==
-               ~X|<input type="file" accept=".jpeg" data-phx-hook="Phoenix.LiveFileUpload" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="">|
+               ~X|<input type="file" autocomplete="off" accept=".jpeg" data-phx-hook="Phoenix.LiveFileUpload" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="" disabled>|
     end
   end
 
