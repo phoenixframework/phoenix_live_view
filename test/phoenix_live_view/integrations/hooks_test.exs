@@ -172,7 +172,8 @@ defmodule Phoenix.LiveView.HooksTest do
     assert render(lv) =~ "url=http://www.example.com/lifecycle/handle-params-not-defined"
   end
 
-  test "handle_params/3 when callback is not exported raises without halt", %{conn: conn} do
+  test "handle_params/3 hooks handle patches without a module callback, which raise without hooks",
+       %{conn: conn} do
     {:ok, lv, html} = live(conn, "/lifecycle")
     assert html =~ "params_hook:</p>"
 
@@ -181,14 +182,16 @@ defmodule Phoenix.LiveView.HooksTest do
         {:halt, Component.update(socket, :params_hook_ref, &(&1 + 1))}
 
       _params, _uri, %{assigns: %{params_hook_ref: 1}} = socket ->
-        {:cont, socket}
+        {:cont, Component.update(socket, :params_hook_ref, &(&1 + 1))}
 
       _params, _uri, socket ->
         {:halt, Component.assign(socket, :params_hook_ref, 0)}
     end)
 
-    lv |> element("#patch") |> render_click() =~ "params_hook:0"
-    lv |> element("#patch") |> render_click() =~ "params_hook:1"
+    assert lv |> element("#patch") |> render_click() =~ "params_hook:0"
+    assert lv |> element("#patch") |> render_click() =~ "params_hook:1"
+    # Continuing with no handle_params/3 to continue on to
+    assert lv |> element("#patch") |> render_click() =~ "params_hook:2"
 
     HooksLive.detach_hook(lv, :hook, :handle_params)
 
@@ -201,7 +204,8 @@ defmodule Phoenix.LiveView.HooksTest do
                :exit, _ -> :ok
              end
            end) =~
-             "** (UndefinedFunctionError) function Phoenix.LiveViewTest.Support.HooksLive.handle_params/3 is undefined"
+             "** (RuntimeError) cannot invoke handle_params/3 for Phoenix.LiveViewTest.Support.HooksLive" <>
+               " because it does not define handle_params/3 and has no :handle_params lifecycle hooks"
   end
 
   test "handle_info/2 raises when hook result is invalid", %{conn: conn} do
