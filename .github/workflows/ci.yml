@@ -35,7 +35,7 @@ jobs:
           - elixir: "main-otp-29"
             otp: "maint-29"
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Install inotify-tools
@@ -109,7 +109,7 @@ jobs:
           - elixir: "1.20"
             otp: "29"
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -174,7 +174,7 @@ jobs:
           - elixir: "1.20"
             otp: "29"
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: mcr.microsoft.com/playwright:v1.62.0-noble
     env:
@@ -244,7 +244,7 @@ jobs:
   coverage_report:
     name: coverage report
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [mix_test, npm_test, e2e_test]
 
     strategy:
