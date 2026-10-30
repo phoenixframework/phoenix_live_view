@@ -905,7 +905,9 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
         component: component,
         slots: pruned_slots,
         attrs: pruned_attrs,
-        file: state.file,
+        # Relative to the project, so copies of the project (git worktrees,
+        # copy-on-write clones) that reuse the build point to their own files
+        file: Path.relative_to_cwd(state.file),
         line: line,
         root: root?
       }
