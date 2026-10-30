@@ -109,6 +109,7 @@ export default class View {
   private childJoins: number;
   private loaderTimer: ReturnType<typeof setTimeout> | null;
   private disconnectedTimer: ReturnType<typeof setTimeout> | null;
+  private suspended: boolean;
   private pendingDiffs: { diff: any; events: any; joinCount: number }[];
   private redirect: boolean;
   private href: string | null;
@@ -177,6 +178,7 @@ export default class View {
      * @type {ReturnType<typeof setTimeout> | null}
      */
     this.disconnectedTimer = null;
+    this.suspended = false;
     this.pendingDiffs = [];
     this.pendingForms = new Set();
     this.activeUploaders = new Set();
@@ -1418,7 +1420,35 @@ export default class View {
     }
   }
 
+  // The socket lost its connection, but keeps the channel joined while it resumes.
+  onSuspend() {
+    if (this.suspended || this.isJoinPending() || this.isDestroyed()) {
+      return;
+    }
+    this.suspended = true;
+    this.displayError(
+      [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_CLIENT_ERROR_CLASS],
+      { errorKind: "client" },
+    );
+  }
+
+  onResume() {
+    if (!this.suspended) {
+      return;
+    }
+    this.suspended = false;
+    if (this.isMain()) {
+      DOM.dispatchEvent(window, "phx:page-loading-stop", {
+        detail: { to: this.href, kind: "error" },
+      });
+    }
+    this.hideLoader();
+    this.triggerReconnected();
+  }
+
   onError(reason) {
+    // the channel joins again, which shows the connected state when it succeeds
+    this.suspended = false;
     this.onClose(reason);
     if (this.liveSocket.isConnected()) {
       this.log("error", () => ["view crashed", reason], {

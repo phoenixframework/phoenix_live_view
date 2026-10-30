@@ -421,6 +421,14 @@ export default class LiveSocket {
         window.location.reload();
       }
     });
+    // A resumable socket keeps its channels joined while it resumes the connection,
+    // so we show the disconnected state ourselves. Phoenix 1.9 added these callbacks.
+    const socket = this.socket as Socket & {
+      onSuspend?: (callback: () => void) => string;
+      onResume?: (callback: () => void) => string;
+    };
+    socket.onSuspend?.(() => this.eachView((view) => view.onSuspend()));
+    socket.onResume?.(() => this.eachView((view) => view.onResume()));
   }
 
   // public
@@ -1017,6 +1025,15 @@ export default class LiveSocket {
   /** @internal */
   isPhxView(el) {
     return el.getAttribute && el.getAttribute(PHX_SESSION) !== null;
+  }
+
+  /** @internal */
+  eachView(callback: (view: View) => void) {
+    const visit = (view: View) => {
+      callback(view);
+      view.eachChild(visit);
+    };
+    Object.values(this.roots).forEach(visit);
   }
 
   /** @internal */

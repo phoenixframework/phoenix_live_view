@@ -1879,6 +1879,148 @@ describe("View", function () {
     expect(execAll).toHaveBeenCalledWith("phx-disconnected");
   });
 
+  describe("resumable socket", () => {
+    // a socket with the onSuspend and onResume callbacks of Phoenix 1.9
+    const callbacks = {
+      suspend: [] as (() => void)[],
+      resume: [] as (() => void)[],
+    };
+    class ResumableSocket extends Socket {
+      onSuspend(callback: () => void) {
+        callbacks.suspend.push(callback);
+        return "";
+      }
+      onResume(callback: () => void) {
+        callbacks.resume.push(callback);
+        return "";
+      }
+    }
+    const trigger = (kind: "suspend" | "resume") =>
+      callbacks[kind].forEach((callback) => callback());
+
+    beforeEach(() => {
+      callbacks.suspend = [];
+      callbacks.resume = [];
+    });
+
+    const joinedChild = (root: View) => {
+      const childEl = document.createElement("div");
+      childEl.id = "child";
+      childEl.setAttribute("data-phx-parent-id", root.id);
+      childEl.setAttribute("data-phx-session", "abc123");
+      childEl.setAttribute("data-phx-static", "");
+      root.el.appendChild(childEl);
+      const child = new View(childEl, liveSocket, root, null, null);
+      root["children"]![root.id][child.id] = child;
+      stubChannel(child);
+      child["joinPending"] = false;
+      return child;
+    };
+
+    test("shows the disconnected state while suspended", () => {
+      jest.useFakeTimers();
+      liveSocket = new LiveSocket("/live", ResumableSocket, {
+        disconnectedTimeout: 1000,
+      });
+      const el = document.querySelector("[data-phx-session]")!;
+      const status: HTMLElement = el.querySelector("#status")!;
+      const view = simulateJoinedView(el, liveSocket);
+      const child = joinedChild(view);
+      const events: string[] = [];
+      const onLoading = (e: Event) => events.push(e.type);
+      window.addEventListener("phx:page-loading-start", onLoading);
+      window.addEventListener("phx:page-loading-stop", onLoading);
+
+      trigger("suspend");
+      for (const viewEl of [el, child.el]) {
+        expect(viewEl.classList.contains("phx-loading")).toBeTruthy();
+        expect(viewEl.classList.contains("phx-error")).toBeTruthy();
+        expect(viewEl.classList.contains("phx-client-error")).toBeTruthy();
+        expect(viewEl.classList.contains("phx-connected")).toBeFalsy();
+      }
+      jest.runAllTimers();
+      expect(status.style.display).toBe("block");
+      simulateVisibility(status);
+
+      trigger("resume");
+      for (const viewEl of [el, child.el]) {
+        expect(viewEl.classList.contains("phx-connected")).toBeTruthy();
+        expect(viewEl.classList.contains("phx-client-error")).toBeFalsy();
+      }
+      jest.runAllTimers();
+      expect(status.style.display).toBe("none");
+      expect(events).toEqual([
+        "phx:page-loading-start",
+        "phx:page-loading-stop",
+      ]);
+      // the channel stays joined
+      expect(view["joinCount"]).toBe(1);
+
+      window.removeEventListener("phx:page-loading-start", onLoading);
+      window.removeEventListener("phx:page-loading-stop", onLoading);
+      jest.useRealTimers();
+    });
+
+    test("cancels the disconnected commands when resumed in time", () => {
+      jest.useFakeTimers();
+      liveSocket = new LiveSocket("/live", ResumableSocket, {
+        disconnectedTimeout: 1000,
+      });
+      const el = document.querySelector("[data-phx-session]")!;
+      const view = simulateJoinedView(el, liveSocket);
+      const execAll = jest.spyOn(view, "execAll");
+
+      trigger("suspend");
+      jest.advanceTimersByTime(500);
+      trigger("resume");
+      jest.runAllTimers();
+
+      expect(execAll).toHaveBeenCalledWith("phx-connected");
+      expect(execAll).not.toHaveBeenCalledWith("phx-disconnected");
+      jest.useRealTimers();
+    });
+
+    test("calls the disconnected and reconnected callbacks of hooks", () => {
+      liveSocket = new LiveSocket("/live", ResumableSocket);
+      const el = document.querySelector("[data-phx-session]")!;
+      const view = simulateJoinedView(el, liveSocket);
+      const hook = { disconnected: jest.fn(), reconnected: jest.fn() };
+      view["viewHooks"]["hook"] = {
+        __disconnected: hook.disconnected,
+        __reconnected: hook.reconnected,
+      } as unknown as ViewHook;
+
+      trigger("suspend");
+      trigger("suspend");
+      expect(hook.disconnected).toHaveBeenCalledTimes(1);
+      trigger("resume");
+      trigger("resume");
+      expect(hook.reconnected).toHaveBeenCalledTimes(1);
+      // the stub cannot be destroyed
+      delete view["viewHooks"]["hook"];
+    });
+
+    test("leaves joining views and a later channel error alone", () => {
+      liveSocket = new LiveSocket("/live", ResumableSocket);
+      const el = document.querySelector("[data-phx-session]")!;
+      const view = simulateJoinedView(el, liveSocket);
+      const hideLoader = jest.spyOn(view, "hideLoader");
+
+      // the session is gone, so the channel errors and joins again
+      trigger("suspend");
+      view.onError("error");
+      trigger("resume");
+      expect(hideLoader).not.toHaveBeenCalled();
+
+      view["joinPending"] = true;
+      trigger("suspend");
+      expect(el.classList.contains("phx-client-error")).toBeTruthy();
+      hideLoader.mockClear();
+      trigger("resume");
+      expect(hideLoader).not.toHaveBeenCalled();
+    });
+  });
+
   test("join", async () => {
     liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();

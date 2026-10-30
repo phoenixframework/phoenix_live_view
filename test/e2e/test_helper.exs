@@ -77,6 +77,8 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
         .getAttribute("content");
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
         params: { _csrf_token: csrfToken },
+        // see resume.spec.js
+        resumable: new URLSearchParams(window.location.search).has("resumable"),
         hooks: { ...Hooks, ...window.hooks, ...colocatedHooks },
         uploaders: { ...Uploaders, ...window.uploaders },
         cascadePhxRemoveOnNavigation:
@@ -183,6 +185,8 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/select", E2E.SelectLive
       live "/components", E2E.ComponentsLive
       live "/keyed-comprehension", E2E.KeyedComprehensionLive
+      live "/resume", E2E.ResumeLive
+      get "/resume/session", E2E.ResumeSessionController, :update
     end
 
     scope "/portal", Phoenix.LiveViewTest do
@@ -318,7 +322,14 @@ defmodule Phoenix.LiveViewTest.E2E.Endpoint do
     same_site: "Lax"
   ]
 
-  socket "/live", Phoenix.LiveView.Socket, websocket: [connect_info: [session: @session_options]]
+  # Phoenix versions without resumable sockets don't accept the :resumable option
+  @resumable if Code.ensure_loaded?(Phoenix.Transports.WebSocket.Pipe),
+               do: [resumable: true],
+               else: []
+
+  socket "/live", Phoenix.LiveView.Socket,
+    websocket: [connect_info: [session: @session_options]] ++ @resumable,
+    longpoll: [connect_info: [session: @session_options]]
 
   plug Plug.Static, from: {:phoenix, "priv/static"}, at: "/assets/phoenix"
   plug Plug.Static, from: {:phoenix_live_view, "priv/static"}, at: "/assets/phoenix_live_view"

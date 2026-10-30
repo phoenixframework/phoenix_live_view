@@ -305,6 +305,13 @@ This is the same mechanism provided by `Phoenix.Channel`s. Therefore, if
 your application uses both channels and LiveViews, you can use the same
 technique to disconnect any stateful connection.
 
+With resumable sockets, a client can resume its socket over a new connection
+without mounting its LiveViews again. In this case, `Phoenix.LiveView.Socket`
+checks that the session of the new connection has the same `live_socket_id`.
+If the user logged out in the meantime, the LiveViews mount again, which
+runs your authentication checks. See "Resumable sockets" in
+`Phoenix.LiveView.Socket` for details and for adding your own checks.
+
 ## Summing up
 
 The important concepts to keep in mind are:
