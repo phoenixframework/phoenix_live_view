@@ -47,7 +47,7 @@ defmodule Phoenix.LiveView.MixProject do
     [
       {:igniter, "~> 0.6 and >= 0.6.16", optional: true},
       {:phoenix,
-       github: "phoenixframework/phoenix", branch: "sd-resumable-transport", override: true},
+       github: "phoenixframework/phoenix", branch: "sd-resumable-transport-assets", override: true},
       {:plug, "~> 1.15"},
       {:phoenix_template, "~> 1.0"},
       {:phoenix_html, "~> 3.3 or ~> 4.0 or ~> 4.1"},
