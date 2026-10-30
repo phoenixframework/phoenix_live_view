@@ -313,8 +313,8 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   defp validate_phx_version! do
     phoenix_version = to_string(Application.spec(:phoenix, :vsn))
 
-    if not Version.match?(phoenix_version, "~> 1.8.0 or ~> 1.9.0-dev") do
-      raise ArgumentError, ~s|ColocatedCSS requires at least {:phoenix, "~> 1.8.0"}|
+    if not Version.match?(phoenix_version, "~> 1.8") do
+      raise ArgumentError, ~s|ColocatedCSS requires at least {:phoenix, "~> 1.8"}|
     end
   end
 
