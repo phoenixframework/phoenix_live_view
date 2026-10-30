@@ -8,9 +8,12 @@ export default class EntryUploader {
     this.chunkTimeout = chunk_timeout;
     this.chunkTimer = null;
     this.errored = false;
-    this.uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, {
-      token: entry.metadata(),
-    });
+    this.uploadChannel = liveSocket.channel(
+      `lvu:${entry.ref}`,
+      { token: entry.metadata() },
+      // uploads ride the socket of the view that owns the entry
+      entry.view,
+    );
   }
 
   error(reason) {
