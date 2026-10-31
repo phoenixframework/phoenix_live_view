@@ -472,6 +472,123 @@ test("patch with replace replaces history", async ({ page }) => {
   expect(page.url()).not.toEqual(url);
 });
 
+test("navigate creates its history entry when the link is clicked", async ({
+  page,
+}) => {
+  await page.goto("/navigation/a");
+  await syncLV(page);
+  const length = await page.evaluate(() => window.history.length);
+
+  await page.getByRole("link", { name: "Slow", exact: true }).click();
+  // the entry exists while the slow LiveView is still mounting
+  await expect(page).toHaveURL("/navigation/slow?sleep=1000");
+  await expect(
+    page.getByRole("heading", { name: "This is page A" }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => window.history.length)).toEqual(length + 1);
+
+  await expect(
+    page.getByRole("heading", { name: "This is the slow page" }),
+  ).toBeVisible();
+  await syncLV(page);
+  expect(await page.evaluate(() => window.history.length)).toEqual(length + 1);
+  expect(await page.evaluate(() => window.history.state)).toEqual(
+    expect.objectContaining({ type: "redirect" }),
+  );
+
+  await page.goBack();
+  await syncLV(page);
+  await expect(page).toHaveURL("/navigation/a");
+  await expect(
+    page.getByRole("heading", { name: "This is page A" }),
+  ).toBeVisible();
+});
+
+test("going back while navigate is pending cancels the navigation", async ({
+  page,
+}) => {
+  await page.goto("/navigation/a");
+  await syncLV(page);
+
+  await page.getByRole("link", { name: "Slow", exact: true }).click();
+  await expect(page).toHaveURL("/navigation/slow?sleep=1000");
+  await page.goBack();
+
+  await expect(page).toHaveURL("/navigation/a");
+  await expect(
+    page.getByRole("heading", { name: "This is page A" }),
+  ).toBeVisible();
+  await syncLV(page);
+  // the slow mount has finished by now, but must not be rendered
+  await page.waitForTimeout(1500);
+  await expect(page).toHaveURL("/navigation/a");
+  await expect(
+    page.getByRole("heading", { name: "This is page A" }),
+  ).toBeVisible();
+});
+
+test("navigate that supersedes a pending navigate reuses its history entry", async ({
+  page,
+}) => {
+  await page.goto("/navigation/a");
+  await syncLV(page);
+  const length = await page.evaluate(() => window.history.length);
+
+  await page.getByRole("link", { name: "Slow", exact: true }).click();
+  await expect(page).toHaveURL("/navigation/slow?sleep=1000");
+  await page.getByRole("link", { name: "LiveView B" }).click();
+  await syncLV(page);
+
+  await expect(page).toHaveURL("/navigation/b");
+  await expect(
+    page.getByRole("heading", { name: "This is page B" }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => window.history.length)).toEqual(length + 1);
+
+  await page.goBack();
+  await syncLV(page);
+  await expect(page).toHaveURL("/navigation/a");
+});
+
+test("live redirect on mount replaces the navigate history entry", async ({
+  page,
+}) => {
+  await page.goto("/navigation/a");
+  await syncLV(page);
+  const length = await page.evaluate(() => window.history.length);
+
+  await page.getByRole("link", { name: "Slow (live redirect)" }).click();
+  await syncLV(page);
+
+  await expect(page).toHaveURL("/navigation/b");
+  await expect(
+    page.getByRole("heading", { name: "This is page B" }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => window.history.length)).toEqual(length + 1);
+
+  await page.goBack();
+  await syncLV(page);
+  await expect(page).toHaveURL("/navigation/a");
+});
+
+test("redirect on mount replaces the navigate history entry", async ({
+  page,
+}) => {
+  await page.goto("/navigation/a");
+  await syncLV(page);
+  const length = await page.evaluate(() => window.history.length);
+
+  await page.getByRole("link", { name: "Slow (redirect)" }).click();
+
+  await expect(page).toHaveURL("/navigation/dead");
+  await expect(page.getByRole("heading", { name: "Dead view" })).toBeVisible();
+  expect(await page.evaluate(() => window.history.length)).toEqual(length + 1);
+
+  await page.goBack();
+  await syncLV(page);
+  await expect(page).toHaveURL("/navigation/a");
+});
+
 test("falls back to http navigation when navigating between live sessions", async ({
   page,
 }) => {
@@ -607,13 +724,18 @@ test("scrolls hash el into view after live navigation (issue #3452)", async ({
 
   await page.getByRole("link", { name: "Navigate to 42" }).click();
   await expect(page).toHaveURL("/navigation/b#items-item-42");
+  // the URL is updated on click, before the new LiveView is rendered
+  await expect(
+    page.getByRole("heading", { name: "This is page B" }),
+  ).toBeVisible();
+  const offset =
+    (await page.locator("#items-item-42").evaluate((el) => el.offsetTop)) - 200;
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollTop))
+    .toBeGreaterThanOrEqual(offset - 500);
   const scrollTop = await page.evaluate(
     () => document.documentElement.scrollTop,
   );
-  const offset =
-    (await page.locator("#items-item-42").evaluate((el) => el.offsetTop)) - 200;
-  expect(scrollTop).not.toBe(0);
-  expect(scrollTop).toBeGreaterThanOrEqual(offset - 500);
   expect(scrollTop).toBeLessThanOrEqual(offset + 500);
 });
 
@@ -636,6 +758,8 @@ test("restores scroll position when navigating from dead view", async ({
 
   await page.getByRole("link", { name: "Dead" }).click();
   await page.waitForURL("/navigation/dead");
+  // live navigation updates the URL before falling back to a page load
+  await expect(page.getByRole("heading", { name: "Dead view" })).toBeVisible();
 
   await page.goBack();
   await syncLV(page);

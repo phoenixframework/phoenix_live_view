@@ -91,8 +91,9 @@ describe("LiveSocket", () => {
     let link: HTMLAnchorElement;
 
     beforeEach(() => {
+      window.history.replaceState(null, "", "/");
       liveSocket = new LiveSocket("/live", Socket);
-      liveSocket.main = {};
+      liveSocket.main = { id: "phx-main" };
       liveSocket.isConnected = () => true;
       liveSocket.requestDOMUpdate = (callback) => callback();
       liveSocket.pushHistoryPatch = jest.fn();
@@ -133,6 +134,7 @@ describe("LiveSocket", () => {
     ])("preserves %s=%s on the anchor and its children", (attribute, value) => {
       link.setAttribute(attribute, value);
 
+      const length = window.history.length;
       for (const target of [
         link,
         link.querySelector("span")!,
@@ -140,6 +142,7 @@ describe("LiveSocket", () => {
       ]) {
         expect(click(target).defaultPrevented).toBe(false);
       }
+      expect(window.history.length).toBe(length);
       expect(liveSocket.pushHistoryPatch).not.toHaveBeenCalled();
       expect(liveSocket.historyRedirect).not.toHaveBeenCalled();
     });
@@ -174,11 +177,67 @@ describe("LiveSocket", () => {
       { metaKey: true },
       { button: 1 },
     ])("preserves modified child clicks: %p", (options) => {
+      const length = window.history.length;
       expect(click(link.querySelector("span")!, options).defaultPrevented).toBe(
         false,
       );
+      expect(window.history.length).toBe(length);
       expect(liveSocket.pushHistoryPatch).not.toHaveBeenCalled();
       expect(liveSocket.historyRedirect).not.toHaveBeenCalled();
+    });
+
+    test("creates the history entry within the click", () => {
+      const length = window.history.length;
+      const position = liveSocket.currentHistoryPosition;
+
+      click(link);
+
+      expect(window.location.href).toBe(link.href);
+      expect(window.history.length).toBe(length + 1);
+      expect(window.history.state).toEqual({
+        type,
+        id: "phx-main",
+        position: position + 1,
+      });
+    });
+
+    test("fills in the created history entry when navigation completes", () => {
+      click(link);
+      const length = window.history.length;
+      const position = liveSocket.currentHistoryPosition;
+
+      liveSocket.commitHistoryEntry(
+        "push",
+        { type, id: "phx-new", scroll: 100 },
+        link.href,
+      );
+
+      expect(window.history.length).toBe(length);
+      expect(liveSocket.currentHistoryPosition).toBe(position);
+      expect(window.history.state).toEqual({ type, id: "phx-new", position });
+    });
+
+    test("reuses the created history entry for a superseding click", () => {
+      click(link);
+      const length = window.history.length;
+      const position = liveSocket.currentHistoryPosition;
+
+      link.setAttribute("href", "#other");
+      click(link);
+
+      expect(window.location.href).toBe(link.href);
+      expect(window.history.length).toBe(length);
+      expect(window.history.state).toEqual({ type, id: "phx-main", position });
+    });
+
+    test("does not create a history entry for replace links", () => {
+      link.setAttribute("data-phx-link-state", "replace");
+      const length = window.history.length;
+
+      click(link);
+
+      expect(window.history.length).toBe(length);
+      expect(window.location.pathname + window.location.hash).toBe("/");
     });
   });
 

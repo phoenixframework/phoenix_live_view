@@ -275,6 +275,8 @@ export default class LiveSocket {
   private roots: Record<string, View>;
   private href: string;
   private pendingLink: string | null;
+  private historyReservation: { position: number; referer: string } | null;
+  private redirectAfterPopState: (() => void) | null;
   private currentLocation: Location;
   private hooks: HooksOptions;
   /** @internal */
@@ -374,6 +376,8 @@ export default class LiveSocket {
     this.roots = {};
     this.href = window.location.href;
     this.pendingLink = null;
+    this.historyReservation = null;
+    this.redirectAfterPopState = null;
     this.currentLocation = clone(window.location);
     this.hooks = opts.hooks || {};
     this.uploaders = opts.uploaders || {};
@@ -781,7 +785,7 @@ export default class LiveSocket {
         );
       }
       if (this.pendingLink !== null) {
-        window.location.href = this.pendingLink;
+        this.browserRedirect(this.pendingLink);
       } else {
         window.location.reload();
       }
@@ -919,7 +923,26 @@ export default class LiveSocket {
       Browser.setCookie(PHX_RELOAD_STATUS, reloadToken, 60);
     }
     this.unload();
-    Browser.redirect(to, flash);
+    this.browserRedirect(to, flash);
+  }
+
+  /**
+   * @internal
+   * Performs a full page navigation. If the current history entry was reserved
+   * for a live navigation that never completed, we first return to the entry
+   * before it, so that the page load does not leave a second entry behind.
+   * Replacing the reserved entry with a page load does not work, as some
+   * browsers then treat going back to the previous entry as a same-document
+   * navigation within the new page.
+   */
+  browserRedirect(to: string, flash: string | null = null) {
+    if (this.historyReservation) {
+      this.historyReservation = null;
+      this.redirectAfterPopState = () => Browser.redirect(to, flash);
+      history.back();
+    } else {
+      Browser.redirect(to, flash);
+    }
   }
 
   /** @internal */
@@ -932,7 +955,9 @@ export default class LiveSocket {
     if (!this.main) {
       return;
     }
-    const liveReferer = this.currentLocation.href;
+    const liveReferer = this.historyReservation
+      ? this.historyReservation.referer
+      : this.currentLocation.href;
     this.outgoingMainEl = this.outgoingMainEl || this.main!.el;
 
     const stickies = DOM.findPhxSticky(document) || [];
@@ -1517,6 +1542,11 @@ export default class LiveSocket {
       (event) => {
         const from = traversedFrom;
         traversedFrom = null;
+        if (this.redirectAfterPopState) {
+          const redirect = this.redirectAfterPopState;
+          this.redirectAfterPopState = null;
+          return redirect();
+        }
         if (!this.isNewLocation(window.location)) {
           return;
         }
@@ -1549,6 +1579,7 @@ export default class LiveSocket {
           return;
         }
 
+        this.historyReservation = null;
         this.registerNewLocation(window.location);
 
         // Update current position
@@ -1639,6 +1670,10 @@ export default class LiveSocket {
           return;
         }
 
+        if (linkState === "push") {
+          this.reserveHistoryEntry(href, type);
+        }
+
         this.requestDOMUpdate(() => {
           if (type === "patch") {
             this.pushHistoryPatch(e, href, linkState, target);
@@ -1687,7 +1722,7 @@ export default class LiveSocket {
   /** @internal */
   pushHistoryPatch(e, href, linkState, targetEl) {
     if (!this.isConnected() || !(this.main && this.main.isMain())) {
-      return Browser.redirect(href);
+      return this.browserRedirect(href);
     }
 
     this.withPageLoading({ to: href, kind: "patch" }, (done) => {
@@ -1704,23 +1739,9 @@ export default class LiveSocket {
       return;
     }
 
-    // Increment position for new state
-    this.currentHistoryPosition++;
-    this.sessionStorage.setItem(
-      PHX_LV_HISTORY_POSITION,
-      this.currentHistoryPosition.toString(),
-    );
-
-    // store the type for back navigation
-    Browser.updateCurrentState((state) => ({ ...state, backType: "patch" }));
-
-    Browser.pushState(
+    this.commitHistoryEntry(
       linkState,
-      {
-        type: "patch",
-        id: this.main!.id,
-        position: this.currentHistoryPosition,
-      },
+      { type: "patch", id: this.main!.id },
       href,
     );
 
@@ -1743,7 +1764,7 @@ export default class LiveSocket {
       targetEl.classList.add("phx-click-loading");
     }
     if (!this.isConnected() || !(this.main && this.main.isMain())) {
-      return Browser.redirect(href, flash);
+      return this.browserRedirect(href, flash);
     }
 
     // convert to full href if only path prefix
@@ -1755,27 +1776,9 @@ export default class LiveSocket {
     this.withPageLoading({ to: href, kind: "redirect" }, (done) => {
       this.replaceMain(href, flash, (linkRef) => {
         if (linkRef === this.linkRef) {
-          // Increment position for new state
-          this.currentHistoryPosition++;
-          this.sessionStorage.setItem(
-            PHX_LV_HISTORY_POSITION,
-            this.currentHistoryPosition.toString(),
-          );
-
-          // store the type for back navigation
-          Browser.updateCurrentState((state) => ({
-            ...state,
-            backType: "redirect",
-          }));
-
-          Browser.pushState(
+          this.commitHistoryEntry(
             linkState,
-            {
-              type: "redirect",
-              id: this.main!.id,
-              scroll: scroll,
-              position: this.currentHistoryPosition,
-            },
+            { type: "redirect", id: this.main!.id, scroll: scroll },
             href,
           );
 
@@ -1792,6 +1795,86 @@ export default class LiveSocket {
         done();
       });
     });
+  }
+
+  /**
+   * @internal
+   * Live navigation creates its history entry once the server replies, outside
+   * of the click that started it. Browsers that skip entries added without user
+   * activation on back navigation (such as Safari) may then skip the page the
+   * user navigated from. To avoid this, a live link click creates the entry
+   * immediately and the navigation fills it in when it completes.
+   */
+  reserveHistoryEntry(href: string, type: "patch" | "redirect") {
+    if (!Browser.canPushState() || href === window.location.href) {
+      return;
+    }
+    const meta = { type, id: this.main!.id };
+    if (this.historyReservation) {
+      // a superseded navigation already reserved the current entry
+      const { position } = this.historyReservation;
+      history.replaceState({ ...meta, position }, "", href);
+    } else {
+      const referer = this.currentLocation.href;
+      // store the type and scroll position for back navigation
+      Browser.updateCurrentState((state) => ({
+        ...state,
+        backType: type,
+        ...(type === "redirect" ? { scroll: window.scrollY } : {}),
+      }));
+      this.setHistoryPosition(this.currentHistoryPosition + 1);
+      history.pushState(
+        { ...meta, position: this.currentHistoryPosition },
+        "",
+        href,
+      );
+      this.historyReservation = {
+        position: this.currentHistoryPosition,
+        referer,
+      };
+    }
+    this.registerNewLocation(window.location);
+  }
+
+  /** @internal */
+  commitHistoryEntry(
+    linkState: "push" | "replace",
+    meta: { type: "patch" | "redirect"; id: string; scroll?: number },
+    href: string,
+  ) {
+    const reservation = this.historyReservation;
+    this.historyReservation = null;
+    if (reservation) {
+      // the scroll position was stored when the entry was reserved
+      const { scroll: _scroll, ...rest } = meta;
+      Browser.pushState(
+        "replace",
+        { ...rest, position: reservation.position },
+        href,
+        true,
+      );
+      return;
+    }
+
+    // Increment position for new state
+    this.setHistoryPosition(this.currentHistoryPosition + 1);
+
+    // store the type for back navigation
+    Browser.updateCurrentState((state) => ({ ...state, backType: meta.type }));
+
+    Browser.pushState(
+      linkState,
+      { ...meta, position: this.currentHistoryPosition },
+      href,
+    );
+  }
+
+  private setHistoryPosition(position: number) {
+    this.currentHistoryPosition = position;
+    this.sessionStorage.setItem(
+      PHX_LV_HISTORY_POSITION,
+      this.currentHistoryPosition.toString(),
+    );
   }
 
   /** @internal */
