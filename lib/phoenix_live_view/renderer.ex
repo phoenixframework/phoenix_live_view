@@ -29,7 +29,7 @@ defmodule Phoenix.LiveView.Renderer do
 
         quote do
           @file unquote(template)
-          @external_resource unquote(template)
+          @external_resource unquote(Path.relative_to_cwd(template))
           def render(var!(assigns)) when is_map(var!(assigns)) do
             unquote(ast)
           end
@@ -46,8 +46,10 @@ defmodule Phoenix.LiveView.Renderer do
       {false, []} ->
         template = Path.join(root, filename <> ".heex")
 
+        # Relative to the project, so copies of the project that reuse the
+        # build (git worktrees, copy-on-write clones) watch their own files
         quote do
-          @external_resource unquote(template)
+          @external_resource unquote(Path.relative_to_cwd(template))
         end
     end
   end
