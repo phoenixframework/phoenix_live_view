@@ -1346,7 +1346,10 @@ defmodule Phoenix.Component.Declarative do
 
   # TODO: Provide column information in error messages
   defp warn(message, file, line) do
-    IO.warn(message, file: file, line: line)
+    # The file is stored relative to the project, so expand it against the
+    # current directory here, where the warning is emitted. Mix persists
+    # warnings by their absolute source path and drops relative ones.
+    IO.warn(message, file: Path.expand(file), line: line)
   end
 
   defp ensure_used!(module, line, file) do

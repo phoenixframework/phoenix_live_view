@@ -911,7 +911,8 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
         slots: pruned_slots,
         attrs: pruned_attrs,
         # Relative to the project, so copies of the project (git worktrees,
-        # copy-on-write clones) that reuse the build point to their own files
+        # copy-on-write clones) that reuse the build point to their own files.
+        # It is expanded again when a warning is emitted, see Declarative.__verify__/2.
         file: Path.relative_to_cwd(state.file),
         line: line,
         root: root?
