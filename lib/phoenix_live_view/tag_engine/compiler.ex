@@ -279,7 +279,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
         Phoenix.LiveView.TagEngine.component(
           &(unquote(call) / 1),
           unquote(assigns),
-          {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
+          {__MODULE__, __ENV__.function, unquote(caller_file(state)), unquote(line)}
         )
       end
 
@@ -309,7 +309,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
         Phoenix.LiveView.TagEngine.component(
           &(unquote(call) / 1),
           unquote(assigns),
-          {__MODULE__, __ENV__.function, __ENV__.file, unquote(meta.line)}
+          {__MODULE__, __ENV__.function, unquote(caller_file(state)), unquote(meta.line)}
         )
       end
 
@@ -397,7 +397,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
           Phoenix.LiveView.TagEngine.component(
             &(unquote(call) / 1),
             unquote(assigns),
-            {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
+            {__MODULE__, __ENV__.function, unquote(caller_file(state)), unquote(line)}
           )
         end
         |> tag_slots(slot_info)
@@ -437,7 +437,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
           Phoenix.LiveView.TagEngine.component(
             &(unquote(call) / 1),
             unquote(assigns),
-            {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
+            {__MODULE__, __ENV__.function, unquote(caller_file(state)), unquote(line)}
           )
         end
         |> tag_slots(slot_info)
@@ -884,6 +884,11 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
     {clauses, {slot_assigns, slot_info}}
   end
 
+  # The file for stacktraces of component calls, relative to the project like
+  # the rest of the stacktrace, so copies of the project that reuse the build
+  # (git worktrees, copy-on-write clones) point to their own files
+  defp caller_file(state), do: Path.relative_to_cwd(state.caller.file)
+
   defp store_component_call(component, attr_info, slot_info, line, %{caller: caller} = state) do
     module = caller.module
 
@@ -905,7 +910,10 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
         component: component,
         slots: pruned_slots,
         attrs: pruned_attrs,
-        file: state.file,
+        # Relative to the project, so copies of the project (git worktrees,
+        # copy-on-write clones) that reuse the build point to their own files.
+        # It is expanded again when a warning is emitted, see Declarative.__verify__/2.
+        file: Path.relative_to_cwd(state.file),
         line: line,
         root: root?
       }
