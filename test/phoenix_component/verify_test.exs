@@ -52,6 +52,37 @@ defmodule Phoenix.ComponentVerifyTest do
     assert warnings =~ "test/phoenix_component/verify_test.exs:#{line}: (file)"
   end
 
+  test "warning locations resolve to the current directory" do
+    {_, diagnostics} =
+      Code.with_diagnostics(fn ->
+        defmodule WarnLocation do
+          use Phoenix.Component
+
+          attr :name, :any, required: true
+          def func(assigns), do: ~H[]
+
+          def render(assigns) do
+            ~H"""
+            <.func />
+            """
+          end
+        end
+      end)
+
+    assert [%{file: file} = diagnostic] = diagnostics
+    assert diagnostic.message =~ ~s|missing required attribute "name"|
+
+    # the file is stored relative to the project and expanded when the
+    # warning is emitted, which Mix needs to persist the warning
+    assert Path.expand(file) == __ENV__.file
+
+    # Elixir 1.15 always reports IO.warn locations relative to the current directory
+    if Version.match?(System.version(), ">= 1.16.0") do
+      assert Path.type(file) == :absolute
+      assert diagnostic.source == file
+    end
+  end
+
   test "loads modules" do
     warnings =
       capture_io(:stderr, fn ->
