@@ -63,12 +63,14 @@ defmodule Phoenix.LiveView.Diff do
     if count == 0 do
       {[], components}
     else
+      static = template_static(static, template)
       keyed_to_iodata(count - 1, keyed, static, components, template, mapper, [])
     end
   end
 
   defp to_iodata(%{@static => static} = parts, components, template, mapper) do
-    to_iodata_parts(parts, static, components, template, mapper)
+    [head | tail] = template_static(static, template)
+    one_to_iodata(tail, parts, 0, [head], components, template, mapper)
   end
 
   defp to_iodata(cid, components, _template, mapper) when is_integer(cid) do
@@ -78,15 +80,11 @@ defmodule Phoenix.LiveView.Diff do
     {mapper.(cid, iodata), components}
   end
 
-  defp to_iodata_parts(parts, static, components, template, mapper) do
-    [head | tail] = template_static(static, template)
-    one_to_iodata(tail, parts, 0, [head], components, template, mapper)
-  end
-
   defp keyed_to_iodata(index, keyed, static, components, template, mapper, acc)
        when index >= 0 do
     diff = Map.fetch!(keyed, index)
-    {iodata, components} = to_iodata_parts(diff, static, components, template, mapper)
+    [head | tail] = static
+    {iodata, components} = one_to_iodata(tail, diff, 0, [head], components, template, mapper)
     keyed_to_iodata(index - 1, keyed, static, components, template, mapper, [iodata | acc])
   end
 
