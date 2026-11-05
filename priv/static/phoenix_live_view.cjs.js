@@ -274,6 +274,13 @@ var ensureSameOrigin = (href, kind) => {
     );
   }
 };
+var resolveURL = (href) => {
+  try {
+    return new URL(href, document.baseURI).href;
+  } catch {
+    return href;
+  }
+};
 var isCid = (cid) => {
   const type = typeof cid;
   return type === "number" || type === "string" && /^(0|[1-9]\d*)$/.test(cid);
@@ -4702,7 +4709,7 @@ var View = class _View {
     this.root.children[this.id] = {};
     this.formsForRecovery = {};
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
-      const url = this.href && this.expandURL(this.href);
+      const url = this.href && resolveURL(this.href);
       return {
         redirect: this.redirect ? url : void 0,
         url: this.redirect ? void 0 : url || void 0,
@@ -5490,7 +5497,7 @@ var View = class _View {
   }
   onLiveRedirect(redir) {
     const { to, kind, flash } = redir;
-    const url = this.expandURL(to);
+    const url = resolveURL(to);
     const e = new CustomEvent("phx:server-navigate", {
       detail: { to, kind, flash }
     });
@@ -5498,11 +5505,8 @@ var View = class _View {
   }
   onLivePatch(redir) {
     const { to, kind } = redir;
-    this.href = this.expandURL(to);
+    this.href = resolveURL(to);
     this.liveSocket.historyPatch(to, kind);
-  }
-  expandURL(to) {
-    return to.startsWith("/") ? `${window.location.protocol}//${window.location.host}${to}` : to;
   }
   onRedirect({
     to,
@@ -6680,6 +6684,7 @@ var View = class _View {
     );
   }
   pushLinkPatch(e, href, targetEl, callback) {
+    href = resolveURL(href);
     const linkRef = this.liveSocket.setPendingLink(href);
     const loading = e.isTrusted && e.type !== "popstate";
     const refGen = targetEl ? () => this.putRef(
@@ -6688,8 +6693,7 @@ var View = class _View {
       "click"
     ) : null;
     const fallback = () => this.liveSocket.redirect(window.location.href, null, null);
-    const url = href.startsWith("/") ? `${location.protocol}//${location.host}${href}` : href;
-    this.pushWithReply(refGen, "live_patch", { url }).then((result) => {
+    this.pushWithReply(refGen, "live_patch", { url: href }).then((result) => {
       if (result.type === "ok") {
         this.liveSocket.requestDOMUpdate(() => {
           if (result.resp.link_redirect) {
@@ -7967,10 +7971,7 @@ var LiveSocket = class {
     if (!this.isConnected() || !(this.main && this.main.isMain())) {
       return browser_default.redirect(href, flash);
     }
-    if (/^\/$|^\/[^\/]+.*$/.test(href)) {
-      const { protocol, host } = window.location;
-      href = `${protocol}//${host}${href}`;
-    }
+    href = resolveURL(href);
     const scroll = window.scrollY;
     this.withPageLoading({ to: href, kind: "redirect" }, (done) => {
       this.replaceMain(href, flash, (linkRef) => {
