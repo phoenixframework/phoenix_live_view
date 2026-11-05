@@ -576,6 +576,40 @@ describe("LiveSocket", () => {
     expect(getItemCalls).toEqual(2);
   });
 
+  test("historyRedirect resolves the href to a full URL", () => {
+    const initialHref = window.location.href;
+    window.history.replaceState(null, "", "/users/1?page=1");
+
+    liveSocket = new LiveSocket("/live", Socket);
+    liveSocket.main = { isMain: () => true };
+    liveSocket.isConnected = () => true;
+    liveSocket.replaceMain = jest.fn();
+
+    try {
+      for (const [href, url] of [
+        ["/posts", "http://localhost/posts"],
+        ["?page=2", "http://localhost/users/1?page=2"],
+        ["edit", "http://localhost/users/edit"],
+        ["http://localhost/posts", "http://localhost/posts"],
+      ]) {
+        liveSocket.historyRedirect(
+          new CustomEvent("phx:exec"),
+          href,
+          "push",
+          null,
+          null,
+        );
+        expect(liveSocket.replaceMain).toHaveBeenLastCalledWith(
+          url,
+          null,
+          expect.any(Function),
+        );
+      }
+    } finally {
+      window.history.replaceState(null, "", initialHref);
+    }
+  });
+
   describe("execJS", () => {
     let view, liveSocket;
 

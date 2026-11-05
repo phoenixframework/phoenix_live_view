@@ -41,6 +41,7 @@ import {
   debug,
   maybe,
   eventContainsFiles,
+  resolveURL,
 } from "./utils";
 import {
   dispatchDiagnostic,
@@ -1746,11 +1747,7 @@ export default class LiveSocket {
       return Browser.redirect(href, flash);
     }
 
-    // convert to full href if only path prefix
-    if (/^\/$|^\/[^\/]+.*$/.test(href)) {
-      const { protocol, host } = window.location;
-      href = `${protocol}//${host}${href}`;
-    }
+    href = resolveURL(href);
     const scroll = window.scrollY;
     this.withPageLoading({ to: href, kind: "redirect" }, (done) => {
       this.replaceMain(href, flash, (linkRef) => {
