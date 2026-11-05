@@ -1824,7 +1824,8 @@ defmodule Phoenix.LiveView.Channel do
 
   defp session_route(%Session{} = session, endpoint, url) do
     case Route.live_link_info_without_checks(endpoint, session.router, url) do
-      {:internal, %Route{} = route} -> route
+      # urls without a host (such as "") cannot be mounted
+      {:internal, %Route{uri: %URI{host: host}} = route} when is_binary(host) -> route
       _ -> nil
     end
   end
