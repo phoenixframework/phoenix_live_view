@@ -194,6 +194,13 @@ defmodule Phoenix.LiveView.NavigationTest do
                live_redirect(thermo_live, to: "/clock-live-session-admin")
     end
 
+    test "refused with a url without host", %{conn: conn} do
+      assert {:ok, thermo_live, _html} = live(conn, "/thermo-live-session")
+
+      assert {:error, {:redirect, _}} =
+               live_redirect(thermo_live, to: "clock-live-session")
+    end
+
     test "refused with no live session", %{conn: conn} do
       assert {:ok, thermo_live, _html} = live(conn, "/thermo")
       assert {:error, {:redirect, _}} = live_redirect(thermo_live, to: "/thermo-live-session")
