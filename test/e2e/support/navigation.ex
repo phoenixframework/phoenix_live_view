@@ -85,6 +85,8 @@ end
 defmodule Phoenix.LiveViewTest.E2E.Navigation.ALive do
   use Phoenix.LiveView
 
+  alias Phoenix.LiveView.JS
+
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     socket
@@ -124,6 +126,8 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.ALive do
     >
       Server Navigate
     </button>
+    <button type="button" phx-click={JS.patch("?param=#{@param_next}")}>JS patch (relative)</button>
+    <button type="button" phx-click={JS.navigate("b")}>JS navigate (relative)</button>
     """
   end
 

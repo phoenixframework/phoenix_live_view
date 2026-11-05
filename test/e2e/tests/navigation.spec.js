@@ -458,6 +458,66 @@ test("before navigate does not prevent server-side navigation", async ({
   expect(await page.evaluate(() => window.beforeNavigateEvents)).toEqual([]);
 });
 
+test("JS.patch and JS.navigate resolve relative hrefs", async ({ page }) => {
+  await page.goto("/navigation/a");
+  await syncLV(page);
+
+  networkEvents = [];
+  webSocketEvents = [];
+
+  await page.getByRole("button", { name: "JS patch (relative)" }).click();
+  await syncLV(page);
+
+  await expect(page).toHaveURL(/\/navigation\/a\?param=-?\d+$/);
+  const url = page.url();
+  const param = new URL(url).searchParams.get("param");
+  await expect(page.getByText(`Current param: ${param}`)).toBeVisible();
+  expect(networkEvents).toEqual([]);
+  expect(webSocketEvents).toEqual([
+    {
+      type: "sent",
+      payload: expect.stringContaining(`"live_patch",{"url":"${url}"}`),
+    },
+    { type: "received", payload: expect.stringContaining("phx_reply") },
+  ]);
+
+  // a rejoin sends the full URL as well
+  webSocketEvents = [];
+  await page.evaluate(
+    () => new Promise((resolve) => window.liveSocket.disconnect(resolve)),
+  );
+  await page.evaluate(() => window.liveSocket.connect());
+  await syncLV(page);
+
+  await expect(page.getByText(`Current param: ${param}`)).toBeVisible();
+  expect(webSocketEvents).toEqual(
+    expect.arrayContaining([
+      { type: "sent", payload: expect.stringContaining(`"url":"${url}"`) },
+    ]),
+  );
+
+  networkEvents = [];
+  webSocketEvents = [];
+
+  await page.getByRole("button", { name: "JS navigate (relative)" }).click();
+  await syncLV(page);
+
+  await expect(page).toHaveURL("/navigation/b");
+  expect(networkEvents.filter((e) => e.url.includes("/navigation/"))).toEqual(
+    [],
+  );
+  expect(webSocketEvents).toEqual(
+    expect.arrayContaining([
+      {
+        type: "sent",
+        payload: expect.stringContaining(
+          '"redirect":"http://localhost:4004/navigation/b"',
+        ),
+      },
+    ]),
+  );
+});
+
 test("patch with replace replaces history", async ({ page }) => {
   await page.goto("/navigation/a");
   await syncLV(page);
