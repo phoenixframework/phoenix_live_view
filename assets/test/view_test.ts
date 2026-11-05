@@ -2010,6 +2010,41 @@ describe("View", function () {
       sticky: false,
     });
   });
+
+  test("pushLinkPatch resolves the href to a full URL", async () => {
+    const initialHref = window.location.href;
+    window.history.replaceState(null, "", "/users/1?page=1");
+
+    liveSocket = new LiveSocket("/live", Socket);
+    liveSocket.requestDOMUpdate = (callback) => callback();
+    const view = simulateJoinedView(liveViewDOM(), liveSocket);
+    const pushWithReply = jest
+      .spyOn(view, "pushWithReply")
+      .mockResolvedValue({ type: "ok", resp: {} } as any);
+
+    try {
+      await new Promise((resolve) =>
+        view.pushLinkPatch(
+          new CustomEvent("phx:exec"),
+          "?page=2",
+          null,
+          resolve,
+        ),
+      );
+
+      expect(pushWithReply).toHaveBeenCalledWith(null, "live_patch", {
+        url: "http://localhost/users/1?page=2",
+      });
+
+      // a rejoin sends the URL as resolved at the time of the patch
+      window.history.replaceState(null, "", "/posts");
+      expect((view["channel"] as any).params().url).toBe(
+        "http://localhost/users/1?page=2",
+      );
+    } finally {
+      window.history.replaceState(null, "", initialHref);
+    }
+  });
 });
 
 describe("View Hooks", function () {

@@ -3,6 +3,7 @@ import {
   closestPhxBinding,
   detectDuplicateIds,
   detectInvalidStreamInserts,
+  resolveURL,
 } from "phoenix_live_view/utils";
 import LiveSocket from "phoenix_live_view/live_socket";
 import {
@@ -39,6 +40,58 @@ describe("utils", () => {
       `);
       const element = global.document.querySelector("#innerContent")!;
       expect(closestPhxBinding(element, "phx-click")).toBe(null);
+    });
+  });
+
+  describe("resolveURL", () => {
+    const initialHref = window.location.href;
+
+    beforeEach(() => {
+      window.history.replaceState(null, "", "/users/1?page=1");
+    });
+
+    afterEach(() => {
+      document.querySelector("base")?.remove();
+      window.history.replaceState(null, "", initialHref);
+    });
+
+    test("keeps full URLs", () => {
+      expect(resolveURL("http://localhost/posts?page=2")).toBe(
+        "http://localhost/posts?page=2",
+      );
+      expect(resolveURL("https://example.com/posts")).toBe(
+        "https://example.com/posts",
+      );
+    });
+
+    test("resolves paths", () => {
+      expect(resolveURL("/")).toBe("http://localhost/");
+      expect(resolveURL("/posts?page=2#top")).toBe(
+        "http://localhost/posts?page=2#top",
+      );
+    });
+
+    test("resolves relative references against the current URL", () => {
+      expect(resolveURL("?page=2")).toBe("http://localhost/users/1?page=2");
+      expect(resolveURL("#top")).toBe("http://localhost/users/1?page=1#top");
+      expect(resolveURL("edit")).toBe("http://localhost/users/edit");
+      expect(resolveURL("../posts")).toBe("http://localhost/posts");
+      expect(resolveURL("")).toBe("http://localhost/users/1?page=1");
+    });
+
+    test("resolves like an anchor when the document has a base element", () => {
+      const base = document.createElement("base");
+      base.setAttribute("href", "/app/");
+      document.head.appendChild(base);
+      const anchor = document.createElement("a");
+      anchor.setAttribute("href", "?page=2");
+
+      expect(resolveURL("?page=2")).toBe("http://localhost/app/?page=2");
+      expect(resolveURL("?page=2")).toBe(anchor.href);
+    });
+
+    test("returns the href unchanged if it is not a valid URL", () => {
+      expect(resolveURL("http://[")).toBe("http://[");
     });
   });
 

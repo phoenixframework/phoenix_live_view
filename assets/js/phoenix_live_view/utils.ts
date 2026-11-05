@@ -27,6 +27,17 @@ export const ensureSameOrigin = (
   }
 };
 
+// The server expects full URLs for live navigation. Paths and relative
+// references, such as "?page=2", are resolved the same way the browser
+// resolves the href of an anchor.
+export const resolveURL = (href: string): string => {
+  try {
+    return new URL(href, document.baseURI).href;
+  } catch {
+    return href;
+  }
+};
+
 export const isCid = (cid): cid is number | string => {
   const type = typeof cid;
   return type === "number" || (type === "string" && /^(0|[1-9]\d*)$/.test(cid));

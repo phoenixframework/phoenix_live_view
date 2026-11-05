@@ -53,6 +53,7 @@ import {
   isEqualObj,
   maybe,
   isCid,
+  resolveURL,
 } from "./utils";
 import {
   LiveViewDiagnosticContext,
@@ -201,7 +202,7 @@ export default class View {
     this.root.children![this.id] = {};
     this.formsForRecovery = {};
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
-      const url = this.href && this.expandURL(this.href);
+      const url = this.href && resolveURL(this.href);
       return {
         redirect: this.redirect ? url : undefined,
         url: this.redirect ? undefined : url || undefined,
@@ -1229,7 +1230,7 @@ export default class View {
 
   onLiveRedirect(redir) {
     const { to, kind, flash } = redir;
-    const url = this.expandURL(to);
+    const url = resolveURL(to);
     const e = new CustomEvent("phx:server-navigate", {
       detail: { to, kind, flash },
     });
@@ -1238,14 +1239,8 @@ export default class View {
 
   onLivePatch(redir) {
     const { to, kind } = redir;
-    this.href = this.expandURL(to);
+    this.href = resolveURL(to);
     this.liveSocket.historyPatch(to, kind);
-  }
-
-  expandURL(to) {
-    return to.startsWith("/")
-      ? `${window.location.protocol}//${window.location.host}${to}`
-      : to;
   }
 
   onRedirect({
@@ -2668,6 +2663,7 @@ export default class View {
   }
 
   pushLinkPatch(e, href, targetEl, callback) {
+    href = resolveURL(href);
     const linkRef = this.liveSocket.setPendingLink(href);
     // only add loading states if event is trusted (it was triggered by user, such as click) and
     // it's not a forward/back navigation from popstate
@@ -2682,11 +2678,8 @@ export default class View {
       : null;
     const fallback = () =>
       this.liveSocket.redirect(window.location.href, null, null);
-    const url = href.startsWith("/")
-      ? `${location.protocol}//${location.host}${href}`
-      : href;
 
-    this.pushWithReply(refGen, "live_patch", { url }).then((result) => {
+    this.pushWithReply(refGen, "live_patch", { url: href }).then((result) => {
       if (result.type === "ok") {
         this.liveSocket.requestDOMUpdate(() => {
           if (result.resp.link_redirect) {
