@@ -48,7 +48,7 @@
     "jest-monocart-coverage": "^1.1.1",
     "monocart-reporter": "^2.12.4",
     "morphdom": "github:SteffenDE/morphdom#main",
-    "phoenix": "1.8.9",
+    "phoenix": "github:phoenixframework/phoenix#sd-resumable-transport",
     "prettier": "3.9.6",
     "typedoc": "^0.28.20",
     "typedoc-plugin-missing-exports": "^4.1.4",
