@@ -432,9 +432,9 @@ var LiveView = (() => {
         window.location.href
       );
     },
-    pushState(kind, meta, to) {
+    pushState(kind, meta, to, force = false) {
       if (this.canPushState()) {
-        if (to !== window.location.href) {
+        if (force || to !== window.location.href) {
           if (meta.type == "redirect" && meta.scroll) {
             const currentState = history.state || {};
             currentState.scroll = meta.scroll;
@@ -6905,6 +6905,8 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       this.roots = {};
       this.href = window.location.href;
       this.pendingLink = null;
+      this.historyReservation = null;
+      this.redirectAfterPopState = null;
       this.currentLocation = clone(window.location);
       this.hooks = opts.hooks || {};
       this.uploaders = opts.uploaders || {};
@@ -7241,7 +7243,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           );
         }
         if (this.pendingLink !== null) {
-          window.location.href = this.pendingLink;
+          this.browserRedirect(this.pendingLink);
         } else {
           window.location.reload();
         }
@@ -7355,14 +7357,32 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         browser_default.setCookie(PHX_RELOAD_STATUS, reloadToken, 60);
       }
       this.unload();
-      browser_default.redirect(to, flash);
+      this.browserRedirect(to, flash);
+    }
+    /**
+     * @internal
+     * Performs a full page navigation. If the current history entry was reserved
+     * for a live navigation that never completed, we first return to the entry
+     * before it, so that the page load does not leave a second entry behind.
+     * Replacing the reserved entry with a page load does not work, as some
+     * browsers then treat going back to the previous entry as a same-document
+     * navigation within the new page.
+     */
+    browserRedirect(to, flash = null) {
+      if (this.historyReservation) {
+        this.historyReservation = null;
+        this.redirectAfterPopState = () => browser_default.redirect(to, flash);
+        history.back();
+      } else {
+        browser_default.redirect(to, flash);
+      }
     }
     /** @internal */
     replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)) {
       if (!this.main) {
         return;
       }
-      const liveReferer = this.currentLocation.href;
+      const liveReferer = this.historyReservation ? this.historyReservation.referer : this.currentLocation.href;
       this.outgoingMainEl = this.outgoingMainEl || this.main.el;
       const stickies = dom_default.findPhxSticky(document) || [];
       const removeEls = this.phxRemoveElementsForNavigation(
@@ -7830,9 +7850,16 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       window.addEventListener(
         "popstate",
         (event) => {
+          var _a;
           const from = traversedFrom;
           traversedFrom = null;
-          if (!this.isNewLocation(window.location)) {
+          if (this.redirectAfterPopState) {
+            const redirect = this.redirectAfterPopState;
+            this.redirectAfterPopState = null;
+            return redirect();
+          }
+          const leftReservation = this.historyReservation && ((_a = event.state) == null ? void 0 : _a.position) !== this.historyReservation.position;
+          if (!leftReservation && !this.isNewLocation(window.location)) {
             return;
           }
           const { type, backType, id, scroll, position } = event.state || {};
@@ -7856,6 +7883,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
             }
             return;
           }
+          this.historyReservation = null;
           this.registerNewLocation(window.location);
           this.currentHistoryPosition = position || 0;
           this.sessionStorage.setItem(
@@ -7924,6 +7952,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
             execPhxClick();
             return;
           }
+          if (linkState === "push") {
+            this.reserveHistoryEntry(href, type);
+          }
           this.requestDOMUpdate(() => {
             if (type === "patch") {
               this.pushHistoryPatch(e, href, linkState, target);
@@ -7965,7 +7996,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
     /** @internal */
     pushHistoryPatch(e, href, linkState, targetEl) {
       if (!this.isConnected() || !(this.main && this.main.isMain())) {
-        return browser_default.redirect(href);
+        return this.browserRedirect(href);
       }
       this.withPageLoading({ to: href, kind: "patch" }, (done) => {
         this.main.pushLinkPatch(e, href, targetEl, (linkRef) => {
@@ -7979,19 +8010,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       if (!this.commitPendingLink(linkRef)) {
         return;
       }
-      this.currentHistoryPosition++;
-      this.sessionStorage.setItem(
-        PHX_LV_HISTORY_POSITION,
-        this.currentHistoryPosition.toString()
-      );
-      browser_default.updateCurrentState((state) => __spreadProps(__spreadValues({}, state), { backType: "patch" }));
-      browser_default.pushState(
+      this.commitHistoryEntry(
         linkState,
-        {
-          type: "patch",
-          id: this.main.id,
-          position: this.currentHistoryPosition
-        },
+        { type: "patch", id: this.main.id },
         href
       );
       dom_default.dispatchEvent(window, "phx:navigate", {
@@ -8006,29 +8027,16 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
         targetEl.classList.add("phx-click-loading");
       }
       if (!this.isConnected() || !(this.main && this.main.isMain())) {
-        return browser_default.redirect(href, flash);
+        return this.browserRedirect(href, flash);
       }
       href = resolveURL(href);
       const scroll = window.scrollY;
       this.withPageLoading({ to: href, kind: "redirect" }, (done) => {
         this.replaceMain(href, flash, (linkRef) => {
           if (linkRef === this.linkRef) {
-            this.currentHistoryPosition++;
-            this.sessionStorage.setItem(
-              PHX_LV_HISTORY_POSITION,
-              this.currentHistoryPosition.toString()
-            );
-            browser_default.updateCurrentState((state) => __spreadProps(__spreadValues({}, state), {
-              backType: "redirect"
-            }));
-            browser_default.pushState(
+            this.commitHistoryEntry(
               linkState,
-              {
-                type: "redirect",
-                id: this.main.id,
-                scroll,
-                position: this.currentHistoryPosition
-              },
+              { type: "redirect", id: this.main.id, scroll },
               href
             );
             dom_default.dispatchEvent(window, "phx:navigate", {
@@ -8042,6 +8050,70 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
           done();
         });
       });
+    }
+    /**
+     * @internal
+     * Live navigation creates its history entry once the server replies, outside
+     * of the click that started it. Browsers that skip entries added without user
+     * activation on back navigation (such as Safari) may then skip the page the
+     * user navigated from. To avoid this, a live link click creates the entry
+     * immediately and the navigation fills it in when it completes.
+     */
+    reserveHistoryEntry(href, type) {
+      if (!browser_default.canPushState() || href === window.location.href || // the History API rejects URLs from another origin
+      new URL(href, document.baseURI).origin !== window.location.origin) {
+        return;
+      }
+      const meta = { type, id: this.main.id };
+      if (this.historyReservation) {
+        const { position } = this.historyReservation;
+        history.replaceState(__spreadProps(__spreadValues({}, meta), { position }), "", href);
+      } else {
+        const referer = this.currentLocation.href;
+        browser_default.updateCurrentState((state) => __spreadValues(__spreadProps(__spreadValues({}, state), {
+          backType: type
+        }), type === "redirect" ? { scroll: window.scrollY } : {}));
+        this.setHistoryPosition(this.currentHistoryPosition + 1);
+        history.pushState(
+          __spreadProps(__spreadValues({}, meta), { position: this.currentHistoryPosition }),
+          "",
+          href
+        );
+        this.historyReservation = {
+          position: this.currentHistoryPosition,
+          referer
+        };
+      }
+      this.registerNewLocation(window.location);
+    }
+    /** @internal */
+    commitHistoryEntry(linkState, meta, href) {
+      const reservation = this.historyReservation;
+      this.historyReservation = null;
+      if (reservation) {
+        const _a = meta, { scroll: _scroll } = _a, rest = __objRest(_a, ["scroll"]);
+        browser_default.pushState(
+          "replace",
+          __spreadProps(__spreadValues({}, rest), { position: reservation.position }),
+          href,
+          true
+        );
+        return;
+      }
+      this.setHistoryPosition(this.currentHistoryPosition + 1);
+      browser_default.updateCurrentState((state) => __spreadProps(__spreadValues({}, state), { backType: meta.type }));
+      browser_default.pushState(
+        linkState,
+        __spreadProps(__spreadValues({}, meta), { position: this.currentHistoryPosition }),
+        href
+      );
+    }
+    setHistoryPosition(position) {
+      this.currentHistoryPosition = position;
+      this.sessionStorage.setItem(
+        PHX_LV_HISTORY_POSITION,
+        this.currentHistoryPosition.toString()
+      );
     }
     /** @internal */
     registerNewLocation(newLocation) {
