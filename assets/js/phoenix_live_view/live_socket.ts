@@ -1548,7 +1548,13 @@ export default class LiveSocket {
           this.redirectAfterPopState = null;
           return redirect();
         }
-        if (!this.isNewLocation(window.location)) {
+        // Leaving a reserved entry cancels its pending navigation, even if only
+        // the fragment differs. Returning to it, for example after a canceled
+        // phx:before-navigate, must not start a new navigation.
+        const leftReservation =
+          this.historyReservation &&
+          event.state?.position !== this.historyReservation.position;
+        if (!leftReservation && !this.isNewLocation(window.location)) {
           return;
         }
         const { type, backType, id, scroll, position } = event.state || {};
@@ -1803,7 +1809,12 @@ export default class LiveSocket {
    * immediately and the navigation fills it in when it completes.
    */
   reserveHistoryEntry(href: string, type: "patch" | "redirect") {
-    if (!Browser.canPushState() || href === window.location.href) {
+    if (
+      !Browser.canPushState() ||
+      href === window.location.href ||
+      // the History API rejects URLs from another origin
+      new URL(href, document.baseURI).origin !== window.location.origin
+    ) {
       return;
     }
     const meta = { type, id: this.main!.id };

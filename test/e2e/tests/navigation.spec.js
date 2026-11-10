@@ -649,6 +649,65 @@ test("redirect on mount replaces the navigate history entry", async ({
   await expect(page).toHaveURL("/navigation/a");
 });
 
+for (const name of ["Patch to fragment", "Navigate to fragment"]) {
+  test(`going back while "${name}" is pending cancels the navigation`, async ({
+    page,
+  }) => {
+    await page.goto("/navigation/a");
+    await syncLV(page);
+    await page.evaluate(() => window.liveSocket.enableLatencySim(500));
+
+    await page.getByRole("link", { name }).click();
+    await expect(page).toHaveURL("/navigation/a#fragment");
+    await page.goBack();
+    await expect(page).toHaveURL("/navigation/a");
+
+    // the reply has arrived by now, but must not restore the fragment
+    await page.waitForTimeout(1500);
+    await expect(page).toHaveURL("/navigation/a");
+    await expect(
+      page.getByRole("heading", { name: "This is page A" }),
+    ).toBeVisible();
+  });
+}
+
+test("canceling back keeps a pending fragment-only navigation", async ({
+  page,
+}) => {
+  await page.goto("/navigation/a");
+  await syncLV(page);
+  await page.evaluate(() => {
+    window.canceledPops = 0;
+    window.addEventListener("phx:before-navigate", (event) => {
+      if (event.detail.pop) {
+        window.canceledPops++;
+        event.preventDefault();
+      }
+    });
+    window.liveSocket.enableLatencySim(500);
+  });
+
+  await page.getByRole("link", { name: "Patch to fragment" }).click();
+  await expect(page).toHaveURL("/navigation/a#fragment");
+  await page.goBack();
+
+  await page.waitForTimeout(1500);
+  await expect(page).toHaveURL("/navigation/a#fragment");
+  expect(await page.evaluate(() => window.canceledPops)).toBe(1);
+});
+
+test("live links to another origin fall back to http navigation", async ({
+  page,
+}) => {
+  await page.goto("/navigation/a");
+  await syncLV(page);
+
+  await page.getByRole("link", { name: "Other origin" }).click();
+
+  await expect(page).toHaveURL("http://127.0.0.1:4004/navigation/dead");
+  await expect(page.getByRole("heading", { name: "Dead view" })).toBeVisible();
+});
+
 test("falls back to http navigation when navigating between live sessions", async ({
   page,
 }) => {

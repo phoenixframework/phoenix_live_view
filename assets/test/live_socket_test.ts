@@ -239,6 +239,23 @@ describe("LiveSocket", () => {
       expect(window.history.length).toBe(length);
       expect(window.location.pathname + window.location.hash).toBe("/");
     });
+
+    test("does not create a history entry for links to another origin", () => {
+      link.setAttribute("href", "https://example.com/next");
+      const length = window.history.length;
+      const position = liveSocket.currentHistoryPosition;
+
+      click(link);
+
+      expect(window.history.length).toBe(length);
+      expect(liveSocket.currentHistoryPosition).toBe(position);
+      expect(window.location.pathname + window.location.hash).toBe("/");
+      expect(
+        type === "patch"
+          ? liveSocket.pushHistoryPatch
+          : liveSocket.historyRedirect,
+      ).toHaveBeenCalled();
+    });
   });
 
   test("viewLogger", async () => {

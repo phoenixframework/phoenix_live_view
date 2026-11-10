@@ -122,6 +122,9 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.ALive do
     <.styled_link navigate="/navigation/slow?sleep=1000">Slow</.styled_link>
     <.styled_link navigate="/navigation/slow?redirect=live">Slow (live redirect)</.styled_link>
     <.styled_link navigate="/navigation/slow?redirect=http">Slow (redirect)</.styled_link>
+    <.styled_link patch="/navigation/a#fragment">Patch to fragment</.styled_link>
+    <.styled_link navigate="/navigation/a#fragment">Navigate to fragment</.styled_link>
+    <.styled_link navigate="http://127.0.0.1:4004/navigation/dead">Other origin</.styled_link>
     <button
       type="button"
       phx-click="server_navigate"
