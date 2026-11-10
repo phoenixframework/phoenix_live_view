@@ -52,7 +52,7 @@
     "prettier": "3.9.6",
     "typedoc": "^0.28.20",
     "typedoc-plugin-missing-exports": "^4.1.4",
-    "typescript": "^6.0",
+    "typescript": "^7.0",
     "typescript-eslint": "^8.65.0"
   },
   "scripts": {
