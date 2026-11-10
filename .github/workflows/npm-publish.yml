@@ -7,25 +7,40 @@ on:
       - "v*"
 
 permissions:
-  id-token: write  # Required for OIDC
   contents: read
 
 jobs:
   publish:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write # required for OIDC trusted publishing
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: "24"
+          persist-credentials: false
+
+      - name: Verify versions match the tag
+        run: bash .github/verify-release-versions.sh "$GITHUB_REF_NAME"
+
+      # no cache: input is set, so nothing is restored into the publishing job
+      - name: Set up Node.js # zizmor: ignore[cache-poisoning]
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24.x"
           registry-url: "https://registry.npmjs.org"
 
-      # Ensure npm 11.5.1 or later is installed
+      # trusted publishing needs npm 11.5.1 or later; Node 24 still ships 11.3.x
       - name: Update npm
-        run: npm install -g npm@latest
-      - run: npm ci --allow-git=root
-      - run: npm run build
+        run: npm install -g npm@12 # zizmor: ignore[adhoc-packages]
+
+      - name: Install npm dependencies
+        run: npm ci --allow-git=root
+
+      - name: Build
+        run: npm run build
 
       - name: Determine npm tag
         id: npm-tag
@@ -41,4 +56,6 @@ jobs:
           fi
 
       - name: Publish to npm
-        run: npm publish --tag ${{ steps.npm-tag.outputs.tag }}
+        env:
+          NPM_TAG: ${{ steps.npm-tag.outputs.tag }}
+        run: npm publish --tag "$NPM_TAG"
