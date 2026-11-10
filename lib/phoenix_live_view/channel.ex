@@ -1313,15 +1313,24 @@ defmodule Phoenix.LiveView.Channel do
 
     # Optional parameter handling
     connect_params = params["params"]
+    adopt = adopt(params)
 
     # Optional verified parts
-    flash = verify_flash(endpoint, verified, params["flash"], connect_params)
+    flash =
+      if adopt,
+        do: adopt.flash,
+        else: verify_flash(endpoint, verified, params["flash"], connect_params)
 
     # connect_info is either a Plug.Conn during tests or a Phoenix.Socket map
     socket_session = Map.get(connect_info, :session, %{})
 
     Process.monitor(transport_pid)
-    load_csrf_token(endpoint, socket_session)
+
+    if adopt do
+      Plug.CSRFProtection.load_state(endpoint.config(:secret_key_base), adopt.csrf_state)
+    else
+      load_csrf_token(endpoint, socket_session)
+    end
 
     socket = %Socket{
       endpoint: endpoint,
@@ -1348,6 +1357,7 @@ defmodule Phoenix.LiveView.Channel do
 
     case mount_private(verified, connect_params, connect_info, lifecycle) do
       {:ok, mount_priv} ->
+        mount_priv = adopt_assign_new(mount_priv, adopt)
         socket = Utils.configure_socket(socket, mount_priv, action, flash, host_uri)
 
         try do
@@ -1356,34 +1366,42 @@ defmodule Phoenix.LiveView.Channel do
           |> Utils.maybe_call_live_view_mount!(view, params, merged_session, url)
           |> build_state(phx_socket)
           |> maybe_call_mount_handle_params(router, url, params)
-          |> reply_mount(from, verified, route)
+          |> reply_mount(from, verified, route, adopt)
           |> maybe_subscribe_to_live_reload()
         rescue
           exception ->
             status = Plug.Exception.status(exception)
 
-            if status >= 400 and status < 500 do
-              # only forward the stack and exception module to the signed cookie if debug_errors is enabled
-              # which already exposes the stacktrace and exception information to the client
-              {exception_mod, stack} =
-                if endpoint.config(:debug_errors) do
-                  {inspect(exception.__struct__), __STACKTRACE__}
-                else
-                  {nil, []}
-                end
+            cond do
+              # the request that adopts us raises the exception, as in a disconnected mount
+              adopt ->
+                send(adopt.pid, {adopt.ref, :exception, :error, exception, __STACKTRACE__})
+                GenServer.reply(from, {:error, %{reason: "adoption failed"}})
+                {:stop, :shutdown, :no_state}
 
-              token =
-                Phoenix.LiveView.Static.sign_token(endpoint, %{
-                  status: status,
-                  view: inspect(view),
-                  exception: exception_mod,
-                  stack: stack
-                })
+              status >= 400 and status < 500 ->
+                # only forward the stack and exception module to the signed cookie if debug_errors is enabled
+                # which already exposes the stacktrace and exception information to the client
+                {exception_mod, stack} =
+                  if endpoint.config(:debug_errors) do
+                    {inspect(exception.__struct__), __STACKTRACE__}
+                  else
+                    {nil, []}
+                  end
 
-              GenServer.reply(from, {:error, %{reason: "reload", status: status, token: token}})
-              {:stop, :shutdown, :no_state}
-            else
-              reraise(exception, __STACKTRACE__)
+                token =
+                  Phoenix.LiveView.Static.sign_token(endpoint, %{
+                    status: status,
+                    view: inspect(view),
+                    exception: exception_mod,
+                    stack: stack
+                  })
+
+                GenServer.reply(from, {:error, %{reason: "reload", status: status, token: token}})
+                {:stop, :shutdown, :no_state}
+
+              true ->
+                reraise(exception, __STACKTRACE__)
             end
         end
 
@@ -1395,6 +1413,36 @@ defmodule Phoenix.LiveView.Channel do
         GenServer.reply(from, {:error, %{reason: "parent_redirect"}})
         {:stop, :shutdown, :no_state}
     end
+  end
+
+  # The request that mounts an adoptable LiveView joins with this key, see
+  # Phoenix.LiveView.Static. Its join payload is not serialized, so clients
+  # cannot send it, as JSON has no pids or atom keys.
+  defp adopt(%{"adopt" => %{pid: pid, ref: ref} = adopt}) when is_pid(pid) and is_reference(ref),
+    do: adopt
+
+  defp adopt(_params), do: nil
+
+  # assign_new uses the assigns of the request, as in a disconnected mount
+  defp adopt_assign_new(%{assign_new: {_assigns, keys}} = mount_priv, %{assigns: assigns}),
+    do: %{mount_priv | assign_new: {assigns, keys}}
+
+  defp adopt_assign_new(mount_priv, nil), do: mount_priv
+
+  # The request renders the page with the HTML and assigns of the mount. It
+  # renders the static token as well, as it holds what only the mount knows.
+  defp send_adopt_rendered(nil, _diff, _state), do: :ok
+
+  defp send_adopt_rendered(adopt, diff, %{socket: socket}) do
+    content = Diff.to_iodata(diff)
+    static_token = Phoenix.LiveView.Static.sign_static_token(socket)
+    send(adopt.pid, {adopt.ref, :rendered, content, socket.assigns, static_token})
+  end
+
+  defp send_adopt_stop(nil, _state), do: :ok
+
+  defp send_adopt_stop(adopt, %{socket: socket}) do
+    send(adopt.pid, {adopt.ref, :stop, socket})
   end
 
   defp verify_flash(endpoint, %Session{} = verified, flash_token, connect_params) do
@@ -1524,8 +1572,13 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp reply_mount(result, from, %Session{} = session, route) do
+  defp reply_mount(result, from, %Session{} = session, route, adopt) do
     lv_vsn = to_string(Application.spec(:phoenix_live_view)[:vsn])
+
+    case result do
+      {:ok, diff, _, new_state} -> send_adopt_rendered(adopt, diff, new_state)
+      {_redirect, _opts, new_state} -> send_adopt_stop(adopt, new_state)
+    end
 
     case result do
       {:ok, diff, :mount, new_state} ->

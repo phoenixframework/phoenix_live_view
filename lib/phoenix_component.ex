@@ -1072,7 +1072,7 @@ defmodule Phoenix.Component do
 
   def live_render(%Plug.Conn{} = conn, view, opts) do
     case Static.render(conn, view, opts) do
-      {:ok, content, _assigns} ->
+      {:ok, content, _assigns, _conn} ->
         content
 
       {:stop, _} ->

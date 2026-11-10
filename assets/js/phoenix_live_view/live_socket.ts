@@ -18,6 +18,8 @@ import {
   PHX_LV_LATENCY_SIM,
   PHX_LV_PROFILE,
   PHX_LV_HISTORY_POSITION,
+  PHX_ADOPT,
+  PHX_ADOPT_SOCKET,
   PHX_MAIN,
   PHX_PARENT_ID,
   PHX_VIEW_SELECTOR,
@@ -258,6 +260,10 @@ export interface LiveSocketOptions {
 
 export default class LiveSocket {
   socket: Socket;
+  /** @internal the token of the session the socket attaches to, see attachAdoptedSession */
+  adoptToken: string | null = null;
+  private adoptChecked = false;
+  private socketPath: string;
 
   /** @internal */
   unloaded = false;
@@ -360,6 +366,10 @@ export default class LiveSocket {
       `);
     }
     this.socket = new phxSocket(url, opts);
+    this.socketPath = new URL(url, window.location.href).pathname.replace(
+      /\/$/,
+      "",
+    );
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX;
     this.params = closure(opts.params || {});
     this.viewLogger = opts.viewLogger;
@@ -896,8 +906,34 @@ export default class LiveSocket {
     }
   }
 
+  /**
+   * @internal
+   *
+   * Adoptable LiveViews mount while the server renders the page, in a socket session
+   * without a client. The socket attaches to that session when it first connects,
+   * if the session belongs to the socket path of this LiveSocket.
+   */
+  attachAdoptedSession() {
+    if (this.adoptChecked) {
+      return;
+    }
+    this.adoptChecked = true;
+    const el = Array.from(document.querySelectorAll(`[${PHX_ADOPT}]`)).find(
+      (el) => el.getAttribute(PHX_ADOPT_SOCKET) === this.socketPath,
+    );
+    const token = el && el.getAttribute(PHX_ADOPT);
+    // Phoenix 1.9 added attachSession
+    const socket = this.socket as Socket & {
+      attachSession?: (token: string) => boolean;
+    };
+    if (token && socket.attachSession && socket.attachSession(token)) {
+      this.adoptToken = token;
+    }
+  }
+
   /** @internal */
   joinRootViews() {
+    this.attachAdoptedSession();
     let rootsFound = false;
     DOM.all(
       document,

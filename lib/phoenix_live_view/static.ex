@@ -8,6 +8,8 @@ defmodule Phoenix.LiveView.Static do
 
   alias Phoenix.LiveView.{Socket, Utils, Diff, Route, Lifecycle}
 
+  require Logger
+
   # Token version. Should be changed whenever new data is stored.
   @token_vsn 6
   @phoenix_reload_status "__phoenix_reload_status__"
@@ -74,7 +76,11 @@ defmodule Phoenix.LiveView.Static do
   end
 
   @doc """
-  Renders a live view without spawning a LiveView server.
+  Renders a live view without spawning a LiveView server, unless the
+  LiveView is adoptable.
+
+  Returns `{:ok, content, assigns, conn}`, where `conn` holds the detached
+  socket session of adoptable LiveViews, or `{:stop, socket}` on redirects.
 
     * `conn` - the Plug.Conn struct form the HTTP request
     * `view` - the LiveView module
@@ -152,23 +158,48 @@ defmodule Phoenix.LiveView.Static do
         host_uri
       )
 
-    case call_mount_and_handle_params!(socket, view, mount_session, conn.params, request_url) do
+    render = %{
+      view: view,
+      router: router,
+      to_sign_session: to_sign_session,
+      mount_session: mount_session,
+      live_session: live_session,
+      tag: tag,
+      extended_attrs: extended_attrs,
+      flash: flash,
+      request_url: request_url
+    }
+
+    with %{} = adopt <- adopt_config(conn, endpoint, config),
+         {:ok, _content, _assigns, _conn} = ok <- adopt_render(conn, adopt, socket, render) do
+      ok
+    else
+      {:stop, %Socket{}} = stop -> stop
+      {:fallback, conn} -> dead_render(conn, socket, render)
+      nil -> dead_render(conn, socket, render)
+    end
+  end
+
+  defp dead_render(conn, socket, render) do
+    %{view: view, router: router, request_url: request_url} = render
+
+    case call_mount_and_handle_params!(
+           socket,
+           view,
+           render.mount_session,
+           conn.params,
+           request_url
+         ) do
       {:ok, socket} ->
-        data_attrs = [
-          phx_session: sign_root_session(socket, router, view, to_sign_session, live_session),
-          phx_static: sign_static_token(socket)
-        ]
+        session_token =
+          sign_root_session(socket, router, view, render.to_sign_session, render.live_session)
 
+        data_attrs = [phx_session: session_token, phx_static: sign_static_token(socket)]
         data_attrs = if router, do: [phx_main: true] ++ data_attrs, else: data_attrs
-
-        attrs = [
-          {:id, socket.id},
-          {:data, data_attrs}
-          | extended_attrs
-        ]
+        attrs = [{:id, socket.id}, {:data, data_attrs} | render.extended_attrs]
 
         try do
-          {:ok, to_rendered_content_tag(socket, tag, view, attrs), socket.assigns}
+          {:ok, to_rendered_content_tag(socket, render.tag, view, attrs), socket.assigns, conn}
         catch
           :throw, {:phoenix, :child_redirect, redirected, flash} ->
             {:stop, Utils.replace_flash(%{socket | redirected: redirected}, flash)}
@@ -176,6 +207,187 @@ defmodule Phoenix.LiveView.Static do
 
       {:stop, socket} ->
         {:stop, socket}
+    end
+  end
+
+  ## Adoption
+
+  # The private key of the conn that holds the detached session of the request, so the
+  # LiveViews of a page join the same session, or :unavailable when it could not start.
+  @adopt_key :phoenix_live_view_adopt
+
+  defp adopt_config(conn, endpoint, %{adoptable: true}) do
+    cond do
+      # LiveViewTest renders in the test process, for example to share its database
+      # sandbox, so we only adopt in tests that ask for it with this key
+      match?({Plug.Adapters.Test.Conn, _}, conn.adapter) and
+          not Map.has_key?(conn.private, @adopt_key) ->
+        nil
+
+      config = endpoint.config(:live_view)[:adopt] ->
+        path =
+          Keyword.get(config, :socket) ||
+            raise ArgumentError, """
+            the :adopt configuration of #{inspect(endpoint)} requires the :socket \
+            the client connects to, for example:
+
+                config :my_app, #{inspect(endpoint)},
+                  live_view: [adopt: [socket: "/live"]]
+            """
+
+        if adopt_enabled?(Keyword.get(config, :enabled, true), conn) do
+          %{
+            path: path,
+            max_pending: Keyword.get(config, :max_pending, 10_000),
+            window_ms: Keyword.get(config, :window_ms)
+          }
+        end
+
+      true ->
+        raise ArgumentError, """
+        LiveViews with adoptable: true require the :adopt configuration in your endpoint, \
+        with the path of the socket the client connects to:
+
+            config :my_app, #{inspect(endpoint)},
+              live_view: [adopt: [socket: "/live"]]
+
+        See "Adoptable LiveViews" in Phoenix.LiveView.Socket.
+        """
+    end
+  end
+
+  defp adopt_config(_conn, _endpoint, _config), do: nil
+
+  defp adopt_enabled?(enabled, _conn) when is_boolean(enabled), do: enabled
+
+  defp adopt_enabled?({module, function, args}, conn) do
+    case apply(module, function, [conn | args]) do
+      enabled when is_boolean(enabled) ->
+        enabled
+
+      other ->
+        raise ArgumentError,
+              "#{inspect(module)}.#{function}/#{length(args) + 1}, given as :enabled in " <>
+                "the :adopt configuration, must return a boolean, got: #{inspect(other)}"
+    end
+  end
+
+  defp adopt_enabled?(other, _conn) do
+    raise ArgumentError,
+          ":enabled in the :adopt configuration expects a boolean or MFA tuple, " <>
+            "got: #{inspect(other)}"
+  end
+
+  # Mounts the LiveView in connected mode in a detached socket session, which the client
+  # attaches to. The LiveView sends us its HTML, see Phoenix.LiveView.Channel.
+  defp adopt_render(conn, adopt, %Socket{} = socket, render) do
+    %{view: view, router: router} = render
+
+    with {:ok, session, token, conn} <- adopt_session(conn, socket.endpoint, adopt) do
+      ref = make_ref()
+
+      payload = %{
+        "session" =>
+          sign_root_session(socket, router, view, render.to_sign_session, render.live_session),
+        "params" => %{"_mounts" => 0},
+        # the payload is not serialized, so clients cannot send this key
+        "adopt" => %{
+          pid: self(),
+          ref: ref,
+          assigns: conn.assigns,
+          flash: render.flash,
+          # The LiveView renders forms with the CSRF token of this request,
+          # which stores it in the session of its response.
+          csrf_state: Plug.CSRFProtection.dump_state()
+        }
+      }
+
+      payload = if router, do: Map.put(payload, "url", render.request_url), else: payload
+
+      case Phoenix.Socket.join_detached(session, "lv:" <> socket.id, payload) do
+        {:ok, join_ref} ->
+          receive do
+            {^ref, :rendered, content, assigns, static_token} ->
+              data_attrs = [
+                phx_session: payload["session"],
+                phx_static: static_token,
+                phx_adopt: token,
+                phx_adopt_ref: join_ref,
+                phx_adopt_socket: adopt.path
+              ]
+
+              data_attrs = if router, do: [phx_main: true] ++ data_attrs, else: data_attrs
+              attrs = [{:id, socket.id}, {:data, data_attrs} | render.extended_attrs]
+              {:ok, content_tag(render.tag, attrs, content), assigns, conn}
+          after
+            # the LiveView sends the HTML before it replies to the join
+            5_000 -> {:fallback, conn}
+          end
+
+        {:error, reply} ->
+          receive do
+            {^ref, :stop, %Socket{} = socket} ->
+              Phoenix.Socket.stop_detached(session)
+              {:stop, socket}
+
+            {^ref, :exception, kind, reason, stacktrace} ->
+              Phoenix.Socket.stop_detached(session)
+              :erlang.raise(kind, reason, stacktrace)
+          after
+            # for example when the LiveView crashed, we render it again to raise
+            0 ->
+              Logger.debug(
+                "Rendering #{inspect(view)} without adoption, as joining it failed: #{inspect(reply)}"
+              )
+
+              {:fallback, conn}
+          end
+      end
+    end
+  end
+
+  defp adopt_session(conn, endpoint, adopt) do
+    case conn.private[@adopt_key] do
+      {session, token} ->
+        {:ok, session, token, conn}
+
+      :unavailable ->
+        {:fallback, conn}
+
+      _ ->
+        opts = [max_pending: adopt.max_pending]
+        opts = if adopt.window_ms, do: [window_ms: adopt.window_ms] ++ opts, else: opts
+
+        case start_detached(conn, adopt.path, opts) do
+          {:ok, session, token} ->
+            {:ok, session, token, Plug.Conn.put_private(conn, @adopt_key, {session, token})}
+
+          {:error, reason} when reason in [:no_socket, :not_resumable, :not_a_phoenix_socket] ->
+            raise ArgumentError, """
+            LiveViews with adoptable: true require a resumable Phoenix.Socket at #{inspect(adopt.path)}, \
+            the :socket in the :adopt configuration of #{inspect(endpoint)}, got: #{inspect(reason)}.
+
+            Make sure the endpoint defines the socket with the :resumable WebSocket option:
+
+                socket #{inspect(adopt.path)}, Phoenix.LiveView.Socket,
+                  websocket: [resumable: true, connect_info: [session: @session_options]],
+                  longpoll: [connect_info: [session: @session_options]]
+            """
+
+          # the limit of sessions without client, or the socket did not accept the request
+          {:error, reason} ->
+            Logger.debug("Rendering LiveViews without adoption: #{inspect(reason)}")
+            {:fallback, Plug.Conn.put_private(conn, @adopt_key, :unavailable)}
+        end
+    end
+  end
+
+  # TODO: Remove when we require Phoenix 1.9
+  defp start_detached(conn, path, opts) do
+    if function_exported?(Phoenix.Socket, :start_detached, 3) do
+      Phoenix.Socket.start_detached(conn, path, opts)
+    else
+      raise ArgumentError, "LiveViews with adoptable: true require Phoenix 1.9 or later"
     end
   end
 
@@ -390,7 +602,8 @@ defmodule Phoenix.LiveView.Static do
   # The static token is computed only on disconnected render and it keeps
   # the information that is only available during disconnected renders,
   # such as assign_new.
-  defp sign_static_token(%Socket{id: id, endpoint: endpoint} = socket) do
+  @doc false
+  def sign_static_token(%Socket{id: id, endpoint: endpoint} = socket) do
     # IMPORTANT: If you change the second argument, @token_vsn has to be bumped.
     sign_token(endpoint, %{
       id: id,

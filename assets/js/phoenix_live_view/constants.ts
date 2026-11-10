@@ -68,6 +68,10 @@ export const PHX_SESSION = "data-phx-session";
 export const PHX_VIEW_SELECTOR = `[${PHX_SESSION}]`;
 export const PHX_STICKY = "data-phx-sticky";
 export const PHX_STATIC = "data-phx-static";
+// the detached socket session of an adoptable LiveView, see Phoenix.LiveView.Static
+export const PHX_ADOPT = "data-phx-adopt";
+export const PHX_ADOPT_REF = "data-phx-adopt-ref";
+export const PHX_ADOPT_SOCKET = "data-phx-adopt-socket";
 export const PHX_READONLY = "data-phx-readonly";
 export const PHX_DISABLED = "data-phx-disabled";
 export const PHX_DISABLE_WITH = "disable-with";

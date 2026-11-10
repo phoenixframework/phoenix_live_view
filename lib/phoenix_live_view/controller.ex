@@ -37,7 +37,8 @@ defmodule Phoenix.LiveView.Controller do
   """
   def live_render(%Plug.Conn{} = conn, view, opts \\ []) do
     case LiveView.Static.render(conn, view, opts) do
-      {:ok, content, socket_assigns} ->
+      # the conn can hold the session that LiveViews in the layout join as well
+      {:ok, content, socket_assigns, conn} ->
         conn
         |> Plug.Conn.fetch_query_params()
         |> ensure_format()

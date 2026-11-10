@@ -2,7 +2,8 @@ Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest.E2E.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4004],
   adapter: Bandit.PhoenixAdapter,
   server: true,
-  live_view: [signing_salt: "aaaaaaaa"],
+  # see adopt.spec.js
+  live_view: [signing_salt: "aaaaaaaa", adopt: [socket: "/live", window_ms: 1000]],
   secret_key_base: String.duplicate("a", 64),
   render_errors: [
     formats: [
@@ -75,10 +76,13 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
       let csrfToken = document
         .querySelector("meta[name='csrf-token']")
         .getAttribute("content");
+      let query = new URLSearchParams(window.location.search);
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
         params: { _csrf_token: csrfToken },
         // see resume.spec.js
-        resumable: new URLSearchParams(window.location.search).has("resumable"),
+        resumable: query.has("resumable"),
+        // see adopt.spec.js
+        transport: query.has("longpoll") ? window.Phoenix.LongPoll : undefined,
         hooks: { ...Hooks, ...window.hooks, ...colocatedHooks },
         uploaders: { ...Uploaders, ...window.uploaders },
         cascadePhxRemoveOnNavigation:
@@ -86,7 +90,12 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
             "cascadePhxRemoveOnNavigation",
           ) !== "false",
       });
-      liveSocket.connect();
+      // see adopt.spec.js
+      if (query.has("connectAfter")) {
+        setTimeout(() => liveSocket.connect(), Number(query.get("connectAfter")));
+      } else {
+        liveSocket.connect();
+      }
       window.liveSocket = liveSocket;
     </script>
     <style>
@@ -186,6 +195,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/components", E2E.ComponentsLive
       live "/keyed-comprehension", E2E.KeyedComprehensionLive
       live "/resume", E2E.ResumeLive
+      live "/adopt", E2E.AdoptLive
       get "/resume/session", E2E.ResumeSessionController, :update
     end
 

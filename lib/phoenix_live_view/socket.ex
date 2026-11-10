@@ -132,6 +132,69 @@ defmodule Phoenix.LiveView.Socket do
           end
         end
       end
+
+  ## Adoptable LiveViews
+
+  > #### Experimental {: .warning}
+  >
+  > Adoptable LiveViews are experimental and might change in future releases.
+  > They require a Phoenix version with `Phoenix.Socket.start_detached/3`.
+
+  A LiveView normally mounts twice: once to render the HTTP response, and again
+  when the client connects. An adoptable LiveView mounts once. The HTTP request
+  starts a session of the LiveView socket without a client, mounts the LiveView
+  in it in connected mode, and renders the page from it. The client then attaches
+  to that session, like it resumes a socket, and adopts the running LiveView.
+  It receives the updates the LiveView sent in the meantime.
+
+  Enable it per LiveView:
+
+      use Phoenix.LiveView, adoptable: true
+
+  It requires a resumable socket, see "Resumable sockets" above, and the path of
+  that socket in the `:adopt` configuration of the endpoint:
+
+      config :my_app, MyAppWeb.Endpoint,
+        live_view: [signing_salt: "...", adopt: [socket: "/live"]]
+
+  The `:adopt` configuration accepts:
+
+    * `:socket` - the path of the socket the client connects to. Required.
+
+    * `:max_pending` - the maximum number of sessions on a node that no client
+      attached to yet. Further requests render as if the LiveView was not adoptable.
+      Defaults to `10_000`. `nil` disables the limit.
+
+    * `:window_ms` - how long a client can take to attach, times 1.5, in milliseconds.
+      Defaults to the `:window_ms` of the socket.
+
+    * `:enabled` - `true`, `false`, or an MFA tuple that receives the conn,
+      followed by the arguments of the tuple, and returns a boolean.
+      Defaults to `true`. Use a function to skip adoption for some requests,
+      for example for crawlers that never connect.
+
+  The client adopts the LiveView when its `LiveSocket` connects to the same path,
+  and uses a resumable transport for it, even without the `resumable` option.
+  When it cannot attach, for example because the session expired, it connects
+  as usual and the LiveView mounts again.
+
+  Adoption changes the mount in these ways:
+
+    * `connected?/1` returns `true` during the HTTP request, and
+      `get_connect_params/1` only returns `%{"_mounts" => 0}`, as the client
+      did not connect yet
+
+    * `assign_new/3` uses the assigns of the conn, as in a disconnected mount
+
+    * the LiveView runs in its own process, not in the request process.
+      Exceptions in `mount/3` and `handle_params/3` are raised in the request, and
+      redirects redirect the request
+
+    * child LiveViews rendered with `live_render/3` render empty containers
+      in the HTTP response and mount when the client connects
+
+  Tests that use `Phoenix.LiveViewTest` render adoptable LiveViews as before, in the
+  test process, so they keep sharing resources such as the database sandbox.
   """
   use Phoenix.Socket
 
