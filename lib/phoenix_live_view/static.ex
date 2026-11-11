@@ -79,8 +79,7 @@ defmodule Phoenix.LiveView.Static do
   Renders a live view without spawning a LiveView server, unless the
   LiveView is adoptable.
 
-  Returns `{:ok, content, assigns, conn}`, where `conn` holds the detached
-  socket session of adoptable LiveViews, or `{:stop, socket}` on redirects.
+  Returns `{:ok, content, assigns}`, or `{:stop, socket}` on redirects.
 
     * `conn` - the Plug.Conn struct form the HTTP request
     * `view` - the LiveView module
@@ -171,11 +170,11 @@ defmodule Phoenix.LiveView.Static do
     }
 
     with %{} = adopt <- adopt_config(conn, endpoint, config),
-         {:ok, _content, _assigns, _conn} = ok <- adopt_render(conn, adopt, socket, render) do
+         {:ok, _content, _assigns} = ok <- adopt_render(conn, adopt, socket, render) do
       ok
     else
       {:stop, %Socket{}} = stop -> stop
-      {:fallback, conn} -> dead_render(conn, socket, render)
+      :fallback -> dead_render(conn, socket, render)
       nil -> dead_render(conn, socket, render)
     end
   end
@@ -199,7 +198,7 @@ defmodule Phoenix.LiveView.Static do
         attrs = [{:id, socket.id}, {:data, data_attrs} | render.extended_attrs]
 
         try do
-          {:ok, to_rendered_content_tag(socket, render.tag, view, attrs), socket.assigns, conn}
+          {:ok, to_rendered_content_tag(socket, render.tag, view, attrs), socket.assigns}
         catch
           :throw, {:phoenix, :child_redirect, redirected, flash} ->
             {:stop, Utils.replace_flash(%{socket | redirected: redirected}, flash)}
@@ -212,16 +211,17 @@ defmodule Phoenix.LiveView.Static do
 
   ## Adoption
 
-  # The private key of the conn that holds the detached session of the request, so the
+  # The process dictionary key that holds the detached session of the request, so the
   # LiveViews of a page join the same session, or :unavailable when it could not start.
+  # LiveViews rendered in templates cannot return a conn to share it, see adopt_session/3.
+  # Tests set it as private key of the conn to adopt LiveViews, see adopt_config/3.
   @adopt_key :phoenix_live_view_adopt
 
   defp adopt_config(conn, endpoint, %{adoptable: true}) do
     cond do
       # LiveViewTest renders in the test process, for example to share its database
       # sandbox, so we only adopt in tests that ask for it with this key
-      match?({Plug.Adapters.Test.Conn, _}, conn.adapter) and
-          not Map.has_key?(conn.private, @adopt_key) ->
+      match?({Plug.Adapters.Test.Conn, _}, conn.adapter) and conn.private[@adopt_key] != :test ->
         nil
 
       config = endpoint.config(:live_view)[:adopt] ->
@@ -283,7 +283,7 @@ defmodule Phoenix.LiveView.Static do
   defp adopt_render(conn, adopt, %Socket{} = socket, render) do
     %{view: view, router: router} = render
 
-    with {:ok, session, token, conn} <- adopt_session(conn, socket.endpoint, adopt) do
+    with {:ok, session, token} <- adopt_session(conn, socket.endpoint, adopt) do
       ref = make_ref()
 
       payload = %{
@@ -313,25 +313,26 @@ defmodule Phoenix.LiveView.Static do
                 phx_static: static_token,
                 phx_adopt: token,
                 phx_adopt_ref: join_ref,
-                phx_adopt_socket: adopt.path
+                # the path the client connects to, which includes the path of the endpoint
+                phx_adopt_socket: socket.endpoint.path(adopt.path)
               ]
 
               data_attrs = if router, do: [phx_main: true] ++ data_attrs, else: data_attrs
               attrs = [{:id, socket.id}, {:data, data_attrs} | render.extended_attrs]
-              {:ok, content_tag(render.tag, attrs, content), assigns, conn}
+              {:ok, content_tag(render.tag, attrs, content), assigns}
           after
             # the LiveView sends the HTML before it replies to the join
-            5_000 -> {:fallback, conn}
+            5_000 -> :fallback
           end
 
         {:error, reply} ->
           receive do
             {^ref, :stop, %Socket{} = socket} ->
-              Phoenix.Socket.stop_detached(session)
+              stop_adopt_session(conn, session)
               {:stop, socket}
 
             {^ref, :exception, kind, reason, stacktrace} ->
-              Phoenix.Socket.stop_detached(session)
+              stop_adopt_session(conn, session)
               :erlang.raise(kind, reason, stacktrace)
           after
             # for example when the LiveView crashed, we render it again to raise
@@ -340,19 +341,26 @@ defmodule Phoenix.LiveView.Static do
                 "Rendering #{inspect(view)} without adoption, as joining it failed: #{inspect(reply)}"
               )
 
-              {:fallback, conn}
+              :fallback
           end
       end
     end
   end
 
+  # The LiveViews of a request, including the ones that templates render, join the same
+  # session, as the client attaches to one. We keep it in the process dictionary, as
+  # adapters run each request in its own process or clear the process dictionary between
+  # requests, like Bandit does for keep-alive connections. Phoenix.ConnTest dispatches all
+  # requests of a test in the test process, so we tell them apart by the ref of the conn.
   defp adopt_session(conn, endpoint, adopt) do
-    case conn.private[@adopt_key] do
-      {session, token} ->
-        {:ok, session, token, conn}
+    request = request_ref(conn)
 
-      :unavailable ->
-        {:fallback, conn}
+    case Process.get(@adopt_key) do
+      {^request, session, token} ->
+        {:ok, session, token}
+
+      {^request, :unavailable} ->
+        :fallback
 
       _ ->
         opts = [max_pending: adopt.max_pending]
@@ -360,7 +368,8 @@ defmodule Phoenix.LiveView.Static do
 
         case start_detached(conn, adopt.path, opts) do
           {:ok, session, token} ->
-            {:ok, session, token, Plug.Conn.put_private(conn, @adopt_key, {session, token})}
+            Process.put(@adopt_key, {request, session, token})
+            {:ok, session, token}
 
           {:error, reason} when reason in [:no_socket, :not_resumable, :not_a_phoenix_socket] ->
             raise ArgumentError, """
@@ -377,10 +386,20 @@ defmodule Phoenix.LiveView.Static do
           # the limit of sessions without client, or the socket did not accept the request
           {:error, reason} ->
             Logger.debug("Rendering LiveViews without adoption: #{inspect(reason)}")
-            {:fallback, Plug.Conn.put_private(conn, @adopt_key, :unavailable)}
+            Process.put(@adopt_key, {request, :unavailable})
+            :fallback
         end
     end
   end
+
+  # the page is not rendered, so other LiveViews of the request render without adoption
+  defp stop_adopt_session(conn, session) do
+    Phoenix.Socket.stop_detached(session)
+    Process.put(@adopt_key, {request_ref(conn), :unavailable})
+  end
+
+  defp request_ref(%Plug.Conn{adapter: {Plug.Adapters.Test.Conn, %{ref: ref}}}), do: ref
+  defp request_ref(%Plug.Conn{}), do: nil
 
   # TODO: Remove when we require Phoenix 1.9
   defp start_detached(conn, path, opts) do

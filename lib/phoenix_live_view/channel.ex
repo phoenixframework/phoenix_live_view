@@ -670,6 +670,10 @@ defmodule Phoenix.LiveView.Channel do
       {:live, :redirect, %{to: _to} = opts} ->
         {:live_redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
 
+      # The request that adopts us redirects to the patched URL, as in a disconnected mount.
+      {:live, :patch, %{to: _to} = opts} when redir == :mount and state.adopted_mount? ->
+        {:live_redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
+
       {:live, :patch, %{to: to} = opts} ->
         {params, action} = patch_params_and_action!(new_socket, opts)
 
@@ -1364,7 +1368,7 @@ defmodule Phoenix.LiveView.Channel do
           socket
           |> load_layout(route)
           |> Utils.maybe_call_live_view_mount!(view, params, merged_session, url)
-          |> build_state(phx_socket)
+          |> build_state(phx_socket, adopt != nil)
           |> maybe_call_mount_handle_params(router, url, params)
           |> reply_mount(from, verified, route, adopt)
           |> maybe_subscribe_to_live_reload()
@@ -1624,8 +1628,10 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket) do
+  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, adopted_mount?) do
     %{
+      # whether a request mounted us for a client that adopts us, see Phoenix.LiveView.Static
+      adopted_mount?: adopted_mount?,
       join_ref: phx_socket.join_ref,
       serializer: phx_socket.serializer,
       socket: lv_socket,

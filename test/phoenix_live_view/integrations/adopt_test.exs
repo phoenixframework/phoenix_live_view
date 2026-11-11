@@ -75,6 +75,36 @@ defmodule Phoenix.LiveView.AdoptTest do
     def render(template, _assigns), do: Phoenix.Controller.status_message_from_template(template)
   end
 
+  defmodule PatchLive do
+    use Phoenix.LiveView, adoptable: true
+
+    def mount(_params, _session, socket), do: {:ok, socket}
+
+    # normalizes the URL, as LiveViews do for pagination
+    def handle_params(%{"page" => page}, _uri, socket), do: {:noreply, assign(socket, page: page)}
+
+    def handle_params(_params, _uri, socket),
+      do: {:noreply, push_patch(socket, to: "/patch?page=1")}
+
+    def render(assigns), do: ~H"<p>page: {@page}</p>"
+  end
+
+  # renders LiveViews like a controller template, which cannot return the conn
+  defmodule EmbedController do
+    use Phoenix.Controller, formats: [:html]
+
+    def show(conn, _params) do
+      content =
+        for id <- ["first", "second"] do
+          conn
+          |> Phoenix.Component.live_render(SecondLive, id: id)
+          |> Phoenix.HTML.safe_to_string()
+        end
+
+      html(conn, Enum.join(content))
+    end
+  end
+
   defmodule Layouts do
     use Phoenix.Component
 
@@ -118,6 +148,8 @@ defmodule Phoenix.LiveView.AdoptTest do
       live "/adopt", AdoptLive
       live "/adopt/other", AdoptLive
       live "/dead", DeadLive
+      live "/patch", PatchLive
+      Phoenix.Router.get("/embed", EmbedController, :show)
 
       live_session :with_second, root_layout: {Layouts, :with_second} do
         live "/with-second", AdoptLive
@@ -156,7 +188,9 @@ defmodule Phoenix.LiveView.AdoptTest do
     secret_key_base: String.duplicate("abcdefgh", 8),
     pubsub_server: __MODULE__.PubSub,
     render_errors: [formats: [html: ErrorHTML]],
-    server: false
+    server: false,
+    # the client connects to the socket with this prefix
+    url: [path: "/prefix"]
   )
 
   setup do
@@ -193,7 +227,7 @@ defmodule Phoenix.LiveView.AdoptTest do
     [view_id] = attr(html, "[data-phx-main]", "id")
     assert [token] = attr(html, "##{view_id}", "data-phx-adopt")
     assert ["phx-" <> _] = attr(html, "##{view_id}", "data-phx-adopt-ref")
-    assert ["/live"] = attr(html, "##{view_id}", "data-phx-adopt-socket")
+    assert ["/prefix/live"] = attr(html, "##{view_id}", "data-phx-adopt-socket")
     assert [_] = attr(html, "##{view_id}", "data-phx-session")
     assert [_] = attr(html, "##{view_id}", "data-phx-static")
 
@@ -224,6 +258,32 @@ defmodule Phoenix.LiveView.AdoptTest do
     assert [token, token] = attr(html, "[data-phx-adopt]", "data-phx-adopt")
     assert [ref1, ref2] = attr(html, "[data-phx-adopt]", "data-phx-adopt-ref")
     assert ref1 != ref2
+  end
+
+  test "LiveViews in a controller template join the same session" do
+    count = Phoenix.Socket.detached_count()
+    html = adopt_conn() |> get("/embed") |> html_response(200)
+    assert html =~ "second connected: true"
+    refute html =~ "second connected: false"
+    assert [token, token] = attr(html, "[data-phx-adopt]", "data-phx-adopt")
+    assert Phoenix.Socket.detached_count() == count + 1
+  end
+
+  test "requests of the same process get their own session" do
+    html = adopt_conn() |> get("/adopt") |> html_response(200)
+    assert [first] = attr(html, "[data-phx-adopt]", "data-phx-adopt")
+    html = adopt_conn() |> get("/adopt") |> html_response(200)
+    assert [second] = attr(html, "[data-phx-adopt]", "data-phx-adopt")
+    assert first != second
+  end
+
+  test "redirects when handle_params patches on mount, as without adoption" do
+    conn = get(adopt_conn(), "/patch")
+    assert redirected_to(conn, 302) == "/patch?page=1"
+
+    html = adopt_conn() |> get("/patch?page=1") |> html_response(200)
+    assert html =~ "page: 1"
+    assert [_token] = attr(html, "[data-phx-adopt]", "data-phx-adopt")
   end
 
   test "redirects when the LiveView redirects on mount and stops the session" do
