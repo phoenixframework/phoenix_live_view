@@ -334,7 +334,7 @@ defmodule Phoenix.LiveView.AdoptTest do
     refute html =~ "data-phx-adopt"
   end
 
-  test "renders as before when the node reached :max_pending" do
+  test "renders without adoption when the node reaches :max_pending" do
     Process.put(:adopt_config, socket: "/live", max_pending: 0)
     html = adopt_conn() |> get("/adopt") |> html_response(200)
     assert html =~ "connected: false"
@@ -364,6 +364,6 @@ defmodule Phoenix.LiveView.AdoptTest do
 
     assert %ArgumentError{message: message} = catch_error(get(adopt_conn(), "/adopt"))
 
-    assert message =~ "require a resumable Phoenix.Socket"
+    assert message =~ ~s(Cannot adopt LiveViews through socket "/plain")
   end
 end

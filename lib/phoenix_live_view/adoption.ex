@@ -42,8 +42,8 @@ defmodule Phoenix.LiveView.Adoption do
         path =
           Keyword.get(config, :socket) ||
             raise ArgumentError, """
-            the :adopt configuration of #{inspect(endpoint)} requires the :socket \
-            the client connects to, for example:
+            Set :socket in the :adopt configuration of #{inspect(endpoint)} \
+            to the socket path used by the client, for example:
 
                 config :my_app, #{inspect(endpoint)},
                   live_view: [adopt: [socket: "/live"]]
@@ -194,10 +194,10 @@ defmodule Phoenix.LiveView.Adoption do
 
           {:error, reason} when reason in [:no_socket, :not_resumable, :not_a_phoenix_socket] ->
             raise ArgumentError, """
-            LiveViews with adoptable: true require a resumable Phoenix.Socket at #{inspect(config.path)}, \
-            the :socket in the :adopt configuration of #{inspect(config.endpoint)}, got: #{inspect(reason)}.
+            Cannot adopt LiveViews through socket #{inspect(config.path)} \
+            on #{inspect(config.endpoint)}: #{inspect(reason)}.
 
-            Make sure the endpoint defines the socket with the :resumable WebSocket option:
+            Configure :adopt[:socket] to point to a Phoenix socket with resumption enabled:
 
                 socket #{inspect(config.path)}, Phoenix.LiveView.Socket,
                   websocket: [resumable: true, connect_info: [session: @session_options]],

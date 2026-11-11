@@ -140,12 +140,13 @@ defmodule Phoenix.LiveView.Socket do
   > Adoptable LiveViews are experimental and might change in future releases.
   > They require a Phoenix version with `Phoenix.Socket.start_detached/3`.
 
-  A LiveView normally mounts twice: once to render the HTTP response, and again
-  when the client connects. An adoptable LiveView mounts once. The HTTP request
-  starts a session of the LiveView socket without a client, mounts the LiveView
-  in it in connected mode, and renders the page from it. The client then attaches
-  to that session, like it resumes a socket, and adopts the running LiveView.
-  It receives the updates the LiveView sent in the meantime.
+  Adoptable LiveViews mount once during the HTTP request. The request starts a
+  detached socket session, mounts the LiveView in connected mode, and uses its
+  HTML to render the page. When the client connects, it attaches to the session
+  and receives any updates sent since the initial render.
+
+  By default, LiveViews mount once for the HTTP response and again when the
+  client connects.
 
   Enable it per LiveView:
 
@@ -161,12 +162,13 @@ defmodule Phoenix.LiveView.Socket do
 
     * `:socket` - the path of the socket the client connects to. Required.
 
-    * `:max_pending` - the maximum number of sessions on a node that no client
-      attached to yet. Further requests render as if the LiveView was not adoptable.
-      Defaults to `10_000`. `nil` disables the limit.
+    * `:max_pending` - the maximum number of sessions waiting for client attachment
+      on a node. At the limit, new requests render without adoption. Defaults to
+      `10_000`. `nil` disables the limit.
 
-    * `:window_ms` - how long a client can take to attach, times 1.5, in milliseconds.
-      Defaults to the `:window_ms` of the socket.
+    * `:window_ms` - the base timeout for client attachment, in milliseconds.
+      The server uses `1.5 × :window_ms` as the session timeout. Defaults to the
+      `:window_ms` of the socket.
 
     * `:enabled` - `true`, `false`, or an MFA tuple that receives the conn,
       followed by the arguments of the tuple, and returns a boolean.
@@ -186,10 +188,9 @@ defmodule Phoenix.LiveView.Socket do
 
     * `assign_new/3` uses the assigns of the conn, as in a disconnected mount
 
-    * the LiveView runs in its own process, not in the request process.
-      Exceptions, exits and throws in `mount/3` and `handle_params/3` reach the
-      request, and redirects and patches redirect the request, as in a
-      disconnected mount
+    * the LiveView runs in a separate process. The HTTP request propagates
+      exceptions, exits, and throws from `mount/3` and `handle_params/3`.
+      Redirects and patches during mount produce HTTP redirects.
 
     * child LiveViews rendered with `live_render/3` render empty containers
       in the HTTP response and mount when the client connects
@@ -197,13 +198,15 @@ defmodule Phoenix.LiveView.Socket do
   Tests that use `Phoenix.LiveViewTest` render adoptable LiveViews as before, in the
   test process, so they keep sharing resources such as the database sandbox.
 
-  All adoptable LiveViews of a request, including the ones that templates render
-  with `Phoenix.Component.live_render/3`, join the same session, as the client
-  attaches to one. LiveView keeps the session of the request in the process
-  dictionary, which requires a web server that runs each request in its own
-  process or clears the process dictionary between requests. Cowboy and Bandit
-  do. When rendering the page fails after an adoptable LiveView mounted, its
-  session stops once its window passed.
+  All adoptable LiveViews rendered during one HTTP request share a socket session.
+  This includes LiveViews rendered by templates with `Phoenix.Component.live_render/3`.
+
+  LiveView stores the session in the process dictionary. The web server must use
+  a separate process for each request or clear the process dictionary between
+  requests. Cowboy and Bandit meet this requirement.
+
+  If page rendering fails after a LiveView mounts, the socket session stops after
+  the attachment timeout expires.
   """
   use Phoenix.Socket
 

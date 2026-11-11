@@ -439,9 +439,8 @@ defmodule Phoenix.LiveView.Static do
     })
   end
 
-  # The static token is computed only on disconnected render and it keeps
-  # the information that is only available during disconnected renders,
-  # such as assign_new.
+  # The static token records the initial flash and assign_new keys for the client join.
+  # It is generated during a disconnected render or an adoptable mount.
   @doc false
   def sign_static_token(%Socket{id: id, endpoint: endpoint} = socket) do
     # IMPORTANT: If you change the second argument, @token_vsn has to be bumped.

@@ -671,7 +671,7 @@ defmodule Phoenix.LiveView.Channel do
       {:live, :redirect, %{to: _to} = opts} ->
         {:live_redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
 
-      # The request that adopts us redirects to the patched URL, as in a disconnected mount.
+      # A patch during adoption redirects the HTTP request to the patched URL.
       {:live, :patch, %{to: _to} = opts} when redir == :mount and state.adopted_mount? ->
         {:live_redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
 
@@ -1421,16 +1421,17 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  # The request that adopts us raises what the mount raised, exited or threw,
-  # as in a disconnected mount, instead of mounting us again.
+  # The HTTP request propagates the exception, exit, or throw from the failed mount.
+  # It does not mount the LiveView again.
   defp adoption_failed(adopt, from, kind, reason, stacktrace) do
     Adoption.reply_exception(adopt, kind, reason, stacktrace)
     GenServer.reply(from, {:error, %{reason: "adoption failed"}})
     {:stop, :shutdown, :no_state}
   end
 
-  # The request renders the page with the HTML and assigns of the mount. It
-  # renders the static token as well, as it holds what only the mount knows.
+  # Return the rendered HTML, assigns, and static token to the HTTP request.
+  # Generate the static token here because it includes the assign_new keys
+  # collected during mount.
   defp reply_adoption(nil, _result), do: :ok
 
   defp reply_adoption(adopt, {:ok, diff, _, %{socket: socket}}) do
@@ -1572,7 +1573,7 @@ defmodule Phoenix.LiveView.Channel do
   defp reply_mount(result, from, %Session{} = session, route, adopt) do
     lv_vsn = to_string(Application.spec(:phoenix_live_view)[:vsn])
 
-    # the request that adopts us gets its reply before the join returns
+    # Send the mount result to the HTTP request before replying to the join.
     reply_adoption(adopt, result)
 
     case result do
@@ -1621,7 +1622,7 @@ defmodule Phoenix.LiveView.Channel do
 
   defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, adopted_mount?) do
     %{
-      # whether a request mounted us for a client that adopts us, see Phoenix.LiveView.Adoption
+      # Whether the HTTP request mounted this LiveView for adoption. See Phoenix.LiveView.Adoption.
       adopted_mount?: adopted_mount?,
       join_ref: phx_socket.join_ref,
       serializer: phx_socket.serializer,
