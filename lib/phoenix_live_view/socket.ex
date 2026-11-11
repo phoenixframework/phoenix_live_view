@@ -243,9 +243,10 @@ defmodule Phoenix.LiveView.Socket do
   All adoptable LiveViews rendered during one HTTP request share a socket session.
   This includes LiveViews rendered by templates with `Phoenix.Component.live_render/3`.
 
-  LiveView stores the session in the process dictionary. The web server must use
-  a separate process for each request or clear the process dictionary between
-  requests. Cowboy and Bandit meet this requirement.
+  LiveView stores the session in the process dictionary. For LiveViews that a
+  controller template renders with `Phoenix.Component.live_render/3`, the web
+  server must use a separate process for each request or clear the process
+  dictionary between requests. Cowboy and Bandit meet this requirement.
 
   If page rendering fails after a LiveView mounts, the socket session stops after
   the attachment timeout expires.

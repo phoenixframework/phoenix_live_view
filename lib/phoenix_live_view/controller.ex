@@ -36,6 +36,8 @@ defmodule Phoenix.LiveView.Controller do
 
   """
   def live_render(%Plug.Conn{} = conn, view, opts \\ []) do
+    conn = LiveView.Adoption.put_request_ref(conn)
+
     case LiveView.Static.render(conn, view, opts) do
       {:ok, content, socket_assigns} ->
         conn

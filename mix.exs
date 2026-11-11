@@ -46,7 +46,8 @@ defmodule Phoenix.LiveView.MixProject do
   defp deps do
     [
       {:igniter, "~> 0.6 and >= 0.6.16", optional: true},
-      {:phoenix, path: "/oss/phoenix", override: true},
+      {:phoenix,
+       github: "phoenixframework/phoenix", branch: "sd-lv-adopt-assets", override: true},
       {:plug, "~> 1.15"},
       {:phoenix_template, "~> 1.0"},
       {:phoenix_html, "~> 3.3 or ~> 4.0 or ~> 4.1"},

@@ -290,6 +290,21 @@ defmodule Phoenix.LiveView.AdoptTest do
     assert first != second
   end
 
+  test "requests that a process dispatches with the same adapter get their own session" do
+    conn = Plug.Adapters.Test.Conn.conn(adopt_conn(), :get, "/adopt", nil)
+
+    tokens =
+      for _ <- 1..2 do
+        conn
+        |> Endpoint.call(Endpoint.init([]))
+        |> html_response(200)
+        |> attr("[data-phx-adopt]", "data-phx-adopt")
+      end
+
+    assert [[first], [second]] = tokens
+    assert first != second
+  end
+
   test "redirects when handle_params patches on mount, as without adoption" do
     conn = get(adopt_conn(), "/patch")
     assert redirected_to(conn, 302) == "/patch?page=1"

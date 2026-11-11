@@ -25,6 +25,9 @@ defmodule Phoenix.LiveView.Adoption do
   # of the conn to adopt LiveViews, see config/3.
   @key :phoenix_live_view_adopt
 
+  # The conn private key that identifies the request, see request_ref/1.
+  @request_key :phoenix_live_view_adopt_request
+
   ## Request
 
   @doc """
@@ -169,10 +172,7 @@ defmodule Phoenix.LiveView.Adoption do
 
   # The LiveViews of a request, including the ones that templates render, join the same
   # session, as the client attaches to one. We keep it in the process dictionary, as
-  # templates cannot return a conn. Web servers run each request in its own process or
-  # clear the process dictionary between requests, like Bandit does for keep-alive
-  # connections. Phoenix.ConnTest dispatches all requests of a test in the test process,
-  # so we tell them apart by the ref of the conn.
+  # templates cannot return a conn, and key it by the request, see request_ref/1.
   defp session(conn, config) do
     request = request_ref(conn)
 
@@ -219,6 +219,20 @@ defmodule Phoenix.LiveView.Adoption do
     Process.put(@key, {request_ref(conn), :unavailable})
   end
 
+  @doc """
+  Marks the conn of a request that `Phoenix.LiveView.Controller.live_render/3` renders,
+  so its LiveViews, including the ones of its layout, join the session of this request.
+  """
+  def put_request_ref(conn) do
+    Plug.Conn.put_private(conn, @request_key, make_ref())
+  end
+
+  # LiveViews that controller templates render with live_render/3 have no ref. For them,
+  # we rely on the web server to run each request in its own process or to clear the
+  # process dictionary between requests, as Cowboy and Bandit do. Phoenix.ConnTest
+  # dispatches all requests of a test in the test process, so there we tell them apart
+  # by the ref of the test adapter.
+  defp request_ref(%Plug.Conn{private: %{@request_key => ref}}), do: ref
   defp request_ref(%Plug.Conn{adapter: {Plug.Adapters.Test.Conn, %{ref: ref}}}), do: ref
   defp request_ref(%Plug.Conn{}), do: nil
 
