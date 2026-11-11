@@ -187,14 +187,23 @@ defmodule Phoenix.LiveView.Socket do
     * `assign_new/3` uses the assigns of the conn, as in a disconnected mount
 
     * the LiveView runs in its own process, not in the request process.
-      Exceptions in `mount/3` and `handle_params/3` are raised in the request, and
-      redirects redirect the request
+      Exceptions, exits and throws in `mount/3` and `handle_params/3` reach the
+      request, and redirects and patches redirect the request, as in a
+      disconnected mount
 
     * child LiveViews rendered with `live_render/3` render empty containers
       in the HTTP response and mount when the client connects
 
   Tests that use `Phoenix.LiveViewTest` render adoptable LiveViews as before, in the
   test process, so they keep sharing resources such as the database sandbox.
+
+  All adoptable LiveViews of a request, including the ones that templates render
+  with `Phoenix.Component.live_render/3`, join the same session, as the client
+  attaches to one. LiveView keeps the session of the request in the process
+  dictionary, which requires a web server that runs each request in its own
+  process or clears the process dictionary between requests. Cowboy and Bandit
+  do. When rendering the page fails after an adoptable LiveView mounted, its
+  session stops once its window passed.
   """
   use Phoenix.Socket
 

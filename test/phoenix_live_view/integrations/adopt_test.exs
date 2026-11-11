@@ -36,6 +36,12 @@ defmodule Phoenix.LiveView.AdoptTest do
         %{"raise" => "not_found"} ->
           raise NotFoundError
 
+        %{"raise" => "exit"} ->
+          exit(:mount_exit)
+
+        %{"raise" => "throw"} ->
+          throw(:mount_throw)
+
         _ ->
           {:ok,
            socket
@@ -304,6 +310,16 @@ defmodule Phoenix.LiveView.AdoptTest do
     assert_received {:mounted, _lv, true, session}
     ref = Process.monitor(session)
     assert_receive {:DOWN, ^ref, _, _, _}
+  end
+
+  test "exits and throws of the mount reach the request without mounting again" do
+    assert catch_exit(get(adopt_conn(), "/adopt?raise=exit")) == :mount_exit
+    assert_received {:mounted, _lv, true, _session}
+    refute_received {:mounted, _, _, _}
+
+    assert catch_throw(get(adopt_conn(), "/adopt?raise=throw")) == :mount_throw
+    assert_received {:mounted, _lv, true, _session}
+    refute_received {:mounted, _, _, _}
   end
 
   test "renders LiveViews that are not adoptable as before" do
