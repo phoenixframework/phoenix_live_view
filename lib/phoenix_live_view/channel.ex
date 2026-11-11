@@ -5,6 +5,7 @@ defmodule Phoenix.LiveView.Channel do
   require Logger
 
   alias Phoenix.LiveView.{
+    Adoption,
     Socket,
     Utils,
     Diff,
@@ -670,6 +671,10 @@ defmodule Phoenix.LiveView.Channel do
       {:live, :redirect, %{to: _to} = opts} ->
         {:live_redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
 
+      # A patch during adoption redirects the HTTP request to the patched URL.
+      {:live, :patch, %{to: _to} = opts} when redir == :mount and state.adopted_mount? ->
+        {:live_redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
+
       {:live, :patch, %{to: to} = opts} ->
         {params, action} = patch_params_and_action!(new_socket, opts)
 
@@ -1313,15 +1318,24 @@ defmodule Phoenix.LiveView.Channel do
 
     # Optional parameter handling
     connect_params = params["params"]
+    adopt = Adoption.fetch(phx_socket)
 
     # Optional verified parts
-    flash = verify_flash(endpoint, verified, params["flash"], connect_params)
+    flash =
+      if adopt,
+        do: adopt.flash,
+        else: verify_flash(endpoint, verified, params["flash"], connect_params)
 
     # connect_info is either a Plug.Conn during tests or a Phoenix.Socket map
     socket_session = Map.get(connect_info, :session, %{})
 
     Process.monitor(transport_pid)
-    load_csrf_token(endpoint, socket_session)
+
+    if adopt do
+      Adoption.load_csrf_state(endpoint, adopt)
+    else
+      load_csrf_token(endpoint, socket_session)
+    end
 
     socket = %Socket{
       endpoint: endpoint,
@@ -1348,43 +1362,53 @@ defmodule Phoenix.LiveView.Channel do
 
     case mount_private(verified, connect_params, connect_info, lifecycle) do
       {:ok, mount_priv} ->
+        mount_priv = if adopt, do: Adoption.put_mount_private(mount_priv, adopt), else: mount_priv
         socket = Utils.configure_socket(socket, mount_priv, action, flash, host_uri)
 
         try do
           socket
           |> load_layout(route)
           |> Utils.maybe_call_live_view_mount!(view, params, merged_session, url)
-          |> build_state(phx_socket)
+          |> build_state(phx_socket, adopt != nil)
           |> maybe_call_mount_handle_params(router, url, params)
-          |> reply_mount(from, verified, route)
+          |> reply_mount(from, verified, route, adopt)
           |> maybe_subscribe_to_live_reload()
         rescue
           exception ->
             status = Plug.Exception.status(exception)
 
-            if status >= 400 and status < 500 do
-              # only forward the stack and exception module to the signed cookie if debug_errors is enabled
-              # which already exposes the stacktrace and exception information to the client
-              {exception_mod, stack} =
-                if endpoint.config(:debug_errors) do
-                  {inspect(exception.__struct__), __STACKTRACE__}
-                else
-                  {nil, []}
-                end
+            cond do
+              adopt ->
+                adoption_failed(adopt, from, :error, exception, __STACKTRACE__)
 
-              token =
-                Phoenix.LiveView.Static.sign_token(endpoint, %{
-                  status: status,
-                  view: inspect(view),
-                  exception: exception_mod,
-                  stack: stack
-                })
+              status >= 400 and status < 500 ->
+                # only forward the stack and exception module to the signed cookie if debug_errors is enabled
+                # which already exposes the stacktrace and exception information to the client
+                {exception_mod, stack} =
+                  if endpoint.config(:debug_errors) do
+                    {inspect(exception.__struct__), __STACKTRACE__}
+                  else
+                    {nil, []}
+                  end
 
-              GenServer.reply(from, {:error, %{reason: "reload", status: status, token: token}})
-              {:stop, :shutdown, :no_state}
-            else
-              reraise(exception, __STACKTRACE__)
+                token =
+                  Phoenix.LiveView.Static.sign_token(endpoint, %{
+                    status: status,
+                    view: inspect(view),
+                    exception: exception_mod,
+                    stack: stack
+                  })
+
+                GenServer.reply(from, {:error, %{reason: "reload", status: status, token: token}})
+                {:stop, :shutdown, :no_state}
+
+              true ->
+                reraise(exception, __STACKTRACE__)
             end
+        catch
+          # errors are rescued above
+          kind, reason when adopt != nil ->
+            adoption_failed(adopt, from, kind, reason, __STACKTRACE__)
         end
 
       {:error, :noproc} ->
@@ -1395,6 +1419,28 @@ defmodule Phoenix.LiveView.Channel do
         GenServer.reply(from, {:error, %{reason: "parent_redirect"}})
         {:stop, :shutdown, :no_state}
     end
+  end
+
+  # The HTTP request propagates the exception, exit, or throw from the failed mount.
+  # It does not mount the LiveView again.
+  defp adoption_failed(adopt, from, kind, reason, stacktrace) do
+    Adoption.reply_exception(adopt, kind, reason, stacktrace)
+    GenServer.reply(from, {:error, %{reason: "adoption failed"}})
+    {:stop, :shutdown, :no_state}
+  end
+
+  # Return the rendered HTML, assigns, and static token to the HTTP request.
+  # Generate the static token here because it includes the assign_new keys
+  # collected during mount.
+  defp reply_adoption(nil, _result), do: :ok
+
+  defp reply_adoption(adopt, {:ok, diff, _, %{socket: socket}}) do
+    static_token = Phoenix.LiveView.Static.sign_static_token(socket)
+    Adoption.reply_rendered(adopt, Diff.to_iodata(diff), socket.assigns, static_token)
+  end
+
+  defp reply_adoption(adopt, {_redirect, _opts, %{socket: socket}}) do
+    Adoption.reply_stop(adopt, socket)
   end
 
   defp verify_flash(endpoint, %Session{} = verified, flash_token, connect_params) do
@@ -1524,8 +1570,11 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp reply_mount(result, from, %Session{} = session, route) do
+  defp reply_mount(result, from, %Session{} = session, route, adopt) do
     lv_vsn = to_string(Application.spec(:phoenix_live_view)[:vsn])
+
+    # Send the mount result to the HTTP request before replying to the join.
+    reply_adoption(adopt, result)
 
     case result do
       {:ok, diff, :mount, new_state} ->
@@ -1571,8 +1620,10 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket) do
+  defp build_state(%Socket{} = lv_socket, %Phoenix.Socket{} = phx_socket, adopted_mount?) do
     %{
+      # Whether the HTTP request mounted this LiveView for adoption. See Phoenix.LiveView.Adoption.
+      adopted_mount?: adopted_mount?,
       join_ref: phx_socket.join_ref,
       serializer: phx_socket.serializer,
       socket: lv_socket,

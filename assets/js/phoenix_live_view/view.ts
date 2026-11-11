@@ -27,6 +27,9 @@ import {
   PHX_ROOT_ID,
   PHX_SESSION,
   PHX_STATIC,
+  PHX_ADOPT,
+  PHX_ADOPT_REF,
+  PHX_ADOPT_SOCKET,
   PHX_STICKY,
   PHX_TRACK_STATIC,
   PHX_TRACK_UPLOADS,
@@ -1284,11 +1287,36 @@ export default class View {
       callback ? callback(this.joinCount, onDone) : onDone();
     };
 
-    this.wrapPush(() => this.channel.join(), {
+    const adoptRef = this.takeAdoptRef();
+    this.wrapPush(() => this.joinChannel(adoptRef), {
       ok: (resp) => this.liveSocket.requestDOMUpdate(() => this.onJoin(resp)),
       error: (error) => this.onJoinError(error),
       timeout: () => this.onJoinError({ reason: "timeout" }),
     });
+  }
+
+  /**
+   * The ref of the join the server sent for this LiveView while it rendered the page,
+   * if the socket attaches to the session of that join. We only use it for the first join.
+   */
+  takeAdoptRef(): string | null {
+    const token = this.el.getAttribute(PHX_ADOPT);
+    const ref = this.el.getAttribute(PHX_ADOPT_REF);
+    this.el.removeAttribute(PHX_ADOPT);
+    this.el.removeAttribute(PHX_ADOPT_REF);
+    this.el.removeAttribute(PHX_ADOPT_SOCKET);
+    return token && ref && token === this.liveSocket.adoptToken ? ref : null;
+  }
+
+  joinChannel(adoptRef: string | null) {
+    // Phoenix 1.9 added awaitJoin, which joins when the socket did not attach
+    const channel = this.channel as Channel & {
+      awaitJoin?: (joinRef: string) => ReturnType<Channel["join"]>;
+    };
+    if (adoptRef && channel.awaitJoin) {
+      return channel.awaitJoin(adoptRef);
+    }
+    return this.channel.join();
   }
 
   onJoinError(resp) {

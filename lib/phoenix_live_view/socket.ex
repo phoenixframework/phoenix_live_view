@@ -132,6 +132,124 @@ defmodule Phoenix.LiveView.Socket do
           end
         end
       end
+
+  ## Adoptable LiveViews
+
+  > #### Experimental {: .warning}
+  >
+  > Adoptable LiveViews are experimental and might change in future releases.
+  > They require a Phoenix version with `Phoenix.Socket.start_detached/3`.
+
+  Adoptable LiveViews mount once during the HTTP request. The request starts a
+  detached socket session, mounts the LiveView in connected mode, and uses its
+  HTML to render the page. When the client connects, it attaches to the session
+  and receives any updates sent since the initial render.
+
+  By default, LiveViews mount once for the HTTP response and again when the
+  client connects.
+
+  Enable it per LiveView:
+
+      use Phoenix.LiveView, adoptable: true
+
+  It requires a resumable socket, see "Resumable sockets" above, and the path of
+  that socket in the `:adopt` configuration of the endpoint:
+
+      config :my_app, MyAppWeb.Endpoint,
+        live_view: [signing_salt: "...", adopt: [socket: "/live"]]
+
+  The `:adopt` configuration accepts:
+
+    * `:socket` - the path of the socket the client connects to. Required.
+
+    * `:max_pending` - the maximum number of sessions waiting for client attachment
+      on a node. At the limit, new requests render without adoption. Defaults to
+      `10_000`. `nil` disables the limit.
+
+    * `:window_ms` - the base timeout for client attachment, in milliseconds.
+      The server uses `1.5 × :window_ms` as the session timeout. Defaults to the
+      `:window_ms` of the socket.
+
+    * `:enabled` - `true`, `false`, or an MFA tuple that receives the conn,
+      followed by the arguments of the tuple, and returns a boolean.
+      Defaults to `true`. Use a function to skip adoption for some requests,
+      for example for crawlers that never connect.
+
+  The client adopts the LiveView when its `LiveSocket` connects to the same path,
+  and uses a resumable transport for it, even without the `resumable` option.
+  When it cannot attach, for example because the session expired, it connects
+  as usual and the LiveView mounts again.
+
+  Adoption changes the mount in these ways:
+
+    * `connected?/1` returns `true` during the HTTP request, and
+      `get_connect_params/1` returns `nil`, as the client did not connect yet.
+      See "Data from the client" below
+
+    * `assign_new/3` uses the assigns of the conn, as in a disconnected mount
+
+    * the LiveView runs in a separate process. The HTTP request propagates
+      exceptions, exits, and throws from `mount/3` and `handle_params/3`.
+      Redirects and patches during mount produce HTTP redirects.
+
+    * child LiveViews rendered with `live_render/3` render empty containers
+      in the HTTP response and mount when the client connects
+
+  ### Data from the client
+
+  Adoptable LiveViews have no connect params, as they mount before the client
+  connects. Store data that the first render needs, such as the preferred
+  language or time zone, in the session instead. The dead render then shows
+  the same as the connected one.
+
+  For data that only the client knows, push an event once the LiveView joined,
+  with a hook on an element of the layout that your LiveViews render:
+
+  ```heex
+  <div id="client-info" phx-hook="ClientInfo" class="hidden"></div>
+  ```
+
+  ```javascript
+  const ClientInfo = {
+    mounted() {
+      this.pushEvent("client-info", {
+        time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      })
+    }
+  }
+  ```
+
+  The hook runs after every join, adopted or not, so the LiveView handles the
+  event the same way in both cases, for example in an `on_mount` hook:
+
+      def on_mount(:default, _params, _session, socket) do
+        {:cont,
+         attach_hook(socket, :client_info, :handle_event, fn
+           "client-info", %{"time_zone" => time_zone}, socket ->
+             {:halt, assign(socket, :time_zone, time_zone)}
+
+           _event, _params, socket ->
+             {:cont, socket}
+         end)}
+      end
+
+  This also defers work until the client connects: a LiveView that starts
+  expensive work in this event instead of `mount/3` does not run it for
+  clients that never connect, such as crawlers.
+
+  Tests that use `Phoenix.LiveViewTest` render adoptable LiveViews as before, in the
+  test process, so they keep sharing resources such as the database sandbox.
+
+  All adoptable LiveViews rendered during one HTTP request share a socket session.
+  This includes LiveViews rendered by templates with `Phoenix.Component.live_render/3`.
+
+  LiveView stores the session in the process dictionary. For LiveViews that a
+  controller template renders with `Phoenix.Component.live_render/3`, the web
+  server must use a separate process for each request or clear the process
+  dictionary between requests. Cowboy and Bandit meet this requirement.
+
+  If page rendering fails after a LiveView mounts, the socket session stops after
+  the attachment timeout expires.
   """
   use Phoenix.Socket
 

@@ -6,7 +6,7 @@ defmodule Phoenix.LiveView.Static do
   # Holds the logic for static rendering.
   @moduledoc false
 
-  alias Phoenix.LiveView.{Socket, Utils, Diff, Route, Lifecycle}
+  alias Phoenix.LiveView.{Adoption, Socket, Utils, Diff, Route, Lifecycle}
 
   # Token version. Should be changed whenever new data is stored.
   @token_vsn 6
@@ -74,7 +74,10 @@ defmodule Phoenix.LiveView.Static do
   end
 
   @doc """
-  Renders a live view without spawning a LiveView server.
+  Renders a live view without spawning a LiveView server, unless the
+  LiveView is adoptable.
+
+  Returns `{:ok, content, assigns}`, or `{:stop, socket}` on redirects.
 
     * `conn` - the Plug.Conn struct form the HTTP request
     * `view` - the LiveView module
@@ -152,23 +155,44 @@ defmodule Phoenix.LiveView.Static do
         host_uri
       )
 
-    case call_mount_and_handle_params!(socket, view, mount_session, conn.params, request_url) do
+    render = %{
+      view: view,
+      router: router,
+      to_sign_session: to_sign_session,
+      mount_session: mount_session,
+      live_session: live_session,
+      tag: tag,
+      extended_attrs: extended_attrs,
+      flash: flash,
+      request_url: request_url
+    }
+
+    case Adoption.config(conn, endpoint, config) do
+      nil -> dead_render(conn, socket, render)
+      adoption -> adopt_render(conn, adoption, socket, render)
+    end
+  end
+
+  defp dead_render(conn, socket, render) do
+    %{view: view, router: router, request_url: request_url} = render
+
+    case call_mount_and_handle_params!(
+           socket,
+           view,
+           render.mount_session,
+           conn.params,
+           request_url
+         ) do
       {:ok, socket} ->
-        data_attrs = [
-          phx_session: sign_root_session(socket, router, view, to_sign_session, live_session),
-          phx_static: sign_static_token(socket)
-        ]
+        session_token =
+          sign_root_session(socket, router, view, render.to_sign_session, render.live_session)
 
+        data_attrs = [phx_session: session_token, phx_static: sign_static_token(socket)]
         data_attrs = if router, do: [phx_main: true] ++ data_attrs, else: data_attrs
-
-        attrs = [
-          {:id, socket.id},
-          {:data, data_attrs}
-          | extended_attrs
-        ]
+        attrs = [{:id, socket.id}, {:data, data_attrs} | render.extended_attrs]
 
         try do
-          {:ok, to_rendered_content_tag(socket, tag, view, attrs), socket.assigns}
+          {:ok, to_rendered_content_tag(socket, render.tag, view, attrs), socket.assigns}
         catch
           :throw, {:phoenix, :child_redirect, redirected, flash} ->
             {:stop, Utils.replace_flash(%{socket | redirected: redirected}, flash)}
@@ -176,6 +200,34 @@ defmodule Phoenix.LiveView.Static do
 
       {:stop, socket} ->
         {:stop, socket}
+    end
+  end
+
+  # Mounts the LiveView in connected mode in a detached socket session, which the client
+  # attaches to, see Phoenix.LiveView.Adoption.
+  defp adopt_render(conn, adoption, socket, render) do
+    %{view: view, router: router} = render
+
+    session_token =
+      sign_root_session(socket, router, view, render.to_sign_session, render.live_session)
+
+    # the join a client sends, without connect params, as there is no client yet
+    payload = %{"session" => session_token}
+    payload = if router, do: Map.put(payload, "url", render.request_url), else: payload
+
+    case Adoption.mount(conn, adoption, "lv:" <> socket.id, payload, render.flash) do
+      {:ok, rendered} ->
+        data_attrs = [phx_session: session_token, phx_static: rendered.static_token]
+        data_attrs = data_attrs ++ rendered.attrs
+        data_attrs = if router, do: [phx_main: true] ++ data_attrs, else: data_attrs
+        attrs = [{:id, socket.id}, {:data, data_attrs} | render.extended_attrs]
+        {:ok, content_tag(render.tag, attrs, rendered.content), rendered.assigns}
+
+      {:stop, %Socket{}} = stop ->
+        stop
+
+      :unavailable ->
+        dead_render(conn, socket, render)
     end
   end
 
@@ -387,10 +439,10 @@ defmodule Phoenix.LiveView.Static do
     })
   end
 
-  # The static token is computed only on disconnected render and it keeps
-  # the information that is only available during disconnected renders,
-  # such as assign_new.
-  defp sign_static_token(%Socket{id: id, endpoint: endpoint} = socket) do
+  # The static token records the initial flash and assign_new keys for the client join.
+  # It is generated during a disconnected render or an adoptable mount.
+  @doc false
+  def sign_static_token(%Socket{id: id, endpoint: endpoint} = socket) do
     # IMPORTANT: If you change the second argument, @token_vsn has to be bumped.
     sign_token(endpoint, %{
       id: id,

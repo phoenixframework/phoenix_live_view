@@ -407,6 +407,13 @@ defmodule Phoenix.LiveView do
 
   ## Options
 
+    * `:adoptable` - when `true`, the LiveView mounts once instead of twice. The
+      HTTP request mounts it in connected mode and renders the page from it, and
+      the client adopts the running LiveView when it connects. Defaults to `false`.
+      This option is experimental. See "Adoptable LiveViews" in
+      `Phoenix.LiveView.Socket` for the configuration it requires and how it
+      changes the mount.
+
     * `:container` - an optional tuple for the HTML tag and DOM attributes to
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
       See `Phoenix.Component.live_render/3` for more information and examples.
@@ -473,6 +480,9 @@ defmodule Phoenix.LiveView do
 
   It accepts:
 
+    * `:adoptable` - whether the client adopts the LiveView that the HTTP request
+      mounted, see `__using__/1`
+
     * `:container` - an optional tuple for the HTML tag and DOM attributes to
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
 
@@ -503,7 +513,17 @@ defmodule Phoenix.LiveView do
 
     container = opts[:container] || {:div, []}
 
+    adoptable =
+      case Keyword.get(opts, :adoptable, false) do
+        adoptable when is_boolean(adoptable) ->
+          adoptable
+
+        other ->
+          raise ArgumentError, ":adoptable expects a boolean, got: #{inspect(other)}"
+      end
+
     %{
+      adoptable: adoptable,
       container: container,
       kind: :view,
       layout: layout,
@@ -1298,6 +1318,10 @@ defmodule Phoenix.LiveView do
   in a disconnected state and a `RuntimeError` is raised if called after
   mount.
 
+  Adoptable LiveViews mount before the client connects, so `nil` is returned
+  when the request mounts them. See "Adoptable LiveViews" in
+  `Phoenix.LiveView.Socket` for how to get data from the client instead.
+
   ## Reserved params
 
   The following params have special meaning in LiveView:
@@ -1321,7 +1345,7 @@ defmodule Phoenix.LiveView do
   """
   def get_connect_params(%Socket{private: private} = socket) do
     if connect_params = private[:connect_params] do
-      if connected?(socket), do: connect_params, else: nil
+      if connected?(socket) and private[:adopted_mount] != true, do: connect_params, else: nil
     else
       raise_root_and_mount_only!(socket, "connect_params")
     end

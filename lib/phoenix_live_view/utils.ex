@@ -192,7 +192,7 @@ defmodule Phoenix.LiveView.Utils do
     socket
     |> clear_changed()
     |> clear_temp()
-    |> drop_private([:connect_info, :connect_params, :assign_new])
+    |> drop_private([:connect_info, :connect_params, :assign_new, :adopted_mount])
   end
 
   @doc """
