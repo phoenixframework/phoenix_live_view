@@ -211,8 +211,8 @@ defmodule Phoenix.LiveView.Static do
     session_token =
       sign_root_session(socket, router, view, render.to_sign_session, render.live_session)
 
-    # the join a client sends
-    payload = %{"session" => session_token, "params" => %{"_mounts" => 0}}
+    # the join a client sends, without connect params, as there is no client yet
+    payload = %{"session" => session_token}
     payload = if router, do: Map.put(payload, "url", render.request_url), else: payload
 
     case Adoption.mount(conn, adoption, "lv:" <> socket.id, payload, render.flash) do

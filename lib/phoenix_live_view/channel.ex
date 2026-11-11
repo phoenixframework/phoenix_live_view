@@ -1362,7 +1362,7 @@ defmodule Phoenix.LiveView.Channel do
 
     case mount_private(verified, connect_params, connect_info, lifecycle) do
       {:ok, mount_priv} ->
-        mount_priv = if adopt, do: Adoption.put_assign_new(mount_priv, adopt), else: mount_priv
+        mount_priv = if adopt, do: Adoption.put_mount_private(mount_priv, adopt), else: mount_priv
         socket = Utils.configure_socket(socket, mount_priv, action, flash, host_uri)
 
         try do

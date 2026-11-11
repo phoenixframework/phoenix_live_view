@@ -1318,6 +1318,10 @@ defmodule Phoenix.LiveView do
   in a disconnected state and a `RuntimeError` is raised if called after
   mount.
 
+  Adoptable LiveViews mount before the client connects, so `nil` is returned
+  when the request mounts them. See "Adoptable LiveViews" in
+  `Phoenix.LiveView.Socket` for how to get data from the client instead.
+
   ## Reserved params
 
   The following params have special meaning in LiveView:
@@ -1341,7 +1345,7 @@ defmodule Phoenix.LiveView do
   """
   def get_connect_params(%Socket{private: private} = socket) do
     if connect_params = private[:connect_params] do
-      if connected?(socket), do: connect_params, else: nil
+      if connected?(socket) and private[:adopted_mount] != true, do: connect_params, else: nil
     else
       raise_root_and_mount_only!(socket, "connect_params")
     end

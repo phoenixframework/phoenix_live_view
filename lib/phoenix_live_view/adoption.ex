@@ -247,10 +247,13 @@ defmodule Phoenix.LiveView.Adoption do
   end
 
   @doc """
-  Makes `assign_new/3` use the assigns of the request, as in a disconnected mount.
+  Prepares the private data of the mount. `assign_new/3` uses the assigns of the request,
+  as in a disconnected mount. The client did not join, so there are no connect params,
+  see `Phoenix.LiveView.get_connect_params/1`.
   """
-  def put_assign_new(%{assign_new: {_assigns, keys}} = mount_priv, data) do
-    %{mount_priv | assign_new: {data.assigns, keys}}
+  def put_mount_private(%{assign_new: {_assigns, keys}} = mount_priv, data) do
+    %{mount_priv | assign_new: {data.assigns, keys}, connect_params: %{}}
+    |> Map.put(:adopted_mount, true)
   end
 
   @doc """

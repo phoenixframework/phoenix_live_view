@@ -183,8 +183,8 @@ defmodule Phoenix.LiveView.Socket do
   Adoption changes the mount in these ways:
 
     * `connected?/1` returns `true` during the HTTP request, and
-      `get_connect_params/1` only returns `%{"_mounts" => 0}`, as the client
-      did not connect yet
+      `get_connect_params/1` returns `nil`, as the client did not connect yet.
+      See "Data from the client" below
 
     * `assign_new/3` uses the assigns of the conn, as in a disconnected mount
 
@@ -194,6 +194,48 @@ defmodule Phoenix.LiveView.Socket do
 
     * child LiveViews rendered with `live_render/3` render empty containers
       in the HTTP response and mount when the client connects
+
+  ### Data from the client
+
+  Adoptable LiveViews have no connect params, as they mount before the client
+  connects. Store data that the first render needs, such as the preferred
+  language or time zone, in the session instead. The dead render then shows
+  the same as the connected one.
+
+  For data that only the client knows, push an event once the LiveView joined,
+  with a hook on an element of the layout that your LiveViews render:
+
+  ```heex
+  <div id="client-info" phx-hook="ClientInfo" class="hidden"></div>
+  ```
+
+  ```javascript
+  const ClientInfo = {
+    mounted() {
+      this.pushEvent("client-info", {
+        time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      })
+    }
+  }
+  ```
+
+  The hook runs after every join, adopted or not, so the LiveView handles the
+  event the same way in both cases, for example in an `on_mount` hook:
+
+      def on_mount(:default, _params, _session, socket) do
+        {:cont,
+         attach_hook(socket, :client_info, :handle_event, fn
+           "client-info", %{"time_zone" => time_zone}, socket ->
+             {:halt, assign(socket, :time_zone, time_zone)}
+
+           _event, _params, socket ->
+             {:cont, socket}
+         end)}
+      end
+
+  This also defers work until the client connects: a LiveView that starts
+  expensive work in this event instead of `mount/3` does not run it for
+  clients that never connect, such as crawlers.
 
   Tests that use `Phoenix.LiveViewTest` render adoptable LiveViews as before, in the
   test process, so they keep sharing resources such as the database sandbox.

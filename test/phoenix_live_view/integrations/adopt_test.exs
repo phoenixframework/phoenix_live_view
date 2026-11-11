@@ -47,6 +47,8 @@ defmodule Phoenix.LiveView.AdoptTest do
            socket
            |> assign(page_title: "Adopted")
            |> assign(connected: connected?(socket))
+           |> assign(connect_params: get_connect_params(socket))
+           |> assign(static_changed: static_changed?(socket))
            |> assign_new(:current_user, fn -> "fetched in mount" end)}
       end
     end
@@ -54,6 +56,8 @@ defmodule Phoenix.LiveView.AdoptTest do
     def render(assigns) do
       ~H"""
       <p id="connected">connected: {@connected}</p>
+      <p id="connect-params">connect params: {inspect(@connect_params)}</p>
+      <p id="static-changed">static changed: {@static_changed}</p>
       <p id="user">user: {@current_user}</p>
       <p id="csrf">{Plug.CSRFProtection.get_csrf_token()}</p>
       """
@@ -227,6 +231,9 @@ defmodule Phoenix.LiveView.AdoptTest do
     assert Phoenix.Socket.detached_count() == count + 1
 
     assert html =~ "connected: true"
+    # the client did not join yet
+    assert html =~ "connect params: nil"
+    assert html =~ "static changed: false"
     # the root layout receives the assigns of the LiveView
     assert html =~ "<title>Adopted</title>"
 
