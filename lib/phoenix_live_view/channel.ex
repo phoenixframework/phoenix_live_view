@@ -1317,7 +1317,7 @@ defmodule Phoenix.LiveView.Channel do
 
     # Optional parameter handling
     connect_params = params["params"]
-    adopt = adopt(params)
+    adopt = adopt(phx_socket)
 
     # Optional verified parts
     flash =
@@ -1419,13 +1419,10 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  # The request that mounts an adoptable LiveView joins with this key, see
-  # Phoenix.LiveView.Static. Its join payload is not serialized, so clients
-  # cannot send it, as JSON has no pids or atom keys.
-  defp adopt(%{"adopt" => %{pid: pid, ref: ref} = adopt}) when is_pid(pid) and is_reference(ref),
-    do: adopt
-
-  defp adopt(_params), do: nil
+  # The request that mounts an adoptable LiveView joins with this socket assign, see
+  # Phoenix.LiveView.Static and Phoenix.Socket.join_detached/4. Clients cannot set it.
+  defp adopt(%Phoenix.Socket{assigns: %{phoenix_live_view_adopt: adopt}}), do: adopt
+  defp adopt(%Phoenix.Socket{}), do: nil
 
   # assign_new uses the assigns of the request, as in a disconnected mount
   defp adopt_assign_new(%{assign_new: {_assigns, keys}} = mount_priv, %{assigns: assigns}),

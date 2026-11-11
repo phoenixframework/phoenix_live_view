@@ -286,25 +286,29 @@ defmodule Phoenix.LiveView.Static do
     with {:ok, session, token} <- adopt_session(conn, socket.endpoint, adopt) do
       ref = make_ref()
 
+      # the join a client sends
       payload = %{
         "session" =>
           sign_root_session(socket, router, view, render.to_sign_session, render.live_session),
-        "params" => %{"_mounts" => 0},
-        # the payload is not serialized, so clients cannot send this key
-        "adopt" => %{
-          pid: self(),
-          ref: ref,
-          assigns: conn.assigns,
-          flash: render.flash,
-          # The LiveView renders forms with the CSRF token of this request,
-          # which stores it in the session of its response.
-          csrf_state: Plug.CSRFProtection.dump_state()
-        }
+        "params" => %{"_mounts" => 0}
       }
 
       payload = if router, do: Map.put(payload, "url", render.request_url), else: payload
 
-      case Phoenix.Socket.join_detached(session, "lv:" <> socket.id, payload) do
+      # what only we know, which clients cannot set, see Phoenix.LiveView.Channel
+      private = %{
+        pid: self(),
+        ref: ref,
+        assigns: conn.assigns,
+        flash: render.flash,
+        # The LiveView renders forms with the CSRF token of this request,
+        # which stores it in the session of its response.
+        csrf_state: Plug.CSRFProtection.dump_state()
+      }
+
+      join_opts = [assigns: %{phoenix_live_view_adopt: private}]
+
+      case Phoenix.Socket.join_detached(session, "lv:" <> socket.id, payload, join_opts) do
         {:ok, join_ref} ->
           receive do
             {^ref, :rendered, content, assigns, static_token} ->
