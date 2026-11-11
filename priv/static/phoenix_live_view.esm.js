@@ -69,6 +69,9 @@ var PHX_SESSION = "data-phx-session";
 var PHX_VIEW_SELECTOR = `[${PHX_SESSION}]`;
 var PHX_STICKY = "data-phx-sticky";
 var PHX_STATIC = "data-phx-static";
+var PHX_ADOPT = "data-phx-adopt";
+var PHX_ADOPT_REF = "data-phx-adopt-ref";
+var PHX_ADOPT_SOCKET = "data-phx-adopt-socket";
 var PHX_READONLY = "data-phx-readonly";
 var PHX_DISABLED = "data-phx-disabled";
 var PHX_DISABLE_WITH = "disable-with";
@@ -4650,6 +4653,7 @@ var View = class _View {
     this.childJoins = 0;
     this.loaderTimer = null;
     this.disconnectedTimer = null;
+    this.suspended = false;
     this.pendingDiffs = [];
     this.pendingForms = /* @__PURE__ */ new Set();
     this.activeUploaders = /* @__PURE__ */ new Set();
@@ -5500,11 +5504,31 @@ var View = class _View {
       };
       callback ? callback(this.joinCount, onDone) : onDone();
     };
-    this.wrapPush(() => this.channel.join(), {
+    const adoptRef = this.takeAdoptRef();
+    this.wrapPush(() => this.joinChannel(adoptRef), {
       ok: (resp) => this.liveSocket.requestDOMUpdate(() => this.onJoin(resp)),
       error: (error) => this.onJoinError(error),
       timeout: () => this.onJoinError({ reason: "timeout" })
     });
+  }
+  /**
+   * The ref of the join the server sent for this LiveView while it rendered the page,
+   * if the socket attaches to the session of that join. We only use it for the first join.
+   */
+  takeAdoptRef() {
+    const token = this.el.getAttribute(PHX_ADOPT);
+    const ref = this.el.getAttribute(PHX_ADOPT_REF);
+    this.el.removeAttribute(PHX_ADOPT);
+    this.el.removeAttribute(PHX_ADOPT_REF);
+    this.el.removeAttribute(PHX_ADOPT_SOCKET);
+    return token && ref && token === this.liveSocket.adoptToken ? ref : null;
+  }
+  joinChannel(adoptRef) {
+    const channel = this.channel;
+    if (adoptRef && channel.awaitJoin) {
+      return channel.awaitJoin(adoptRef);
+    }
+    return this.channel.join();
   }
   onJoinError(resp) {
     if (resp.events) {
@@ -5626,7 +5650,32 @@ var View = class _View {
       this.showLoader(BEFORE_UNLOAD_LOADER_TIMEOUT);
     }
   }
+  // The socket lost its connection, but keeps the channel joined while it resumes.
+  onSuspend() {
+    if (this.suspended || this.isJoinPending() || this.isDestroyed()) {
+      return;
+    }
+    this.suspended = true;
+    this.displayError(
+      [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_CLIENT_ERROR_CLASS],
+      { errorKind: "client" }
+    );
+  }
+  onResume() {
+    if (!this.suspended) {
+      return;
+    }
+    this.suspended = false;
+    if (this.isMain()) {
+      dom_default.dispatchEvent(window, "phx:page-loading-stop", {
+        detail: { to: this.href, kind: "error" }
+      });
+    }
+    this.hideLoader();
+    this.triggerReconnected();
+  }
   onError(reason) {
+    this.suspended = false;
     this.onClose(reason);
     if (this.liveSocket.isConnected()) {
       this.log("error", () => ["view crashed", reason], {
@@ -6801,6 +6850,9 @@ var LiveSocket = class {
    * Creates a new LiveSocket instance.
    */
   constructor(url, phxSocket, opts = {}) {
+    /** @internal the token of the session the socket attaches to, see attachAdoptedSession */
+    this.adoptToken = null;
+    this.adoptChecked = false;
     /** @internal */
     this.unloaded = false;
     /**
@@ -6820,6 +6872,10 @@ var LiveSocket = class {
       `);
     }
     this.socket = new phxSocket(url, opts);
+    this.socketPath = new URL(url, window.location.href).pathname.replace(
+      /\/$/,
+      ""
+    );
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX;
     this.params = closure(opts.params || {});
     this.viewLogger = opts.viewLogger;
@@ -6872,6 +6928,9 @@ var LiveSocket = class {
         window.location.reload();
       }
     });
+    const socket = this.socket;
+    socket.onSuspend?.(() => this.eachView((view) => view.onSuspend()));
+    socket.onResume?.(() => this.eachView((view) => view.onResume()));
   }
   // public
   /**
@@ -7255,8 +7314,30 @@ var LiveSocket = class {
       });
     }
   }
+  /**
+   * @internal
+   *
+   * Adoptable LiveViews mount while the server renders the page, in a socket session
+   * without a client. The socket attaches to that session when it first connects,
+   * if the session belongs to the socket path of this LiveSocket.
+   */
+  attachAdoptedSession() {
+    if (this.adoptChecked) {
+      return;
+    }
+    this.adoptChecked = true;
+    const el = Array.from(document.querySelectorAll(`[${PHX_ADOPT}]`)).find(
+      (el2) => el2.getAttribute(PHX_ADOPT_SOCKET) === this.socketPath
+    );
+    const token = el && el.getAttribute(PHX_ADOPT);
+    const socket = this.socket;
+    if (token && socket.attachSession && socket.attachSession(token)) {
+      this.adoptToken = token;
+    }
+  }
   /** @internal */
   joinRootViews() {
+    this.attachAdoptedSession();
     let rootsFound = false;
     dom_default.all(
       document,
@@ -7354,6 +7435,14 @@ var LiveSocket = class {
   /** @internal */
   isPhxView(el) {
     return el.getAttribute && el.getAttribute(PHX_SESSION) !== null;
+  }
+  /** @internal */
+  eachView(callback) {
+    const visit = (view) => {
+      callback(view);
+      view.eachChild(visit);
+    };
+    Object.values(this.roots).forEach(visit);
   }
   /** @internal */
   newRootView(el, flash, liveReferer) {
