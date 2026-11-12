@@ -391,6 +391,14 @@ recovers:
 </div>
 ```
 
+`phx-disconnected` commands run once the connection has been lost for
+`disconnectedTimeout` milliseconds (500 by default), so brief interruptions do
+not flash disconnected UI. They never run while the page is hidden: when the
+connection drops in a background tab, LiveView waits until the user returns,
+then gives the socket, which reconnects immediately, another
+`disconnectedResumeTimeout` milliseconds (2000 by default) before running them.
+Both are [`LiveSocket`](js-interop.md) options.
+
 `phx-connected` and `phx-disconnected` are only executed when operating
 inside a LiveView container. For static templates, they will have no effect.
 See [Hooks and JS commands outside of a LiveView](js-interop.md#hooks-and-js-commands-outside-of-a-liveview).
