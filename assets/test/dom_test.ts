@@ -298,6 +298,14 @@ describe("DOM", () => {
       expect(createElement).not.toHaveBeenCalled();
       createElement.mockRestore();
     });
+
+    test("finds child LiveViews whose attributes are not lowercase", () => {
+      const html = `<div id="phx-parent"><div id="child" DATA-PHX-SESSION="123" Data-Phx-Parent-Id="phx-parent"></div></div>`;
+
+      const children = DOM.findPhxChildrenInFragment(html, "phx-parent");
+
+      expect(children.map((el) => el.id)).toEqual(["child"]);
+    });
   });
 
   describe("findComponent", () => {

@@ -693,6 +693,24 @@ describe("View + DOM", function () {
     createElement.mockRestore();
   });
 
+  test("maybeRecoverForms recovers a form with the id __proto__", function () {
+    liveSocket = new LiveSocket("/live", Socket);
+    const form =
+      '<form id="__proto__" phx-change="validate"><input name="foo"></form>';
+    const view = new View(liveViewDOM(form), liveSocket, null, null, null);
+    view["joinCount"] = 1;
+    view["formsForRecovery"] = view.getFormsForRecovery();
+    const pushFormRecovery = jest
+      .spyOn(view, "pushFormRecovery")
+      .mockImplementation((_oldForm, _newForm, _templateDom, done) => done());
+    const callback = jest.fn();
+
+    view.maybeRecoverForms(liveViewDOM(form).outerHTML, callback);
+
+    expect(pushFormRecovery).toHaveBeenCalledTimes(1);
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
   test("parses the HTML only once on a first join without child LiveViews", function () {
     liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();

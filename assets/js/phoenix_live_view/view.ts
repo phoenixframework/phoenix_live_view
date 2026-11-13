@@ -2781,9 +2781,10 @@ export default class View {
         return clonedForm;
       })
       .reduce((acc, form) => {
+        // acc has no prototype, so a form with the id "__proto__" becomes a key
         acc[form.id] = form;
         return acc;
-      }, {});
+      }, Object.create(null));
   }
 
   maybePushComponentsDestroyed(destroyedCIDs) {
