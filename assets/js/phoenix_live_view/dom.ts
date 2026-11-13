@@ -209,6 +209,11 @@ const DOM = {
   },
 
   findPhxChildrenInFragment(html, parentId) {
+    // every child LiveView is rendered with a parent id attribute,
+    // so we can skip parsing HTML without one
+    if (!html.includes(PHX_PARENT_ID)) {
+      return [];
+    }
     const template = document.createElement("template");
     template.innerHTML = html;
     return this.findPhxChildren(template.content, parentId);

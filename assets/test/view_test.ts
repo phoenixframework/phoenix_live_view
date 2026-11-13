@@ -679,6 +679,52 @@ describe("View + DOM", function () {
     expect(view["pendingForms"].size).toBe(0);
   });
 
+  test("maybeRecoverForms does not parse the HTML without forms to recover", function () {
+    liveSocket = new LiveSocket("/live", Socket);
+    const html = liveViewDOM().outerHTML;
+    const view = new View(liveViewDOM(), liveSocket, null, null, null);
+    const createElement = jest.spyOn(document, "createElement");
+    const callback = jest.fn();
+
+    view.maybeRecoverForms(html, callback);
+
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(createElement).not.toHaveBeenCalled();
+    createElement.mockRestore();
+  });
+
+  test("parses the HTML only once on a first join without child LiveViews", function () {
+    liveSocket = new LiveSocket("/live", Socket);
+    const el = liveViewDOM();
+    const view = new View(el, liveSocket, null, null, null);
+    stubChannel(view);
+    liveSocket.roots[view.id] = view;
+    const createElement = jest.spyOn(document, "createElement");
+
+    view.onJoin({ rendered: { s: [el.innerHTML] }, liveview_version });
+
+    const templates = createElement.mock.calls.filter(
+      ([tagName]) => tagName === "template",
+    );
+    expect(templates.length).toBe(1);
+    expect(view.isJoinPending()).toBe(false);
+    createElement.mockRestore();
+  });
+
+  test("joins child LiveViews found in the HTML of a first join", function () {
+    liveSocket = new LiveSocket("/live", Socket);
+    const el = liveViewDOM();
+    const view = new View(el, liveSocket, null, null, null);
+    stubChannel(view);
+    liveSocket.roots[view.id] = view;
+    const childHTML = `<div id="child" data-phx-session="abc456" data-phx-parent-id="${view.id}"></div>`;
+
+    view.onJoin({ rendered: { s: [childHTML] }, liveview_version });
+
+    expect(view.getChildById("child")).toBeDefined();
+    expect(view.isJoinPending()).toBe(true);
+  });
+
   describe("submitForm", function () {
     test("submits payload", function () {
       expect.assertions(3);
