@@ -276,6 +276,38 @@ describe("DOM", () => {
     });
   });
 
+  describe("findPhxChildrenInFragment", () => {
+    test("returns the child LiveViews of the given parent", () => {
+      const html = `
+        <div id="phx-parent">
+          <div id="child" data-phx-session="123" data-phx-parent-id="phx-parent"></div>
+          <div id="other" data-phx-session="456" data-phx-parent-id="phx-other"></div>
+        </div>
+      `;
+
+      const children = DOM.findPhxChildrenInFragment(html, "phx-parent");
+
+      expect(children.map((el) => el.id)).toEqual(["child"]);
+    });
+
+    test("does not parse HTML without child LiveViews", () => {
+      const createElement = jest.spyOn(document, "createElement");
+      const html = `<div id="phx-parent"><div data-phx-session="123"></div></div>`;
+
+      expect(DOM.findPhxChildrenInFragment(html, "phx-parent")).toEqual([]);
+      expect(createElement).not.toHaveBeenCalled();
+      createElement.mockRestore();
+    });
+
+    test("finds child LiveViews whose attributes are not lowercase", () => {
+      const html = `<div id="phx-parent"><div id="child" DATA-PHX-SESSION="123" Data-Phx-Parent-Id="phx-parent"></div></div>`;
+
+      const children = DOM.findPhxChildrenInFragment(html, "phx-parent");
+
+      expect(children.map((el) => el.id)).toEqual(["child"]);
+    });
+  });
+
   describe("findComponent", () => {
     test("returns node with cid ID (except indirect children)", () => {
       const view = tag("div", { id: "foo" }, "");
