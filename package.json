@@ -45,7 +45,7 @@
     "globals": "^17.8.0",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
-    "jest-monocart-coverage": "^1.1.1",
+    "jest-monocart-coverage": "^2.0.0",
     "monocart-reporter": "^2.12.4",
     "morphdom": "github:SteffenDE/morphdom#main",
     "phoenix": "1.8.16",
