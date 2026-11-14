@@ -13,6 +13,7 @@ import {
   PHX_LOADING_CLASS,
   PHX_ERROR_CLASS,
   PHX_SERVER_ERROR_CLASS,
+  PHX_CLIENT_ERROR_CLASS,
   PHX_HAS_FOCUSED,
   PHX_LV_DEBUG,
   MAX_CHILD_JOIN_ATTEMPTS,
@@ -1877,6 +1878,187 @@ describe("View", function () {
     jest.advanceTimersByTime(1000);
     expect(execAll).toHaveBeenCalledTimes(1);
     expect(execAll).toHaveBeenCalledWith("phx-disconnected");
+  });
+
+  describe("disconnected commands while the page is hidden", () => {
+    let visibility: DocumentVisibilityState = "visible";
+    const setVisibility = (state: DocumentVisibilityState) => {
+      visibility = state;
+      document.dispatchEvent(new Event("visibilitychange"));
+    };
+    const classes = [
+      PHX_LOADING_CLASS,
+      PHX_ERROR_CLASS,
+      PHX_CLIENT_ERROR_CLASS,
+    ];
+
+    beforeEach(() => {
+      visibility = "visible";
+      jest.useFakeTimers();
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => visibility,
+      });
+    });
+
+    afterEach(() => {
+      delete (document as any).visibilityState;
+      jest.clearAllTimers();
+      jest.useRealTimers();
+    });
+
+    test("waits until the page is visible, then for the resume timeout", () => {
+      liveSocket = new LiveSocket("/live", Socket, {
+        disconnectedTimeout: 500,
+        disconnectedResumeTimeout: 1500,
+      });
+      const el = document.querySelector("[data-phx-session]")!;
+      const view = simulateJoinedView(el, liveSocket);
+      const execAll = jest.spyOn(view, "execAll");
+
+      setVisibility("hidden");
+      view.displayError(classes);
+      jest.advanceTimersByTime(60_000);
+      expect(execAll).not.toHaveBeenCalled();
+      // the error classes are still applied right away
+      expect(el.classList.contains("phx-client-error")).toBeTruthy();
+
+      setVisibility("visible");
+      jest.advanceTimersByTime(1499);
+      expect(execAll).not.toHaveBeenCalled();
+      jest.advanceTimersByTime(1);
+      expect(execAll).toHaveBeenCalledTimes(1);
+      expect(execAll).toHaveBeenCalledWith("phx-disconnected");
+    });
+
+    test("reconnecting during the resume timeout never runs them", () => {
+      liveSocket = new LiveSocket("/live", Socket);
+      const el = document.querySelector("[data-phx-session]")!;
+      const view = simulateJoinedView(el, liveSocket);
+      const execAll = jest.spyOn(view, "execAll");
+
+      setVisibility("hidden");
+      view.displayError(classes);
+      setVisibility("visible");
+      jest.advanceTimersByTime(300);
+      view.hideLoader();
+      jest.runAllTimers();
+
+      expect(execAll).toHaveBeenCalledWith("phx-connected");
+      expect(execAll).not.toHaveBeenCalledWith("phx-disconnected");
+    });
+
+    test("reconnecting while hidden cancels the visibility listener", () => {
+      liveSocket = new LiveSocket("/live", Socket);
+      const el = document.querySelector("[data-phx-session]")!;
+      const view = simulateJoinedView(el, liveSocket);
+      const execAll = jest.spyOn(view, "execAll");
+
+      setVisibility("hidden");
+      view.displayError(classes);
+      view.hideLoader();
+      execAll.mockClear();
+      setVisibility("visible");
+      jest.runAllTimers();
+
+      expect(execAll).not.toHaveBeenCalled();
+      expect(view["cancelDisconnectedOnVisible"]).toBeNull();
+    });
+
+    test("hiding the page before the timeout defers them again", () => {
+      liveSocket = new LiveSocket("/live", Socket, {
+        disconnectedTimeout: 500,
+        disconnectedResumeTimeout: 2000,
+      });
+      const el = document.querySelector("[data-phx-session]")!;
+      const view = simulateJoinedView(el, liveSocket);
+      const execAll = jest.spyOn(view, "execAll");
+
+      view.displayError(classes);
+      jest.advanceTimersByTime(200);
+      setVisibility("hidden");
+      jest.advanceTimersByTime(60_000);
+      expect(execAll).not.toHaveBeenCalled();
+
+      setVisibility("visible");
+      jest.advanceTimersByTime(1999);
+      expect(execAll).not.toHaveBeenCalled();
+      jest.advanceTimersByTime(1);
+      expect(execAll).toHaveBeenCalledWith("phx-disconnected");
+    });
+
+    test("ignores visibilitychange events that keep the page hidden", () => {
+      liveSocket = new LiveSocket("/live", Socket);
+      const el = document.querySelector("[data-phx-session]")!;
+      const view = simulateJoinedView(el, liveSocket);
+      const execAll = jest.spyOn(view, "execAll");
+
+      setVisibility("hidden");
+      view.displayError(classes);
+      setVisibility("hidden");
+      jest.runAllTimers();
+      expect(execAll).not.toHaveBeenCalled();
+
+      // Chrome may only fire "resume" when unfreezing a page
+      visibility = "visible";
+      document.dispatchEvent(new Event("resume"));
+      jest.runAllTimers();
+      expect(execAll).toHaveBeenCalledWith("phx-disconnected");
+    });
+
+    test("destroying the view cancels them", () => {
+      liveSocket = new LiveSocket("/live", Socket);
+      const el = document.querySelector("[data-phx-session]")!;
+      const view = simulateJoinedView(el, liveSocket);
+      const execAll = jest.spyOn(view, "execAll");
+
+      setVisibility("hidden");
+      view.displayError(classes);
+      view.destroy();
+      setVisibility("visible");
+      jest.runAllTimers();
+
+      expect(execAll).not.toHaveBeenCalledWith("phx-disconnected");
+      expect(view["cancelDisconnectedOnVisible"]).toBeNull();
+    });
+  });
+
+  test("onJoinError marks join timeouts as client errors", () => {
+    liveSocket = new LiveSocket("/live", Socket);
+    const el = liveViewDOM();
+    const view = new View(el, liveSocket, null, null, null);
+    stubChannel(view);
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    try {
+      view.onJoinError({ reason: "timeout" });
+    } finally {
+      consoleError.mockRestore();
+    }
+
+    expect(el.classList.contains("phx-client-error")).toBeTruthy();
+    expect(el.classList.contains("phx-server-error")).toBeFalsy();
+  });
+
+  test("onJoinError marks join failures as server errors", () => {
+    liveSocket = new LiveSocket("/live", Socket);
+    const el = liveViewDOM();
+    const view = new View(el, liveSocket, null, null, null);
+    stubChannel(view);
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    try {
+      view.onJoinError({ reason: "boom" });
+    } finally {
+      consoleError.mockRestore();
+    }
+
+    expect(el.classList.contains("phx-server-error")).toBeTruthy();
+    expect(el.classList.contains("phx-client-error")).toBeFalsy();
   });
 
   test("join", async () => {
