@@ -107,7 +107,7 @@ describe("View + DOM", function () {
       }
 
       const reloadedState = window.history.state;
-      liveSocket.reserveHistoryEntry("patch", `${initialHref}?page=two`);
+      liveSocket.reserveHistoryEntry(`${initialHref}?page=two`, "patch");
       // Return to the reloaded entry, as a browser back traversal would.
       window.history.replaceState(reloadedState, "", initialHref);
       popstate!(new PopStateEvent("popstate", { state: reloadedState }));
