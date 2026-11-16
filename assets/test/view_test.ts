@@ -67,6 +67,59 @@ describe("View + DOM", function () {
     global.document.body.innerHTML = "";
   });
 
+  test("onJoin refreshes history from a previous document after reload", () => {
+    const initialState = window.history.state;
+    const initialHref = window.location.href;
+    window.history.replaceState(
+      { type: "patch", id: "previous-document", position: 7 },
+      "",
+    );
+    window.sessionStorage.setItem("phx:nav-history-position", "7");
+
+    try {
+      liveSocket = new LiveSocket("/live", Socket);
+      const view = simulateJoinedView(liveViewDOM(), liveSocket);
+
+      expect(window.history.state).toEqual({
+        type: "patch",
+        id: view.id,
+        position: 7,
+      });
+      expect(liveSocket.currentHistoryPosition).toBe(7);
+
+      liveSocket.main = view;
+      liveSocket.requestDOMUpdate = (callback) => callback();
+      const pushLinkPatch = jest
+        .spyOn(view, "pushLinkPatch")
+        .mockImplementation(() => {});
+      const replaceMain = jest.spyOn(liveSocket, "replaceMain");
+      const addEventListener = jest
+        .spyOn(window, "addEventListener")
+        .mockImplementation(() => {});
+      let popstate: EventListener;
+      try {
+        liveSocket.bindNav();
+        popstate = addEventListener.mock.calls.find(
+          ([name]) => name === "popstate",
+        )![1] as EventListener;
+      } finally {
+        addEventListener.mockRestore();
+      }
+
+      const reloadedState = window.history.state;
+      liveSocket.reserveHistoryEntry("patch", `${initialHref}?page=two`);
+      // Return to the reloaded entry, as a browser back traversal would.
+      window.history.replaceState(reloadedState, "", initialHref);
+      popstate!(new PopStateEvent("popstate", { state: reloadedState }));
+
+      expect(pushLinkPatch).toHaveBeenCalled();
+      expect(replaceMain).not.toHaveBeenCalled();
+    } finally {
+      window.history.replaceState(initialState, "", initialHref);
+      window.sessionStorage.removeItem("phx:nav-history-position");
+    }
+  });
+
   test("update", async () => {
     liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
