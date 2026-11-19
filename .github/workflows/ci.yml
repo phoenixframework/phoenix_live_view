@@ -175,11 +175,13 @@ jobs:
             otp: "29"
 
     runs-on: ubuntu-24.04
+    # the browsers of playwright_ex's driver version
     container:
-      image: mcr.microsoft.com/playwright:v1.62.0-noble
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
     env:
       ImageOS: ubuntu22
       HOME: /root
+      MIX_ENV: e2e
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -192,6 +194,8 @@ jobs:
         with:
           elixir-version: ${{ matrix.elixir }}
           otp-version: ${{ matrix.otp }}
+          # Playwright.Test.GitHubFormatter annotates failures; the mix matchers would repeat them
+          disable_problem_matchers: true
 
       - name: Restore deps and _build cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -217,15 +221,29 @@ jobs:
       - name: Install locked npm dependencies
         run: npm ci
 
-      - name: Run e2e tests
-        run: npm run e2e:test
+      # the JS under test, as priv/static is only updated on release
+      - name: Build assets
+        run: mix assets.build
+        env:
+          MIX_ENV: dev
 
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      # the image has the browsers
+      - name: Install Playwright driver
+        run: mix playwright.install --no-browsers
+
+      # Two retries of the failed tests. Only test failures (exit 2) are retried, and a retry that
+      # finds no failed tests to run (a module failed in setup_all) fails the job.
+      - name: Run e2e tests
+        run: |
+          set -o pipefail
+          mix test --cover --export-coverage e2e \
+            --formatter ExUnit.CLIFormatter --formatter Playwright.Test.GitHubFormatter ||
+            { [ $? -eq 2 ] && mix test --failed | tee retry.log && ! grep -q "There are no tests to run" retry.log; } ||
+            { [ $? -eq 2 ] && mix test --failed | tee retry.log && ! grep -q "There are no tests to run" retry.log; }
+
+      - name: Generate e2e JS coverage report
         if: always()
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 7
+        run: npm run e2e:coverage
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
