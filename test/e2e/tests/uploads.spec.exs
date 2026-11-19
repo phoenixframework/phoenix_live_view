@@ -388,44 +388,41 @@ defmodule Phoenix.LiveViewTest.E2E.UploadsTest do
     |> Expect.to_have_attribute!("data-external-upload-aborted", ~r/.+/)
   end
 
-  # fails on Chromium: https://github.com/phoenixframework/phoenix_live_view/issues/4506
-  test "issue 3115 - cancelled upload is not re-added", %{page: page, browser_name: browser_name} do
-    if browser_name != :chromium do
-      Page.goto!(page, "/upload")
-      sync_lv(page)
+  test "issue 3115 - cancelled upload is not re-added", %{page: page} do
+    Page.goto!(page, "/upload")
+    sync_lv(page)
 
-      page
-      |> Page.locator("#upload-form input")
-      |> Locator.set_input_files!([
-        %{
-          name: "file.txt",
-          mimeType: "text/plain",
-          buffer: "this is a test"
-        }
-      ])
+    page
+    |> Page.locator("#upload-form input")
+    |> Locator.set_input_files!([
+      %{
+        name: "file.txt",
+        mimeType: "text/plain",
+        buffer: "this is a test"
+      }
+    ])
 
-      sync_lv(page)
-      # cancel the file
-      page |> Page.get_by_label("cancel") |> Locator.click!()
+    sync_lv(page)
+    # cancel the file
+    page |> Page.get_by_label("cancel") |> Locator.click!()
 
-      # add other file
-      page
-      |> Page.locator("#upload-form input")
-      |> Locator.set_input_files!([
-        %{
-          name: "file.md",
-          mimeType: "text/markdown",
-          buffer: "## this is a markdown file"
-        }
-      ])
+    # add other file
+    page
+    |> Page.locator("#upload-form input")
+    |> Locator.set_input_files!([
+      %{
+        name: "file.md",
+        mimeType: "text/markdown",
+        buffer: "## this is a markdown file"
+      }
+    ])
 
-      sync_lv(page)
-      page |> Page.get_by_role(:button, name: "Upload") |> Locator.click!()
-      sync_lv(page)
+    sync_lv(page)
+    page |> Page.get_by_role(:button, name: "Upload") |> Locator.click!()
+    sync_lv(page)
 
-      # we should see one uploaded file in the list
-      page |> Page.locator("ul li") |> Expect.to_have_count!(1)
-    end
+    # we should see one uploaded file in the list
+    page |> Page.locator("ul li") |> Expect.to_have_count!(1)
   end
 
   test "submitting invalid form multiple times doesn't crash", %{page: page} do
