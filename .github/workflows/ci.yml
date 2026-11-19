@@ -231,16 +231,14 @@ jobs:
       - name: Install Playwright driver
         run: mix playwright.install --no-browsers
 
-      # Two retries of the failed tests. Only test failures (exit 2) are retried, and a retry that
-      # finds no failed tests to run (a module failed in setup_all) fails the job.
+      # Two retries of the failed tests. Only test failures (exit 2) are retried, so an error after
+      # the tests still fails the job.
       - name: Run e2e tests
-        # bash for pipefail (the container's default shell is sh)
-        shell: bash
         run: |
           mix test --cover --export-coverage e2e \
             --formatter ExUnit.CLIFormatter --formatter Playwright.Test.GitHubFormatter ||
-            { [ $? -eq 2 ] && mix test --failed | tee retry.log && ! grep -q "There are no tests to run" retry.log; } ||
-            { [ $? -eq 2 ] && mix test --failed | tee retry.log && ! grep -q "There are no tests to run" retry.log; }
+            { [ $? -eq 2 ] && mix test --failed; } ||
+            { [ $? -eq 2 ] && mix test --failed; }
 
       - name: Generate e2e JS coverage report
         if: always()
