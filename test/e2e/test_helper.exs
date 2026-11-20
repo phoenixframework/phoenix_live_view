@@ -1,3 +1,7 @@
+# The JS suite's server (`mix test test/e2e/test_helper.exs`) runs test/test_helper.exs first,
+# which deletes :root_tag_attribute before this file compiles its Layout.
+Application.delete_env(:phoenix_live_view, :root_tag_attribute)
+
 Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest.E2E.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4004],
   adapter: Bandit.PhoenixAdapter,
