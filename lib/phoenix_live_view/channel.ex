@@ -1800,7 +1800,7 @@ defmodule Phoenix.LiveView.Channel do
   defp authorize_session(%Session{} = session, endpoint, %{"url" => url}) do
     %Session{view: view, live_session_name: session_name} = session
 
-    if Session.main?(session) do
+    if session.route_required? do
       # Ensure the session's LV module and live session name still match on connect.
       # If the route has changed the LV module or has moved live sessions (typically
       # during a deployment), the client will fallback to full page redirect to the
@@ -1818,7 +1818,12 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp authorize_session(%Session{} = session, _endpoint, %{} = _params) do
+  defp authorize_session(%Session{route_required?: true}, _endpoint, %{}) do
+    # Router-mounted LiveViews need a route to load the live_session hooks and layout.
+    {:error, :unauthorized}
+  end
+
+  defp authorize_session(%Session{} = session, _endpoint, %{}) do
     {:ok, session, _route = nil, _url = nil}
   end
 
