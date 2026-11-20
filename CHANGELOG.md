@@ -115,6 +115,23 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.14 (2026-11-20)
+
+### Security fixes
+
+* [CVE-2026-126334](https://github.com/phoenixframework/phoenix_live_view/security/advisories/GHSA-v4p7-3pm2-wq6c): Fix a LiveView manually joined without a `url` skipping its `live_session`'s `on_mount` hooks
+
+### Bug fixes
+
+* Revert cancelled popstate navigation by the traversed distance ([#4476](https://github.com/phoenixframework/phoenix_live_view/pull/4476))
+* Only call handle_params/3 on patch if it's defined, raising if nothing handles params ([#4487](https://github.com/phoenixframework/phoenix_live_view/pull/4487))
+* Refuse joins whose url has no host instead of crashing ([#4490](https://github.com/phoenixframework/phoenix_live_view/pull/4490))
+
+### Enhancements
+
+* Store component call file relative to cwd ([#4489](https://github.com/phoenixframework/phoenix_live_view/pull/4489))
+* Resolve relative links in JS commands ([#4491](https://github.com/phoenixframework/phoenix_live_view/pull/4491))
+
 ## v1.2.13 (2026-10-20)
 
 ### Bug fixes
