@@ -3,10 +3,13 @@ defmodule Phoenix.LiveView.RouterTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
-  alias Phoenix.LiveView.{Route, Session}
+  alias Phoenix.ChannelTest
+  alias Phoenix.LiveView.{Channel, Route, Session, Socket}
   alias Phoenix.LiveViewTest.{DOM, TreeDOM}
   alias Phoenix.LiveViewTest.Support.{Endpoint, DashboardLive}
   alias Phoenix.LiveViewTest.Support.Router.Helpers, as: Routes
+
+  require ChannelTest
 
   @endpoint Endpoint
 
@@ -76,6 +79,21 @@ defmodule Phoenix.LiveView.RouterTest do
   end
 
   describe "live_session" do
+    test "a routed LiveView rejects a join without a URL", %{conn: conn} do
+      html = conn |> get("/lifecycle/mount-mods") |> html_response(200)
+      {_document, tree} = DOM.parse_document(html)
+      [{id, session_token, static_token}] = TreeDOM.find_live_views(tree)
+
+      assert {:ok, socket} = ChannelTest.connect(Socket, %{}, connect_info: %{session: %{}})
+
+      assert {:error, %{reason: "unauthorized"}} =
+               ChannelTest.join(socket, Channel, "lv:#{id}", %{
+                 "session" => session_token,
+                 "static" => static_token,
+                 "params" => %{}
+               })
+    end
+
     test "with defaults", %{conn: conn} do
       path = "/thermo-live-session"
 
