@@ -112,6 +112,12 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
+## 1.0.20 (2026-11-20)
+
+### Security fixes
+
+* [CVE-2026-126334](https://github.com/phoenixframework/phoenix_live_view/security/advisories/GHSA-v4p7-3pm2-wq6c): Fix a LiveView manually joined without a `url` skipping its `live_session`'s `on_mount` hooks
+
 ## 1.0.19 (2026-08-10)
 
 ### Security fixes
