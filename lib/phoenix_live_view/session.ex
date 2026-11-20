@@ -10,11 +10,10 @@ defmodule Phoenix.LiveView.Session do
             session: %{},
             redirected?: false,
             router: nil,
+            route_required?: false,
             flash: nil,
             live_session_name: nil,
             assign_new: []
-
-  def main?(%Session{} = session), do: session.router != nil and session.parent_pid == nil
 
   def authorize_root_redirect(%Session{} = session, %Route{} = route) do
     %Session{live_session_name: session_name} = session
@@ -71,6 +70,7 @@ defmodule Phoenix.LiveView.Session do
         session: merged_session.session,
         assign_new: merged_session.assign_new,
         live_session_name: live_session_name,
+        route_required?: route_required?(session),
         # optional keys
         router: merged_session[:router],
         flash: merged_session[:flash]
@@ -78,6 +78,15 @@ defmodule Phoenix.LiveView.Session do
 
       {:ok, session}
     end
+  end
+
+  defp route_required?(%{route_required?: required?}), do: required?
+
+  # TODO: Remove this fallback in 1.3. Older routed root tokens always include
+  # live_session_name, even for a session named nil. Nested tokens omit the key,
+  # including those for sticky LiveViews.
+  defp route_required?(session) do
+    not is_nil(session[:router]) and Map.has_key?(session, :live_session_name)
   end
 
   defp verify_topic("lv:" <> session_id, session_id), do: :ok

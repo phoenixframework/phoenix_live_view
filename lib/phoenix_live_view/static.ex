@@ -367,6 +367,7 @@ defmodule Phoenix.LiveView.Static do
       view: view,
       root_view: view,
       router: router,
+      route_required?: not is_nil(router),
       live_session_name: live_session_name,
       parent_pid: nil,
       root_pid: nil,
@@ -381,6 +382,7 @@ defmodule Phoenix.LiveView.Static do
       view: view,
       root_view: if(sticky?, do: view, else: parent.private.root_view),
       router: parent.router,
+      route_required?: false,
       parent_pid: if(sticky?, do: nil, else: self()),
       root_pid: if(sticky?, do: nil, else: parent.root_pid),
       session: session
