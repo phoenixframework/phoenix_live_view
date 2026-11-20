@@ -231,14 +231,30 @@ jobs:
       - name: Install Playwright driver
         run: mix playwright.install --no-browsers
 
-      # Two retries of the failed tests. Only test failures (exit 2) are retried, so an error after
-      # the tests still fails the job.
+      # One project per run until Elixir 1.21: elixir-lang/elixir#15820. Each browser's run has two
+      # retries of its failed tests. Only test failures (exit 2) are retried, so an error after the
+      # tests still fails the job, as does a retry that finds no failed tests to rerun.
       - name: Run e2e tests
+        # bash for PIPESTATUS (the container's default shell is sh)
+        shell: bash
         run: |
-          mix test --cover --export-coverage e2e \
-            --formatter ExUnit.CLIFormatter --formatter Playwright.Test.GitHubFormatter ||
-            { [ $? -eq 2 ] && mix test --failed; } ||
-            { [ $? -eq 2 ] && mix test --failed; }
+          retry() {
+            mix test --failed 2>&1 | tee retry.log; s=${PIPESTATUS[0]}
+            if grep -q "^There are no tests to run" retry.log; then
+              echo "::error::mix test --failed found no failures to rerun after a failed run"; return 1
+            fi
+            return $s
+          }
+          status=0
+          for b in chromium firefox webkit; do
+            export PW_BROWSER=$b
+            mix test --cover --export-coverage e2e-$b \
+              --formatter ExUnit.CLIFormatter --formatter Playwright.Test.GitHubFormatter ||
+              { [ $? -eq 2 ] && retry; } ||
+              { [ $? -eq 2 ] && retry; } ||
+              status=1
+          done
+          exit $status
 
       - name: Generate e2e JS coverage report
         if: always()
@@ -255,7 +271,7 @@ jobs:
         if: always()
         with:
           name: mix-e2e-coverage
-          path: cover/e2e.coverdata
+          path: cover/e2e-*.coverdata
           retention-days: 7
 
   coverage_report:
