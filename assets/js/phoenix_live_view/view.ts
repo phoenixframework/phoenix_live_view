@@ -809,6 +809,11 @@ export default class View {
   maybeRecoverForms(html, callback) {
     const phxChange = this.binding("change");
     const oldForms = this.root.formsForRecovery;
+    // with no forms to recover (always the case on the first join), we can
+    // skip parsing the HTML, which is expensive for large pages
+    if (Object.keys(oldForms).length === 0) {
+      return callback();
+    }
     // So why do we create a template element here?
     // One way to recover forms would be to immediately apply the mount
     // patch and then afterwards recover the forms. However, this would
@@ -2776,9 +2781,10 @@ export default class View {
         return clonedForm;
       })
       .reduce((acc, form) => {
+        // acc has no prototype, so a form with the id "__proto__" becomes a key
         acc[form.id] = form;
         return acc;
-      }, {});
+      }, Object.create(null));
   }
 
   maybePushComponentsDestroyed(destroyedCIDs) {
