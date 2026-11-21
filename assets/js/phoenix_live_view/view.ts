@@ -110,6 +110,7 @@ export default class View {
   private childJoins: number;
   private loaderTimer: ReturnType<typeof setTimeout> | null;
   private disconnectedTimer: ReturnType<typeof setTimeout> | null;
+  private cancelDisconnectedOnVisible: (() => void) | null;
   private pendingDiffs: { diff: any; events: any; joinCount: number }[];
   private redirect: boolean;
   private href: string | null;
@@ -178,6 +179,7 @@ export default class View {
      * @type {ReturnType<typeof setTimeout> | null}
      */
     this.disconnectedTimer = null;
+    this.cancelDisconnectedOnVisible = null;
     this.pendingDiffs = [];
     this.pendingForms = new Set();
     this.activeUploaders = new Set();
@@ -275,6 +277,7 @@ export default class View {
       delete this.root.children![this.parent.id][this.id];
     }
     this.loaderTimer != null && clearTimeout(this.loaderTimer);
+    this.clearDisconnectedTimer();
     const onFinished = () => {
       callback();
       for (const id in this.viewHooks) {
@@ -329,8 +332,7 @@ export default class View {
 
   hideLoader() {
     this.loaderTimer != null && clearTimeout(this.loaderTimer);
-    this.disconnectedTimer != null && clearTimeout(this.disconnectedTimer);
-    this.disconnectedTimer = null;
+    this.clearDisconnectedTimer();
     this.setContainerClasses(PHX_CONNECTED_CLASS);
     this.execAll(this.binding("connected"));
   }
@@ -1348,11 +1350,17 @@ export default class View {
         context: { attribution },
       },
     );
+    // a join that timed out or failed in transport means we could not reach
+    // the server, which is a client (network) error, not a server error
+    const [errorClass, errorKind] =
+      attribution === "network"
+        ? [PHX_CLIENT_ERROR_CLASS, "client"]
+        : [PHX_SERVER_ERROR_CLASS, "server"];
     if (this.isMain()) {
-      this.displayError(
-        [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS],
-        { unstructuredError: resp, errorKind: "server" },
-      );
+      this.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, errorClass], {
+        unstructuredError: resp,
+        errorKind,
+      });
       if (this.liveSocket.isConnected()) {
         this.liveSocket.reloadWithJitter(this);
       }
@@ -1384,10 +1392,10 @@ export default class View {
       const trueChildEl = DOM.byId(this.el.id);
       if (trueChildEl) {
         DOM.mergeAttrs(trueChildEl, this.el);
-        this.displayError(
-          [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS],
-          { unstructuredError: resp, errorKind: "server" },
-        );
+        this.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, errorClass], {
+          unstructuredError: resp,
+          errorKind,
+        });
         this.el = trueChildEl;
       } else {
         this.destroy();
@@ -1449,14 +1457,41 @@ export default class View {
     this.delayedDisconnected();
   }
 
-  delayedDisconnected() {
-    if (this.disconnectedTimer != null) {
+  delayedDisconnected(resumed = false) {
+    if (
+      this.disconnectedTimer != null ||
+      this.cancelDisconnectedOnVisible != null
+    ) {
       return;
     }
+    // Nobody can see disconnected UI on a hidden page, and phoenix.js does not
+    // reconnect until the page is visible again. Wait for the user to return
+    // and give the immediate reconnect a moment to finish, so returning to a
+    // tab after a dropped connection does not greet the user with an error.
+    if (this.liveSocket.isPageHidden()) {
+      this.cancelDisconnectedOnVisible = this.liveSocket.onPageVisible(() => {
+        this.cancelDisconnectedOnVisible = null;
+        this.delayedDisconnected(true);
+      });
+      return;
+    }
+    const timeout = resumed
+      ? this.liveSocket.disconnectedResumeTimeout
+      : this.liveSocket.disconnectedTimeout;
     this.disconnectedTimer = setTimeout(() => {
       this.disconnectedTimer = null;
+      if (this.liveSocket.isPageHidden()) {
+        return this.delayedDisconnected();
+      }
       this.execAll(this.binding("disconnected"));
-    }, this.liveSocket.disconnectedTimeout);
+    }, timeout);
+  }
+
+  clearDisconnectedTimer() {
+    this.disconnectedTimer != null && clearTimeout(this.disconnectedTimer);
+    this.disconnectedTimer = null;
+    this.cancelDisconnectedOnVisible?.();
+    this.cancelDisconnectedOnVisible = null;
   }
 
   wrapPush(callerPush, receives) {

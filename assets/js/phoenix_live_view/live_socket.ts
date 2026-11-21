@@ -7,6 +7,7 @@ import {
   FAILSAFE_JITTER,
   LOADER_TIMEOUT,
   DISCONNECTED_TIMEOUT,
+  DISCONNECTED_RESUME_TIMEOUT,
   MAX_RELOADS,
   PHX_DEBOUNCE,
   PHX_DROP_TARGET,
@@ -110,6 +111,17 @@ export interface LiveSocketOptions {
   loaderTimeout?: number;
   /** Delay in milliseconds before executing phx-disconnected commands. */
   disconnectedTimeout?: number;
+  /**
+   * Delay in milliseconds before executing phx-disconnected commands for a
+   * connection that was lost while the page was hidden, measured from the
+   * moment the page becomes visible again.
+   *
+   * phx-disconnected commands never run while the page is hidden. When the
+   * user returns to a tab, the socket reconnects immediately, so this grace
+   * period lets that reconnect finish before showing disconnected UI.
+   * Defaults to 2000.
+   */
+  disconnectedResumeTimeout?: number;
   /** Maximum reloads before entering failsafe mode. */
   maxReloads?: number;
   /** Minimum time between normal reload attempts. */
@@ -320,6 +332,7 @@ export default class LiveSocket {
   uploaders: any;
   /** @internal */
   disconnectedTimeout: number;
+  disconnectedResumeTimeout: number;
   /** @internal */
   RenderingBuffer: typeof RenderingBuffer;
   /**
@@ -385,6 +398,8 @@ export default class LiveSocket {
     this.RenderingBuffer = RenderingBuffer;
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT;
     this.disconnectedTimeout = opts.disconnectedTimeout || DISCONNECTED_TIMEOUT;
+    this.disconnectedResumeTimeout =
+      opts.disconnectedResumeTimeout || DISCONNECTED_RESUME_TIMEOUT;
     /**
      * @type {ReturnType<typeof setTimeout> | null}
      */
@@ -854,6 +869,37 @@ export default class LiveSocket {
   /** @internal */
   isConnected() {
     return this.socket.isConnected();
+  }
+
+  /** @internal */
+  isPageHidden() {
+    return document.visibilityState === "hidden";
+  }
+
+  /**
+   * Calls the callback once the page is visible again.
+   *
+   * Returns a function that cancels the callback.
+   *
+   * @internal
+   */
+  onPageVisible(callback: () => void): () => void {
+    const onChange = () => {
+      if (this.isPageHidden()) {
+        return;
+      }
+      cancel();
+      callback();
+    };
+    const cancel = () => {
+      document.removeEventListener("visibilitychange", onChange);
+      // Chrome does not reliably fire visibilitychange after resuming a frozen page,
+      // see the same workaround in phoenix.js
+      document.removeEventListener("resume", onChange);
+    };
+    document.addEventListener("visibilitychange", onChange);
+    document.addEventListener("resume", onChange);
+    return cancel;
   }
 
   /** @internal */
