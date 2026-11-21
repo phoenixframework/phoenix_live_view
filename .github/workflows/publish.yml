@@ -42,6 +42,14 @@ jobs:
         with:
           node-version: "24.x"
 
+      # assets/js/types is gitignored, so the TypeScript declarations must be
+      # generated before mix hex.publish collects the package files
+      - name: Build TypeScript declarations
+        run: |
+          npm ci
+          npm run build
+          test -f assets/js/types/index.d.ts
+
       - name: Publish phoenix_live_view
         run: |
           mix deps.get
