@@ -76,7 +76,7 @@ defmodule Phoenix.LiveView.MixProject do
       {:bandit, "~> 1.5", only: :e2e},
       {:ecto, "~> 3.11", only: [:docs, :e2e]},
       {:phoenix_ecto, "~> 4.5", only: :e2e},
-      {:playwright, "~> 1.65.0-rc.2", hex: :playwright_ex, only: :e2e}
+      {:playwright, "~> 1.65.0-rc.3", hex: :playwright_ex, only: :e2e}
     ]
   end
 

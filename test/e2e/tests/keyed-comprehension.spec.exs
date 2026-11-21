@@ -25,12 +25,16 @@ defmodule Phoenix.LiveViewTest.E2E.KeyedComprehensionTest do
 
       order
       |> Enum.with_index()
-      |> Enum.each(fn {item, index} ->
-        text0 = the_text.(page, 0, index)
-        text1 = the_text.(page, 1, index)
-        assert text0 == " Count: 10 Name: #{item["entry"]["foo"]["bar"]} 1 10 "
-        assert text1 == " Count: 10 Name: #{item["entry"]["foo"]["bar"]} 2 10 "
+      |> Enum.map(fn {item, index} ->
+        Promise.async(fn ->
+          text0 = the_text.(page, 0, index)
+          text1 = the_text.(page, 1, index)
+          assert text0 == " Count: 10 Name: #{item["entry"]["foo"]["bar"]} 1 10 "
+          assert text1 == " Count: 10 Name: #{item["entry"]["foo"]["bar"]} 2 10 "
+        end)
       end)
+      |> Promise.all()
+      |> Promise.await!()
     end
   end
 end

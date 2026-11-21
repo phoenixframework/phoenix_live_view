@@ -1,8 +1,8 @@
 defmodule Phoenix.LiveViewTest.E2E.Case do
   @moduledoc """
   The case of the e2e tests: `Playwright.Case` (the module's `browser` and `browser_name`, a
-  `context` and a `page` per test), run once per project (`projects/0`: Chromium, Firefox and
-  WebKit, each with its desktop device; `PW_BROWSER=firefox` runs one), plus:
+  `context` and a `page` per test), run once per project (`projects/0`: `chromium`, `firefox`
+  and `webkit`, each with its desktop device; `PW_BROWSER=firefox` runs one), plus:
 
     * the page's checks after each test: no unhandled page errors (unless the test, its describe
       or its module is tagged `ignore_js_errors: true`) and no `[data-phx-skip]` left;
@@ -12,7 +12,9 @@ defmodule Phoenix.LiveViewTest.E2E.Case do
       unless `PW_NO_COVERAGE` is set (`test/e2e/coverage-report.js` turns the dumps into a report).
   """
 
-  alias Playwright.{APIRequest, Coverage, Expect, Page}
+  import Playwright.Test.Assertions
+
+  alias Playwright.{APIRequest, Coverage, Expect, Page, Promise}
   alias Playwright.Test.BrowserPool
 
   @projects [chromium: "Desktop Chrome", firefox: "Desktop Firefox", webkit: "Desktop Safari"]
@@ -20,14 +22,15 @@ defmodule Phoenix.LiveViewTest.E2E.Case do
   @doc "The config's `projects`: all browsers, or `PW_BROWSER`'s."
   def projects do
     name = System.get_env("PW_BROWSER", "")
-    devices = for {project, device} <- @projects, name in ["", "#{project}"], do: device
+    projects = for {project, _device} = p <- @projects, name in ["", "#{project}"], do: p
 
-    if devices == [] do
+    if projects == [] do
       available = Enum.map_join(@projects, ", ", fn {project, _} -> ~s("#{project}") end)
       raise ArgumentError, ~s[Project(s) "#{name}" not found. Available projects: #{available}]
     end
 
-    for device <- devices, do: Playwright.Test.parameters(Playwright.device(device))
+    for {project, device} <- projects,
+        do: Playwright.Test.parameters([name: "#{project}"] ++ Playwright.device(device))
   end
 
   defmacro __using__(opts) do
@@ -70,7 +73,7 @@ defmodule Phoenix.LiveViewTest.E2E.Case do
       Agent.stop(errors)
 
       if not ignore_js_errors do
-        ExUnit.Assertions.assert(
+        assert(
           unhandled_errors == [],
           "Detected an unhandled JavaScript Error!"
         )
@@ -99,13 +102,22 @@ defmodule Phoenix.LiveViewTest.E2E.Case do
   # the coverage API is Chromium only
   defp coverage_fixture(page) do
     coverage = Page.coverage(page)
-    Coverage.start_js_coverage!(coverage, reset_on_navigation: false)
-    Coverage.start_css_coverage!(coverage, reset_on_navigation: false)
+
+    Promise.all([
+      Promise.async(fn -> Coverage.start_js_coverage!(coverage, reset_on_navigation: false) end),
+      Promise.async(fn -> Coverage.start_css_coverage!(coverage, reset_on_navigation: false) end)
+    ])
+    |> Promise.await!()
 
     # registered after the page's checks, so it runs before them
     ExUnit.Callbacks.on_exit(fn ->
-      js_coverage = Coverage.stop_js_coverage!(coverage)
-      css_coverage = Coverage.stop_css_coverage!(coverage)
+      [js_coverage, css_coverage] =
+        Promise.all([
+          Promise.async(fn -> Coverage.stop_js_coverage!(coverage) end),
+          Promise.async(fn -> Coverage.stop_css_coverage!(coverage) end)
+        ])
+        |> Promise.await!()
+
       # coverage-report.js adds the source map of phoenix_live_view.esm.js and the report
       File.mkdir_p!(@coverage_dir)
 

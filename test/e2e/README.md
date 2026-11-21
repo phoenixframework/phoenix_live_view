@@ -35,12 +35,12 @@ trace:
 $ MIX_ENV=e2e mix playwright.cli show-trace test/e2e/test-results/<test>/trace.zip
 ```
 
-To watch a test run, give the run headed, slowed-down browsers (`launch_options` merge over
-`config/e2e.exs`), and the test no timeout if you `Page.pause/1` in it:
+To watch a test run, give the run headed, slowed-down browsers (merged over `config/e2e.exs`),
+and the test no timeout if you `Page.pause/1` in it:
 
 ```elixir
 # config/e2e.exs
-config :playwright, :test, launch_options: [headless: false, slow_mo: 500]
+config :playwright, :test, headless: false, launch_options: [slow_mo: 500]
 ```
 
 ```bash

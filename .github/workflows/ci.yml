@@ -232,14 +232,16 @@ jobs:
         run: mix playwright.install --no-browsers
 
       # One project per run until Elixir 1.21: elixir-lang/elixir#15820. Each browser's run has two
-      # retries of its failed tests. Only test failures (exit 2) are retried, so an error after the
-      # tests still fails the job, as does a retry that finds no failed tests to rerun.
+      # retries of its failed tests, annotated too (a test passing there is flaky). Only test
+      # failures (exit 2) are retried, so an error after the tests still fails the job, as does a
+      # retry that finds no failed tests to rerun.
       - name: Run e2e tests
         # bash for PIPESTATUS (the container's default shell is sh)
         shell: bash
         run: |
           retry() {
-            mix test --failed 2>&1 | tee retry.log; s=${PIPESTATUS[0]}
+            mix test --failed --formatter ExUnit.CLIFormatter --formatter Playwright.Test.GitHubFormatter 2>&1 |
+              tee retry.log; s=${PIPESTATUS[0]}
             if grep -q "^There are no tests to run" retry.log; then
               echo "::error::mix test --failed found no failures to rerun after a failed run"; return 1
             fi
@@ -261,14 +263,14 @@ jobs:
         run: npm run e2e:coverage
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
+        if: ${{ !cancelled() }}
         with:
           name: e2e-test-results
           path: test/e2e/test-results/
           retention-days: 7
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
+        if: ${{ !cancelled() }}
         with:
           name: mix-e2e-coverage
           path: cover/e2e-*.coverdata

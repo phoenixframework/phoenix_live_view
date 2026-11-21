@@ -4,7 +4,7 @@ defmodule Phoenix.LiveViewTest.E2E.Utils do
   arrays filled by listeners, promises resolved from outside, and asymmetric matchers.
   """
 
-  import ExUnit.Assertions
+  import Playwright.Test.Assertions
 
   alias Playwright.{APIRequestContext, APIResponse, Expect, Locator, Page, Promise}
 
@@ -14,10 +14,22 @@ defmodule Phoenix.LiveViewTest.E2E.Utils do
 
   # a helper function to wait until the LV has no pending events
   def sync_lv(page) do
-    page |> Page.locator(".phx-connected") |> Locator.first() |> Expect.to_be_visible!()
-    page |> Page.locator(".phx-change-loading") |> Expect.to_have_count!(0)
-    page |> Page.locator(".phx-click-loading") |> Expect.to_have_count!(0)
-    page |> Page.locator(".phx-submit-loading") |> Expect.to_have_count!(0)
+    promises = [
+      Promise.async(fn ->
+        page |> Page.locator(".phx-connected") |> Locator.first() |> Expect.to_be_visible!()
+      end),
+      Promise.async(fn ->
+        page |> Page.locator(".phx-change-loading") |> Expect.to_have_count!(0)
+      end),
+      Promise.async(fn ->
+        page |> Page.locator(".phx-click-loading") |> Expect.to_have_count!(0)
+      end),
+      Promise.async(fn ->
+        page |> Page.locator(".phx-submit-loading") |> Expect.to_have_count!(0)
+      end)
+    ]
+
+    promises |> Promise.all() |> Promise.await!()
   end
 
   # this function executes the given code inside the liveview that is responsible
