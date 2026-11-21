@@ -477,6 +477,24 @@ defmodule Phoenix.LiveView.EngineTest do
       refute code =~ "nested_changed_assign",
              "expected short-circuiting of foo checks, got: #{code}"
     end
+
+    test "generates changed checks in a deterministic order with many assigns" do
+      # Maps with more than 32 keys iterate in hash order, which depends on
+      # atom creation order, so the engine must sort the keys.
+      names = for i <- 1..40, do: "ordered_assign_#{String.pad_leading(to_string(i), 2, "0")}"
+      template = "<%= Enum.join([#{Enum.map_join(names, ", ", &"@#{&1}")}]) %>"
+      quoted = EEx.compile_string(template, file: __ENV__.file, engine: Engine)
+      code = Macro.to_string(quoted)
+
+      checked =
+        ~r/changed_assign\?\(\s*changed,\s*:(ordered_assign_\d+)\s*\)/
+        |> Regex.scan(code, capture: :all_but_first)
+        |> List.flatten()
+        |> Enum.uniq()
+
+      assert length(checked) == 40
+      assert checked in [names, Enum.reverse(names)]
+    end
   end
 
   describe "if" do
