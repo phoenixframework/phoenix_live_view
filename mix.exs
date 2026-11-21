@@ -22,11 +22,21 @@ defmodule Phoenix.LiveView.MixProject do
       description: """
       Rich, real-time user experiences with server-rendered HTML
       """,
-      listeners: [Phoenix.CodeReloader],
-      # ignore misnamed test file warnings for e2e support files
-      test_ignore_filters: [&String.starts_with?(&1, "test/e2e/support")]
+      listeners: [Phoenix.CodeReloader]
+    ] ++ test_options(Mix.env())
+  end
+
+  # the e2e tests (test/e2e/tests/**/*.spec.exs) run in their own env
+  defp test_options(:e2e) do
+    [
+      test_paths: ["test/e2e"],
+      test_pattern: "*.spec.exs",
+      test_load_filters: [&String.ends_with?(&1, ".spec.exs")]
     ]
   end
+
+  # ignore misnamed test file warnings for the e2e files
+  defp test_options(_), do: [test_ignore_filters: [&String.starts_with?(&1, "test/e2e/")]]
 
   def cli do
     [preferred_envs: [docs: :docs]]
@@ -65,7 +75,8 @@ defmodule Phoenix.LiveView.MixProject do
       {:phoenix_html_helpers, "~> 1.0", only: :test},
       {:bandit, "~> 1.5", only: :e2e},
       {:ecto, "~> 3.11", only: [:docs, :e2e]},
-      {:phoenix_ecto, "~> 4.5", only: :e2e}
+      {:phoenix_ecto, "~> 4.5", only: :e2e},
+      {:playwright, "~> 1.65.0-rc.3", hex: :playwright_ex, only: :e2e}
     ]
   end
 

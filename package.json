@@ -35,13 +35,11 @@
     "@babel/preset-env": "^8.0.2",
     "@babel/preset-typescript": "^8.0.1",
     "@eslint/js": "^10.0.1",
-    "@playwright/test": "^1.62.0",
     "@types/jest": "^30.0.0",
     "@types/phoenix": "^1.6.7",
     "css.escape": "^1.5.1",
     "eslint": "^10.8.0",
     "eslint-plugin-jest": "^29.16.0",
-    "eslint-plugin-playwright": "^2.11.0",
     "globals": "^17.8.0",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
@@ -57,8 +55,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "e2e:server": "MIX_ENV=e2e mix test --cover --export-coverage e2e test/e2e/test_helper.exs",
-    "e2e:test": "mix assets.build && cd test/e2e && npx playwright install && npx playwright test",
+    "e2e:test": "mix assets.build && MIX_ENV=e2e mix playwright.install && MIX_ENV=e2e mix test",
+    "e2e:coverage": "node test/e2e/coverage-report.js",
     "js:test": "npm run build && jest",
     "js:test.coverage": "npm run build && jest --coverage",
     "js:test.watch": "npm run build && jest --watch",
@@ -68,7 +66,7 @@
     "test": "npm run js:test && npm run e2e:test",
     "typecheck:tests": "tsc -p assets/test/tsconfig.json",
     "cover:merge": "node test/e2e/merge-coverage.js",
-    "cover": "npm test && npm run cover:merge",
+    "cover": "npm test && npm run e2e:coverage && npm run cover:merge",
     "cover:report": "npx monocart show-report cover/merged-js/index.html",
     "docs": "typedoc assets/js/phoenix_live_view/index.ts --readme assets/js/phoenix_live_view/README.md --html doc/js"
   }

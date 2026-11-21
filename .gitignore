@@ -25,6 +25,5 @@ phoenix_live_view-*.tar
 node_modules
 
 /test/e2e/test-results/
-/playwright-report/
 /coverage/
 /assets/js/types/

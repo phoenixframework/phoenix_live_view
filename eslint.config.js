@@ -1,4 +1,3 @@
-import playwright from "eslint-plugin-playwright"
 import jest from "eslint-plugin-jest"
 import globals from "globals"
 import js from "@eslint/js"
@@ -36,13 +35,8 @@ export default tseslint.config([
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["*.js", "*.ts", "test/e2e/**"],
     ignores: ["assets/**"],
-    
-    plugins: {
-      ...playwright.configs["flat/recommended"].plugins,
-    },
 
     rules: {
-      ...playwright.configs["flat/recommended"].rules,
       ...sharedRules
     },
   },

@@ -1,3 +1,7 @@
+# The JS suite's server (`mix test test/e2e/test_helper.exs`) runs test/test_helper.exs first,
+# which deletes :root_tag_attribute before this file compiles its Layout.
+Application.delete_env(:phoenix_live_view, :root_tag_attribute)
+
 Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest.E2E.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4004],
   adapter: Bandit.PhoenixAdapter,
@@ -13,8 +17,6 @@ Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest.E2E.Endpoint,
   pubsub_server: Phoenix.LiveViewTest.E2E.PubSub,
   debug_errors: false
 )
-
-Process.register(self(), :e2e_helper)
 
 defmodule Phoenix.LiveViewTest.E2E.ErrorHTML do
   def render(template, _), do: Phoenix.Controller.status_message_from_template(template)
@@ -330,9 +332,6 @@ defmodule Phoenix.LiveViewTest.E2E.Endpoint do
 
   plug Plug.Static, from: System.tmp_dir!(), at: "/tmp"
 
-  plug :health_check
-  plug :halt
-
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
@@ -340,20 +339,6 @@ defmodule Phoenix.LiveViewTest.E2E.Endpoint do
 
   plug Plug.Session, @session_options
   plug Phoenix.LiveViewTest.E2E.Router
-
-  defp health_check(%{request_path: "/health"} = conn, _opts) do
-    conn |> Plug.Conn.send_resp(200, "OK") |> Plug.Conn.halt()
-  end
-
-  defp health_check(conn, _opts), do: conn
-
-  defp halt(%{request_path: "/halt"}, _opts) do
-    send(:e2e_helper, :halt)
-    # this ensure playwright waits until the server force stops
-    Process.sleep(:infinity)
-  end
-
-  defp halt(conn, _opts), do: conn
 end
 
 {:ok, _} =
@@ -370,15 +355,11 @@ IO.puts("Starting e2e server on port #{Phoenix.LiveViewTest.E2E.Endpoint.config(
 # we need to manually compile the colocated hooks / js and css
 Phoenix.LiveView.ColocatedAssets.compile()
 
-if not IEx.started?() do
-  # when running the test server manually, we halt after
-  # reading from stdin
-  spawn(fn ->
-    IO.read(:stdio, :line)
-    send(:e2e_helper, :halt)
-  end)
+# A 30 s test timeout. All browsers in one run (no PW_BROWSER): half the schedulers' modules at
+# once (`--max-cases` overrides it).
+max_cases =
+  if System.get_env("PW_BROWSER", "") != "",
+    do: [],
+    else: [max_cases: max(div(System.schedulers_online(), 2), 1)]
 
-  receive do
-    :halt -> :ok
-  end
-end
+ExUnit.start([timeout: 30_000] ++ max_cases)

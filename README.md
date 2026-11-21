@@ -171,7 +171,7 @@ $ npm run js:test
 $ npm run js:test.watch
 ```
 
-Running the JavaScript end-to-end tests:
+Running the end-to-end tests (see [test/e2e](test/e2e/README.md)):
 
 ```bash
 $ mix deps.get
