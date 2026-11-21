@@ -115,6 +115,10 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.15 (2026-11-21)
+
+This release contains the same code as 1.2.14, but it fixes the generated client type declarations missing in the previous version.
+
 ## v1.2.14 (2026-11-20)
 
 ### Security fixes
