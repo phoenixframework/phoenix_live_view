@@ -469,13 +469,18 @@ export default class View {
     if (this.root === this) {
       this.formsForRecovery = this.getFormsForRecovery();
     }
-    if (this.isMain() && window.history.state === null) {
-      // set initial history entry if this is the first page load (no history)
-      Browser.pushState("replace", {
-        type: "patch",
-        id: this.id,
-        position: this.liveSocket.currentHistoryPosition,
-      });
+    if (this.isMain()) {
+      if (window.history.state === null) {
+        // set initial history entry if this is the first page load (no history)
+        Browser.pushState("replace", {
+          type: "patch",
+          id: this.id,
+          position: this.liveSocket.currentHistoryPosition,
+        });
+      } else {
+        // A reload preserves history state, but gives the main view a new id.
+        Browser.updateCurrentState((state) => ({ ...state, id: this.id }));
+      }
     }
 
     if (liveview_version !== this.liveSocket.version()) {
