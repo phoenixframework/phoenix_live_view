@@ -382,6 +382,8 @@ test("issue 3115 - cancelled upload is not re-added", async ({ page }) => {
   await syncLV(page);
   // cancel the file
   await page.getByLabel("cancel").click();
+  // Wait for the cancellation patch before selecting another file.
+  await syncLV(page);
 
   // add other file
   await page.locator("#upload-form input").setInputFiles([
