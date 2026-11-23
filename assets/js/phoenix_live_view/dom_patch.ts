@@ -142,35 +142,11 @@ export default class DOMPatch {
     let targetContainer = this.targetContainer;
 
     if (this.targetCID) {
-      // https://github.com/phoenixframework/phoenix_live_view/pull/3942
-      // we need to ensure that no parent is locked
-      const closestLock = targetContainer.closest(`[${PHX_REF_LOCK}]`);
-      // If the targetContainer itself is locked, that's okay.
-      // https://github.com/phoenixframework/phoenix_live_view/issues/4088
-      //
-      // A lock outside of this view (e.g. a parent LiveView locking an element that
-      // contains this nested LiveView) is ignored: its cloned tree is only maintained
-      // by the owning view, and undoing the lock does not patch nested LiveViews.
-      // https://github.com/phoenixframework/phoenix_live_view/issues/4444
-      if (
-        closestLock &&
-        !closestLock.isSameNode(targetContainer) &&
-        view.ownsElement(closestLock)
-      ) {
-        const clonedTree = DOM.private(closestLock, PHX_REF_LOCK);
-        if (clonedTree) {
-          // if a parent is locked with a cloned tree, we need to patch the cloned tree instead
-          targetContainer = clonedTree.querySelector(
-            `[data-phx-component="${this.targetCID}"]`,
-          );
-          // The visible DOM can still contain the target CID while the locked
-          // clone has gone stale and no longer does. In that case there is no
-          // safe clone target for this component diff, so leave the visible DOM
-          // locked and wait for a later patch instead of throwing or patching
-          // outside the locked tree.
-          if (!targetContainer) return;
-        }
-      }
+      const componentTarget = this.componentPatchTarget(targetContainer);
+      // A deferred ancestor may already have removed this component. Don't
+      // apply its diff to the visible subtree that is waiting to be removed.
+      if (!componentTarget) return;
+      targetContainer = componentTarget;
     }
 
     const focused = liveSocket.getActiveElement();
@@ -834,6 +810,32 @@ export default class DOMPatch {
 
   private skipCIDSibling(el) {
     return el.nodeType === Node.ELEMENT_NODE && el.hasAttribute(PHX_SKIP);
+  }
+
+  private componentPatchTarget(
+    target: Element,
+    boundary: Element | null = null,
+  ): Element | null {
+    let outermostLock: Element | null = null;
+    for (
+      let lock = target.parentElement?.closest(`[${PHX_REF_LOCK}]`);
+      lock && lock !== boundary;
+      lock = lock.parentElement?.closest(`[${PHX_REF_LOCK}]`)
+    ) {
+      // Locks owned by a parent LiveView must not capture this view's patches:
+      // ancestor unlocks don't morph nested LiveViews (#4444).
+      if (boundary === null && !this.view.ownsElement(lock)) break;
+      outermostLock = lock;
+    }
+    if (!outermostLock) return target;
+
+    // Start at the outermost lock, then descend through the corresponding
+    // clones. The nearest live lock may have no clone because its deferred
+    // updates live inside an ancestor's clone instead. Create missing clones
+    // too, so component-only diffs can't bypass a lock before a full patch.
+    const clone = this.maybeCloneLockedElement(outermostLock, false);
+    const component = DOM.findComponent(this.view.id, this.targetCID!, clone);
+    return component ? this.componentPatchTarget(component, clone) : null;
   }
 
   private maybeCloneLockedElement(fromEl, isFocusedFormEl) {

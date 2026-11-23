@@ -17,7 +17,9 @@ defmodule Phoenix.LiveViewTest.E2E.Issue4209Live do
   defp locked_panel(assigns) do
     ~H"""
     <div id="locked-panel" phx-hook=".LockedPanel">
-      <.live_component module={__MODULE__.ChildComponent} id="locked-child" label="child 0" />
+      <div id="locked-inner">
+        <.live_component module={__MODULE__.ChildComponent} id="locked-child" label="child 0" />
+      </div>
       <button id="start-locked-update" type="button">Start locked update</button>
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".LockedPanel">
