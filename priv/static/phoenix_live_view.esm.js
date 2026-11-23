@@ -545,6 +545,9 @@ var DOM = {
     this.putPrivate(el, "destroyed", true);
   },
   findPhxChildrenInFragment(html, parentId) {
+    if (!new RegExp(PHX_PARENT_ID, "i").test(html)) {
+      return [];
+    }
     const template = document.createElement("template");
     template.innerHTML = html;
     return this.findPhxChildren(template.content, parentId);
@@ -5180,6 +5183,9 @@ var View = class _View {
   maybeRecoverForms(html, callback) {
     const phxChange = this.binding("change");
     const oldForms = this.root.formsForRecovery;
+    if (Object.keys(oldForms).length === 0) {
+      return callback();
+    }
     const template = document.createElement("template");
     template.innerHTML = html;
     if (!template.content.firstElementChild) {
@@ -6735,7 +6741,7 @@ var View = class _View {
     }).reduce((acc, form) => {
       acc[form.id] = form;
       return acc;
-    }, {});
+    }, /* @__PURE__ */ Object.create(null));
   }
   maybePushComponentsDestroyed(destroyedCIDs) {
     let willDestroyCIDs = destroyedCIDs.filter((cid) => {

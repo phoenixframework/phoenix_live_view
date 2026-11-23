@@ -603,6 +603,9 @@ var LiveView = (() => {
       this.putPrivate(el, "destroyed", true);
     },
     findPhxChildrenInFragment(html, parentId) {
+      if (!new RegExp(PHX_PARENT_ID, "i").test(html)) {
+        return [];
+      }
       const template = document.createElement("template");
       template.innerHTML = html;
       return this.findPhxChildren(template.content, parentId);
@@ -5248,6 +5251,9 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       var _a;
       const phxChange = this.binding("change");
       const oldForms = this.root.formsForRecovery;
+      if (Object.keys(oldForms).length === 0) {
+        return callback();
+      }
       const template = document.createElement("template");
       template.innerHTML = html;
       if (!template.content.firstElementChild) {
@@ -6802,7 +6808,7 @@ removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || ch
       }).reduce((acc, form) => {
         acc[form.id] = form;
         return acc;
-      }, {});
+      }, /* @__PURE__ */ Object.create(null));
     }
     maybePushComponentsDestroyed(destroyedCIDs) {
       let willDestroyCIDs = destroyedCIDs.filter((cid) => {
