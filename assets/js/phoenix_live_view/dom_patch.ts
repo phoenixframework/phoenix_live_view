@@ -142,35 +142,11 @@ export default class DOMPatch {
     let targetContainer = this.targetContainer;
 
     if (this.targetCID) {
-      // https://github.com/phoenixframework/phoenix_live_view/pull/3942
-      // we need to ensure that no parent is locked
-      const closestLock = targetContainer.closest(`[${PHX_REF_LOCK}]`);
-      // If the targetContainer itself is locked, that's okay.
-      // https://github.com/phoenixframework/phoenix_live_view/issues/4088
-      //
-      // A lock outside of this view (e.g. a parent LiveView locking an element that
-      // contains this nested LiveView) is ignored: its cloned tree is only maintained
-      // by the owning view, and undoing the lock does not patch nested LiveViews.
-      // https://github.com/phoenixframework/phoenix_live_view/issues/4444
-      if (
-        closestLock &&
-        !closestLock.isSameNode(targetContainer) &&
-        view.ownsElement(closestLock)
-      ) {
-        const clonedTree = DOM.private(closestLock, PHX_REF_LOCK);
-        if (clonedTree) {
-          // if a parent is locked with a cloned tree, we need to patch the cloned tree instead
-          targetContainer = clonedTree.querySelector(
-            `[data-phx-component="${this.targetCID}"]`,
-          );
-          // The visible DOM can still contain the target CID while the locked
-          // clone has gone stale and no longer does. In that case there is no
-          // safe clone target for this component diff, so leave the visible DOM
-          // locked and wait for a later patch instead of throwing or patching
-          // outside the locked tree.
-          if (!targetContainer) return;
-        }
-      }
+      const componentTarget = this.componentPatchTarget(targetContainer);
+      // A deferred ancestor may already have removed this component. Don't
+      // apply its diff to the visible subtree that is waiting to be removed.
+      if (!componentTarget) return;
+      targetContainer = componentTarget;
     }
 
     const focused = liveSocket.getActiveElement();
@@ -432,6 +408,14 @@ export default class DOMPatch {
           ) {
             return false;
           }
+          // Transfer nested deferred updates before checking the live lock, so
+          // a still-locked child doesn't acquire another intermediate clone.
+          if (
+            !DOM.isPhxChild(toEl) &&
+            this.copyNestedPrivateLock(fromEl, toEl)
+          ) {
+            return false;
+          }
           // If the element has PHX_REF_SRC, it is loading or locked and awaiting an ack.
           // If it's locked, we clone the fromEl tree and instruct morphdom to use
           // the cloned tree as the source of the morph for this branch from here on out.
@@ -452,10 +436,6 @@ export default class DOMPatch {
             return false;
           }
 
-          // If we are undoing a lock, copy potentially nested clones over.
-          // This keeps an inner locked subtree's private clone alive while an
-          // ancestor lock is being reconciled.
-          this.copyNestedPrivateLock(fromEl, toEl);
           // now copy regular DOM.private data
           DOM.copyPrivates(toEl, fromEl);
 
@@ -832,6 +812,32 @@ export default class DOMPatch {
     return el.nodeType === Node.ELEMENT_NODE && el.hasAttribute(PHX_SKIP);
   }
 
+  private componentPatchTarget(
+    target: Element,
+    boundary: Element | null = null,
+  ): Element | null {
+    let outermostLock: Element | null = null;
+    for (
+      let lock = target.parentElement?.closest(`[${PHX_REF_LOCK}]`);
+      lock && lock !== boundary;
+      lock = lock.parentElement?.closest(`[${PHX_REF_LOCK}]`)
+    ) {
+      // Locks owned by a parent LiveView must not capture this view's patches:
+      // ancestor unlocks don't morph nested LiveViews (#4444).
+      if (boundary === null && !this.view.ownsElement(lock)) break;
+      outermostLock = lock;
+    }
+    if (!outermostLock) return target;
+
+    // Start at the outermost lock, then descend through the corresponding
+    // clones. The nearest live lock may have no clone because its deferred
+    // updates live inside an ancestor's clone instead. Create missing clones
+    // too, so component-only diffs can't bypass a lock before a full patch.
+    const clone = this.maybeCloneLockedElement(outermostLock, false);
+    const component = DOM.findComponent(this.view.id, this.targetCID!, clone);
+    return component ? this.componentPatchTarget(component, clone) : null;
+  }
+
   private maybeCloneLockedElement(fromEl, isFocusedFormEl) {
     if (!fromEl.hasAttribute(PHX_REF_SRC)) return fromEl;
 
@@ -856,13 +862,23 @@ export default class DOMPatch {
   }
 
   private copyNestedPrivateLock(fromEl, toEl) {
-    // During unlock morphs, toEl may be the private clone that accumulated a
-    // nested locked subtree. Copy that private clone back to fromEl before the
-    // outer unlock finishes so the nested element can apply its own ack later.
+    // During unlock morphs, toEl may contain a nested element with its own
+    // private clone. Transfer it, but don't morph the intermediate snapshot:
+    // stale attributes (such as phx-patch-focused) could overwrite client state
+    // before undoElRef applies the nested clone. If its lock is still pending,
+    // the live subtree must remain unchanged until its own ack instead.
     // undoRef can be 0, so presence is checked against null.
-    if (this.undoRef === null || !DOM.private(toEl, PHX_REF_LOCK)) return;
+    if (this.undoRef === null || !DOM.private(toEl, PHX_REF_LOCK)) return false;
 
     DOM.putPrivate(fromEl, PHX_REF_LOCK, DOM.private(toEl, PHX_REF_LOCK));
+    // The child may already have been unlocked in the live DOM while its
+    // ancestor remained locked. Restore only the clone's lock bookkeeping so
+    // undoElRef still visits it and reconciles its deferred subtree.
+    if (!fromEl.hasAttribute(PHX_REF_LOCK)) {
+      fromEl.setAttribute(PHX_REF_LOCK, toEl.getAttribute(PHX_REF_LOCK));
+      fromEl.setAttribute(PHX_REF_SRC, toEl.getAttribute(PHX_REF_SRC));
+    }
+    return true;
   }
 
   private teleport(el, morph) {
