@@ -701,7 +701,7 @@ defmodule Phoenix.LiveView.Engine do
 
   defp changed_assigns(assigns) do
     checks =
-      for {{changed_var, key}, _} <- assigns,
+      for {{changed_var, key}, _} <- Enum.sort(assigns),
           not nested_and_parent_is_checked?(changed_var, key, assigns) do
         changed = Macro.var(changed_var, __MODULE__)
 
@@ -858,7 +858,7 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp to_component_keys(:all), do: :all
-  defp to_component_keys(map), do: Map.keys(map)
+  defp to_component_keys(map), do: map |> Map.keys() |> Enum.sort()
 
   defp vars_changed_vars(keys) do
     # when we calculate the changed map for components, we need to
