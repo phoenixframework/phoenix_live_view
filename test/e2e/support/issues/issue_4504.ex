@@ -21,7 +21,6 @@ defmodule Phoenix.LiveViewTest.E2E.Issue4504Live do
   end
 
   def handle_event("q", %{"q" => q}, socket) do
-    Process.sleep(60)
     {:noreply, assign(socket, :q, q)}
   end
 end
