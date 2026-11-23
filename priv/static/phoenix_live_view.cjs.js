@@ -2556,17 +2556,10 @@ var DOMPatch = class {
     const reportError = (code, message, metadata, context) => view.logError(code, message, metadata, context);
     let targetContainer = this.targetContainer;
     if (this.targetCID) {
-      const closestLock = targetContainer.closest(`[${PHX_REF_LOCK}]`);
-      if (closestLock && !closestLock.isSameNode(targetContainer) && view.ownsElement(closestLock)) {
-        const clonedTree = dom_default.private(closestLock, PHX_REF_LOCK);
-        if (clonedTree) {
-          targetContainer = clonedTree.querySelector(
-            `[data-phx-component="${this.targetCID}"]`
-          );
-          if (!targetContainer)
-            return;
-        }
-      }
+      const componentTarget = this.componentPatchTarget(targetContainer);
+      if (!componentTarget)
+        return;
+      targetContainer = componentTarget;
     }
     const focused = liveSocket.getActiveElement();
     const { selectionStart, selectionEnd } = focused && dom_default.hasSelectionRange(focused) ? focused : {};
@@ -2755,6 +2748,9 @@ var DOMPatch = class {
           if (fromEl.type === "number" && fromEl.validity && fromEl.validity.badInput) {
             return false;
           }
+          if (!dom_default.isPhxChild(toEl) && this.copyNestedPrivateLock(fromEl, toEl)) {
+            return false;
+          }
           fromEl = this.maybeCloneLockedElement(fromEl, isFocusedFormEl);
           if (dom_default.isPhxChild(toEl)) {
             const prevSession = fromEl.getAttribute(PHX_SESSION);
@@ -2766,7 +2762,6 @@ var DOMPatch = class {
             dom_default.applyStickyOperations(fromEl);
             return false;
           }
-          this.copyNestedPrivateLock(fromEl, toEl);
           dom_default.copyPrivates(toEl, fromEl);
           if (dom_default.isPortalTemplate(toEl)) {
             portalCallbacks.push(() => this.teleport(toEl, morph));
@@ -3048,6 +3043,19 @@ var DOMPatch = class {
   skipCIDSibling(el) {
     return el.nodeType === Node.ELEMENT_NODE && el.hasAttribute(PHX_SKIP);
   }
+  componentPatchTarget(target, boundary = null) {
+    let outermostLock = null;
+    for (let lock = target.parentElement?.closest(`[${PHX_REF_LOCK}]`); lock && lock !== boundary; lock = lock.parentElement?.closest(`[${PHX_REF_LOCK}]`)) {
+      if (boundary === null && !this.view.ownsElement(lock))
+        break;
+      outermostLock = lock;
+    }
+    if (!outermostLock)
+      return target;
+    const clone2 = this.maybeCloneLockedElement(outermostLock, false);
+    const component = dom_default.findComponent(this.view.id, this.targetCID, clone2);
+    return component ? this.componentPatchTarget(component, clone2) : null;
+  }
   maybeCloneLockedElement(fromEl, isFocusedFormEl) {
     if (!fromEl.hasAttribute(PHX_REF_SRC))
       return fromEl;
@@ -3064,8 +3072,13 @@ var DOMPatch = class {
   }
   copyNestedPrivateLock(fromEl, toEl) {
     if (this.undoRef === null || !dom_default.private(toEl, PHX_REF_LOCK))
-      return;
+      return false;
     dom_default.putPrivate(fromEl, PHX_REF_LOCK, dom_default.private(toEl, PHX_REF_LOCK));
+    if (!fromEl.hasAttribute(PHX_REF_LOCK)) {
+      fromEl.setAttribute(PHX_REF_LOCK, toEl.getAttribute(PHX_REF_LOCK));
+      fromEl.setAttribute(PHX_REF_SRC, toEl.getAttribute(PHX_REF_SRC));
+    }
+    return true;
   }
   teleport(el, morph) {
     const targetSelector = el.getAttribute(PHX_PORTAL);
