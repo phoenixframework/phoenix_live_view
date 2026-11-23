@@ -4938,12 +4938,16 @@ var View = class _View {
     if (this.root === this) {
       this.formsForRecovery = this.getFormsForRecovery();
     }
-    if (this.isMain() && window.history.state === null) {
-      browser_default.pushState("replace", {
-        type: "patch",
-        id: this.id,
-        position: this.liveSocket.currentHistoryPosition
-      });
+    if (this.isMain()) {
+      if (window.history.state === null) {
+        browser_default.pushState("replace", {
+          type: "patch",
+          id: this.id,
+          position: this.liveSocket.currentHistoryPosition
+        });
+      } else {
+        browser_default.updateCurrentState((state) => ({ ...state, id: this.id }));
+      }
     }
     if (liveview_version !== this.liveSocket.version()) {
       console.warn(
