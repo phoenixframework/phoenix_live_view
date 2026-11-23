@@ -67,7 +67,7 @@ defmodule Phoenix.LiveView.Logger do
 
   @doc false
   def lv_mount_start(_event, measurement, metadata, _config) do
-    %{socket: socket, params: params, session: session, uri: _uri} = metadata
+    %{socket: socket, params: params, session: _session, uri: _uri} = metadata
     %{system_time: _system_time} = measurement
     level = log_level(socket)
 
@@ -78,10 +78,7 @@ defmodule Phoenix.LiveView.Logger do
           inspect(socket.view),
           ?\n,
           "  Parameters: ",
-          inspect(filter_values(params)),
-          ?\n,
-          "  Session: ",
-          inspect(session)
+          inspect(filter_values(params))
         ]
       end)
     end

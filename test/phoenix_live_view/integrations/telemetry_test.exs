@@ -105,7 +105,7 @@ defmodule Phoenix.LiveView.TelemetryTest do
 
       assert log =~ "MOUNT Phoenix.LiveViewTest.Support.ThermostatLive"
       assert log =~ "  Parameters: %{\"foo\" => \"bar\"}"
-      assert log =~ "  Session: %{\"current_user_id\" => \"1\"}"
+      refute log =~ "  Session:"
       assert log =~ "Replied in"
 
       assert log =~ "HANDLE PARAMS in Phoenix.LiveViewTest.Support.ThermostatLive"
