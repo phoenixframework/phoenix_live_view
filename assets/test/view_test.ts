@@ -3069,6 +3069,64 @@ describe("View + Component", function () {
   });
 
   describe("undoRefs", () => {
+    test.each([
+      [0, 0, false, true],
+      [0, 1, false, true],
+      [1, 0, false, true],
+      [0, 0, true, true],
+      [0, 1, true, true],
+      [1, 0, true, true],
+      [0, 0, false, false],
+      [0, 1, false, false],
+      [1, 0, false, false],
+    ] as const)(
+      "nested clones reconcile once (parent %i, child %i, opt-in %s, focused %s)",
+      (parentRef, childRef, patchFocused, focused) => {
+        const liveSocket = new LiveSocket("/live", Socket);
+        const el = rootContainer(
+          '<form id="form"><input id="input" value="initial" phx-patch-focused /></form>',
+        );
+        const view = simulateJoinedView(el, liveSocket);
+        const form = el.querySelector("form")!;
+        const input = el.querySelector("input")!;
+        for (const [node, ref] of [
+          [form, parentRef],
+          [input, childRef],
+        ] as const) {
+          node.setAttribute("data-phx-ref-src", el.id);
+          node.setAttribute("data-phx-ref-lock", String(ref));
+          node.setAttribute("data-phx-ref-loading", String(ref));
+        }
+        input.value = "si";
+        const formClone = form.cloneNode(true) as HTMLFormElement;
+        const outerInput = formClone.querySelector("input")!;
+        const nestedInput = outerInput.cloneNode(true) as HTMLInputElement;
+        nestedInput.value = "server";
+        if (!patchFocused) nestedInput.removeAttribute("phx-patch-focused");
+        DOM.putPrivate(outerInput, "data-phx-ref-lock", nestedInput);
+        DOM.putPrivate(form, "data-phx-ref-lock", formClone);
+        input.value = "silk";
+        if (focused) input.focus();
+        else input.blur();
+        const values: string[] = [];
+        const original = view.undoElRef.bind(view);
+        view.undoElRef = (...args) => {
+          const result = original(...args);
+          values.push(input.value);
+          return result;
+        };
+
+        view.undoRefs(Math.min(parentRef, childRef), "q");
+        view.undoRefs(Math.max(parentRef, childRef), "q");
+
+        expect(input.value).toBe(focused && !patchFocused ? "silk" : "server");
+        expect(values).not.toContain("si");
+        expect(input.hasAttribute("phx-patch-focused")).toBe(patchFocused);
+        expect(el.querySelector("[data-phx-ref-lock]")).toBeNull();
+        expect(DOM.private(input, "data-phx-ref-lock")).toBeUndefined();
+      },
+    );
+
     test("restores phx specific attributes awaiting a ref", () => {
       const content = `
         <span data-phx-ref-loading="1" data-phx-ref-src="root"></span>

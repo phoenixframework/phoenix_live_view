@@ -432,6 +432,14 @@ export default class DOMPatch {
           ) {
             return false;
           }
+          // Transfer nested deferred updates before checking the live lock, so
+          // a still-locked child doesn't acquire another intermediate clone.
+          if (
+            !DOM.isPhxChild(toEl) &&
+            this.copyNestedPrivateLock(fromEl, toEl)
+          ) {
+            return false;
+          }
           // If the element has PHX_REF_SRC, it is loading or locked and awaiting an ack.
           // If it's locked, we clone the fromEl tree and instruct morphdom to use
           // the cloned tree as the source of the morph for this branch from here on out.
@@ -452,10 +460,6 @@ export default class DOMPatch {
             return false;
           }
 
-          // If we are undoing a lock, copy potentially nested clones over.
-          // This keeps an inner locked subtree's private clone alive while an
-          // ancestor lock is being reconciled.
-          this.copyNestedPrivateLock(fromEl, toEl);
           // now copy regular DOM.private data
           DOM.copyPrivates(toEl, fromEl);
 
@@ -856,13 +860,23 @@ export default class DOMPatch {
   }
 
   private copyNestedPrivateLock(fromEl, toEl) {
-    // During unlock morphs, toEl may be the private clone that accumulated a
-    // nested locked subtree. Copy that private clone back to fromEl before the
-    // outer unlock finishes so the nested element can apply its own ack later.
+    // During unlock morphs, toEl may contain a nested element with its own
+    // private clone. Transfer it, but don't morph the intermediate snapshot:
+    // stale attributes (such as phx-patch-focused) could overwrite client state
+    // before undoElRef applies the nested clone. If its lock is still pending,
+    // the live subtree must remain unchanged until its own ack instead.
     // undoRef can be 0, so presence is checked against null.
-    if (this.undoRef === null || !DOM.private(toEl, PHX_REF_LOCK)) return;
+    if (this.undoRef === null || !DOM.private(toEl, PHX_REF_LOCK)) return false;
 
     DOM.putPrivate(fromEl, PHX_REF_LOCK, DOM.private(toEl, PHX_REF_LOCK));
+    // The child may already have been unlocked in the live DOM while its
+    // ancestor remained locked. Restore only the clone's lock bookkeeping so
+    // undoElRef still visits it and reconciles its deferred subtree.
+    if (!fromEl.hasAttribute(PHX_REF_LOCK)) {
+      fromEl.setAttribute(PHX_REF_LOCK, toEl.getAttribute(PHX_REF_LOCK));
+      fromEl.setAttribute(PHX_REF_SRC, toEl.getAttribute(PHX_REF_SRC));
+    }
+    return true;
   }
 
   private teleport(el, morph) {
