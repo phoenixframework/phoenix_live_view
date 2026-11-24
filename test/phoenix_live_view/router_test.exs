@@ -94,6 +94,51 @@ defmodule Phoenix.LiveView.RouterTest do
                })
     end
 
+    test "a routed LiveView treats a nil redirect as absent", %{conn: conn} do
+      html = conn |> get("/lifecycle/mount-mods") |> html_response(200)
+      {_document, tree} = DOM.parse_document(html)
+      [{id, session_token, static_token}] = TreeDOM.find_live_views(tree)
+
+      assert {:ok, socket} = ChannelTest.connect(Socket, %{}, connect_info: %{session: %{}})
+      %Phoenix.Socket{transport: {ChannelTest, sup}} = socket
+
+      message = %Phoenix.Socket.Message{
+        event: "phx_join",
+        topic: "lv:#{id}",
+        ref: System.unique_integer([:positive]),
+        payload: %{
+          "session" => session_token,
+          "static" => static_token,
+          "url" => "http://www.example.com/lifecycle/mount-mods",
+          "redirect" => nil,
+          "params" => %{"_mounts" => 0}
+        }
+      }
+
+      # ChannelTest.join/4 can't be used for successful LiveView joins, as it
+      # asks the channel for its socket afterwards, so we join the server directly
+      starter = fn _, _, spec -> Supervisor.start_child(sup, %{spec | id: make_ref()}) end
+
+      assert {:ok, %{rendered: _}, _pid} =
+               Phoenix.Channel.Server.join(socket, Channel, message, starter: starter)
+    end
+
+    test "a routed LiveView rejects a join with a nil URL", %{conn: conn} do
+      html = conn |> get("/lifecycle/mount-mods") |> html_response(200)
+      {_document, tree} = DOM.parse_document(html)
+      [{id, session_token, static_token}] = TreeDOM.find_live_views(tree)
+
+      assert {:ok, socket} = ChannelTest.connect(Socket, %{}, connect_info: %{session: %{}})
+
+      assert {:error, %{reason: "unauthorized"}} =
+               ChannelTest.join(socket, Channel, "lv:#{id}", %{
+                 "session" => session_token,
+                 "static" => static_token,
+                 "url" => nil,
+                 "params" => %{}
+               })
+    end
+
     test "with defaults", %{conn: conn} do
       path = "/thermo-live-session"
 
