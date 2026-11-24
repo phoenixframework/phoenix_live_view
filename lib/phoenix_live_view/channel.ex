@@ -1773,7 +1773,8 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp authorize_session(%Session{} = session, endpoint, %{"redirect" => url}) do
+  defp authorize_session(%Session{} = session, endpoint, %{"redirect" => url})
+       when is_binary(url) do
     if redir_route = session_route(session, endpoint, url) do
       case Session.authorize_root_redirect(session, redir_route) do
         {:ok, %Session{} = new_session} ->
@@ -1797,7 +1798,8 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp authorize_session(%Session{} = session, endpoint, %{"url" => url}) do
+  defp authorize_session(%Session{} = session, endpoint, %{"url" => url})
+       when is_binary(url) do
     %Session{view: view, live_session_name: session_name} = session
 
     if session.route_required? do
