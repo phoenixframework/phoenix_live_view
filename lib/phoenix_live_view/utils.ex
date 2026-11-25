@@ -84,6 +84,74 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
+  Assigns the given `key` with value from `fun` into `socket` if one does not yet exist
+  or if any of the dependencies have changed.
+
+  This function is particularly useful for computing derived values that depend on other assigns.
+  When any of the dependencies listed in `deps` have changed (as tracked by the socket's `__changed__`
+  map), the function will be called to compute a new value for `key`.
+
+  ## Example
+
+  Imagine a LiveView that manages a user profile where we need to fetch user data when the user ID changes.
+  We can factor out the refresh logic into a common function:
+
+      def mount(_params, _session, socket) do
+        {:ok, assign(socket, :user_id, nil) |> refresh_assigns()}
+      end
+
+      def handle_event("select_user", %{"id" => user_id}, socket) do
+        {:noreply, socket |> assign(:user_id, user_id) |> refresh_assigns()}
+      end
+
+      def handle_event("update_profile", params, socket) do
+        {:noreply, socket |> handle_profile_update(params) |> refresh_assigns()}
+      end
+
+      def handle_params(%{"user_id" => user_id}, _uri, socket) do
+        {:noreply, socket |> assign(:user_id, user_id) |> refresh_assigns()}
+      end
+
+      # Centralized refresh function that can be called from any event handler
+      defp refresh_assigns(socket) do
+        socket
+        |> assign_new(:user, [:user_id], &fetch_user_data/1)
+      end
+
+      defp fetch_user_data(%{user_id: user_id}) when is_nil(user_id), do: nil
+      defp fetch_user_data(%{user_id: user_id}) do
+        # This expensive database query only runs when user_id changes
+        Repo.get(User, user_id)
+      end
+
+  In this example, we've factored out the assign refresh logic into a common `refresh_assigns/1` 
+  function that we can call from any event handler or callback. The `user` struct is only fetched 
+  when `user_id` changes, even though we call `refresh_assigns/1` in multiple places.
+
+  This approach keeps your code DRY and ensures expensive operations only run when necessary.
+  """
+  def assign_new(%Socket{} = socket, key, deps, fun)
+      when is_list(deps) and
+             (is_function(fun, 0) or is_function(fun, 1)) do
+    # If any dependency has changed, always recompute the value
+    if deps_in_changed?(socket, deps) do
+      case fun do
+        fun when is_function(fun, 1) -> force_assign(socket, key, fun.(socket.assigns))
+        fun when is_function(fun, 0) -> force_assign(socket, key, fun.())
+      end
+    else
+      # Otherwise, use the standard assign_new behavior
+      assign_new(socket, key, fun)
+    end
+  end
+
+  defp deps_in_changed?(%Socket{assigns: %{__changed__: changed}}, deps) when is_map(changed) do
+    Enum.any?(deps, &Map.has_key?(changed, &1))
+  end
+
+  defp deps_in_changed?(%Socket{}, _deps), do: false
+
+  @doc """
   Forces an assign on a socket.
   """
   def force_assign(%Socket{assigns: assigns} = socket, key, val) do
