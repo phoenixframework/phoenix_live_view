@@ -328,11 +328,31 @@ defmodule Phoenix.LiveView.Async do
   def handle_async(socket, maybe_component, kind, key, ref, result) do
     case prune_current_async(socket, key, ref) do
       {:ok, pruned_socket} ->
-        handle_kind(pruned_socket, maybe_component, kind, key, result)
+        handle_async_span(pruned_socket, maybe_component, kind, key, fn socket ->
+          handle_kind(socket, maybe_component, kind, key, result)
+        end)
 
       :error ->
         socket
     end
+  end
+
+  defp handle_async_span(socket, nil, kind, key, fun) do
+    metadata = %{socket: socket, name: key, type: kind}
+
+    :telemetry.span([:phoenix, :live_view, :handle_async], metadata, fn ->
+      socket = fun.(socket)
+      {socket, %{metadata | socket: socket}}
+    end)
+  end
+
+  defp handle_async_span(socket, component, kind, key, fun) do
+    metadata = %{socket: socket, component: component, name: key, type: kind}
+
+    :telemetry.span([:phoenix, :live_component, :handle_async], metadata, fn ->
+      socket = fun.(socket)
+      {socket, %{metadata | socket: socket}}
+    end)
   end
 
   def handle_trap_exit(socket, maybe_component, kind, key, ref, reason) do

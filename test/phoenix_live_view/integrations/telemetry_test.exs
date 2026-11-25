@@ -214,6 +214,58 @@ defmodule Phoenix.LiveView.TelemetryTest do
 
       assert_receive {:event, [:phoenix, :live_view, :render, :stop], %{duration: _}, _}
     end
+
+    test "emits telemetry events for start_async results", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_view, :handle_async])
+
+      {:ok, view, _html} = live(conn, "/start_async?test=ok")
+      assert render_async(view) =~ "result: :good"
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_async, :start], %{system_time: _},
+                      metadata}
+
+      assert metadata.socket.transport_pid
+      assert metadata.name == :result_task
+      assert metadata.type == :start
+      assert metadata.socket.assigns.result == :loading
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_async, :stop], %{duration: _},
+                      metadata}
+
+      assert metadata.name == :result_task
+      assert metadata.type == :start
+      assert metadata.socket.assigns.result == :good
+    end
+
+    test "emits telemetry events for assign_async results", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_view, :handle_async])
+
+      {:ok, view, _html} = live(conn, "/assign_async?test=ok")
+      assert render_async(view) =~ "data: 123"
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_async, :stop], %{duration: _},
+                      metadata}
+
+      assert metadata.name == [:data]
+      assert metadata.type == :assign
+      assert metadata.socket.assigns.data.ok?
+    end
+
+    test "emits telemetry events when handle_async raises", %{conn: conn} do
+      Process.flag(:trap_exit, true)
+      attach_telemetry([:phoenix, :live_view, :handle_async])
+
+      {:ok, view, _html} = live(conn, "/start_async?test=handle_async_raise")
+      catch_exit(render_async(view))
+
+      assert_receive {:event, [:phoenix, :live_view, :handle_async, :exception], %{duration: _},
+                      metadata}
+
+      assert metadata.kind == :error
+      assert %RuntimeError{message: "boom in handle_async"} = metadata.reason
+      assert metadata.name == :raise_in_callback
+      assert metadata.type == :start
+    end
   end
 
   describe "live components" do
@@ -342,6 +394,41 @@ defmodule Phoenix.LiveView.TelemetryTest do
 
       assert_receive {:event, [:phoenix, :live_component, :update, :start], %{system_time: _},
                       %{assigns_sockets: [{%{name: ^name, disabled: true}, _} | _]}}
+    end
+
+    test "emits telemetry events for start_async results", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_component, :handle_async])
+
+      {:ok, view, _html} = live(conn, "/start_async?test=lc_ok")
+      assert render_async(view) =~ "lc: :good"
+
+      assert_receive {:event, [:phoenix, :live_component, :handle_async, :start],
+                      %{system_time: _}, metadata}
+
+      assert metadata.component == Phoenix.LiveViewTest.Support.StartAsyncLive.LC
+      assert metadata.name == :result_task
+      assert metadata.type == :start
+
+      assert_receive {:event, [:phoenix, :live_component, :handle_async, :stop], %{duration: _},
+                      metadata}
+
+      assert metadata.component == Phoenix.LiveViewTest.Support.StartAsyncLive.LC
+      assert metadata.socket.assigns.result == :good
+    end
+
+    test "emits telemetry events for assign_async results", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_component, :handle_async])
+
+      {:ok, view, _html} = live(conn, "/assign_async?test=lc_ok")
+      assert render_async(view) =~ "lc_data: 123"
+
+      assert_receive {:event, [:phoenix, :live_component, :handle_async, :stop], %{duration: _},
+                      metadata}
+
+      assert metadata.component == Phoenix.LiveViewTest.Support.AssignAsyncLive.LC
+      assert metadata.name == [:lc_data, :other_data]
+      assert metadata.type == :assign
+      assert metadata.socket.assigns.lc_data.ok?
     end
   end
 
